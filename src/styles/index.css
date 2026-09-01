@@ -1,0 +1,108 @@
+@import 'tailwindcss';
+@import './fonts.css';
+@import './tokens.css';
+@import './app.css';
+
+/* Expose the locked tokens to Tailwind so utilities stay on-system.
+   Values point at the runtime vars, so Day/Night switching flows through them. */
+@theme {
+  --font-sans: var(--font-ui);
+  --font-display: var(--font-disp);
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Code', monospace;
+  --font-ink: 'Caveat', ui-rounded, cursive;
+
+  --color-ground: var(--ground);
+  --color-ground-2: var(--ground-2);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-card: var(--card);
+  --color-card-brd: var(--card-brd);
+  --color-hair: var(--hair);
+  --color-hair-2: var(--hair-2);
+  --color-glass: var(--glass);
+  --color-glass-strong: var(--glass-strong);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-d1: var(--d1);
+  --color-d2: var(--d2);
+  --color-d3: var(--d3);
+  --color-d4: var(--d4);
+  --color-d5: var(--d5);
+
+  --radius-panel: var(--r-panel);
+  --radius-card: var(--r-card);
+  --radius-btn: var(--r-btn);
+  --radius-chip: var(--r-chip);
+  --radius-pill: var(--r-pill);
+
+  --shadow-card: var(--shadow-card);
+  --shadow-card-h: var(--shadow-card-h);
+  --shadow-pop: var(--shadow-pop);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+  /* the window chrome is ours; nothing here should feel like a web page */
+  user-select: none;
+  cursor: default;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  cursor: default;
+}
+
+input,
+textarea {
+  user-select: text;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* thin, tone-aware scrollbars — the chrome should not shout */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--hair) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--hair);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-3);
+  background-clip: content-box;
+}

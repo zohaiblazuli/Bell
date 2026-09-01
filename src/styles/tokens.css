@@ -1,0 +1,94 @@
+/* Design tokens — ported verbatim from demos/design-demo.html. See CLAUDE.md.
+   Day is :root; Night is .app[data-tone="night"] (a product toggle, not prefers-color-scheme).
+   The paper stays white in both tones — it is always the brightest thing on screen. */
+
+:root {
+  --font-ui: 'Schibsted Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-disp: 'Schibsted Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Code', monospace;
+  --font-ink: 'Caveat', ui-rounded, cursive;
+
+  /* DAY — a picked cool periwinkle-grey, never flat grey */
+  --ground: #e7e9f2;
+  --ground-2: #dcdfeb;
+  --ambient-a: rgba(102, 124, 255, 0.1);
+  --ambient-b: rgba(214, 150, 220, 0.1);
+
+  --paper: #ffffff;
+  --page-ink: #1a1c24;
+  --page-ink-2: #5b6072;
+  --page-line: rgba(26, 28, 36, 0.14);
+
+  --ink: #1b1d27;
+  --ink-2: #565b6f;
+  --ink-3: #8a8fa4;
+
+  --glass: rgba(255, 255, 255, 0.58);
+  --glass-strong: rgba(255, 255, 255, 0.74);
+  --glass-brd: rgba(255, 255, 255, 0.8);
+  --glass-hi: rgba(255, 255, 255, 0.65);
+  --hair: rgba(24, 26, 52, 0.11);
+  --hair-2: rgba(24, 26, 52, 0.07);
+
+  --card: #f6f7fc;
+  --card-brd: rgba(24, 26, 52, 0.09);
+
+  /* brand: cool iridescent — spent only as a line */
+  --iris-1: #6aa8ff;
+  --iris-2: #6f76f2;
+  --iris-3: #9d7bf0;
+  --iris-4: #f3b7c6;
+  --accent: #5b63ea;
+  --accent-soft: rgba(91, 99, 234, 0.12);
+  --iris: linear-gradient(90deg, var(--iris-1), var(--iris-2), var(--iris-3), var(--iris-4));
+
+  /* difficulty: a warm heat scale — a separate axis from the brand */
+  --d1: #d7b45a;
+  --d2: #e0a33e;
+  --d3: #e0863a;
+  --d4: #d76a3c;
+  --d5: #cf5568;
+
+  --shadow-win: 0 24px 60px -28px rgba(18, 20, 50, 0.42), 0 6px 16px -10px rgba(18, 20, 50, 0.24);
+  --shadow-card: 0 1px 2px rgba(18, 20, 50, 0.05);
+  --shadow-card-h: 0 12px 28px -14px rgba(18, 20, 50, 0.28);
+  --shadow-paper: 0 32px 60px -30px rgba(18, 20, 50, 0.34), 0 8px 20px -14px rgba(18, 20, 50, 0.22);
+  --shadow-pop: 0 30px 70px -24px rgba(14, 16, 44, 0.5);
+
+  --r-win: 15px;
+  --r-panel: 16px;
+  --r-card: 13px;
+  --r-btn: 10px;
+  --r-chip: 9px;
+  --r-pill: 999px;
+}
+
+.app[data-tone='night'] {
+  --ground: #111219;
+  --ground-2: #0b0c12;
+  --ambient-a: rgba(112, 132, 255, 0.2);
+  --ambient-b: rgba(200, 140, 225, 0.16);
+
+  --ink: #e9ebf4;
+  --ink-2: #a6abbe;
+  --ink-3: #767b90;
+
+  --glass: rgba(32, 34, 48, 0.52);
+  --glass-strong: rgba(38, 40, 58, 0.7);
+  --glass-brd: rgba(255, 255, 255, 0.12);
+  --glass-hi: rgba(255, 255, 255, 0.14);
+  --hair: rgba(255, 255, 255, 0.1);
+  --hair-2: rgba(255, 255, 255, 0.06);
+
+  --card: rgba(30, 32, 46, 0.55);
+  --card-brd: rgba(255, 255, 255, 0.09);
+
+  --accent: #8b90ff;
+  --accent-soft: rgba(139, 144, 255, 0.16);
+
+  --shadow-win: 0 30px 70px -30px rgba(0, 0, 0, 0.7), 0 8px 20px -12px rgba(0, 0, 0, 0.5);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-card-h: 0 16px 34px -16px rgba(0, 0, 0, 0.6);
+  --shadow-paper: 0 40px 80px -34px rgba(0, 0, 0, 0.75), 0 10px 24px -16px rgba(0, 0, 0, 0.55);
+  --shadow-pop: 0 40px 90px -28px rgba(0, 0, 0, 0.8);
+}

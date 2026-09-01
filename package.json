@@ -1,0 +1,37 @@
+{
+  "name": "foolscap",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "fonts": "powershell -ExecutionPolicy Bypass -NoProfile -File scripts/fetch-fonts.ps1",
+    "verify:index": "cargo run --manifest-path src-tauri/Cargo.toml --bin index_check",
+    "verify:thresholds": "node scripts/run.mjs verify-thresholds.ts",
+    "verify:difficulty": "node scripts/run.mjs verify-difficulty.ts",
+    "verify:papers": "node scripts/run.mjs verify-papers.ts"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-opener": "^2",
+    "pdfjs-dist": "6.3.289",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@tauri-apps/cli": "^2",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.6.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.4"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}
