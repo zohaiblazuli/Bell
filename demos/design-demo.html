@@ -1,0 +1,733 @@
+<title>Foolscap Study Demo</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Caveat:wght@500;600&display=swap');
+
+/* ---------- tokens ---------- */
+:root{
+  --font-ui:'Schibsted Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-disp:'Schibsted Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;   /* same family as UI — titles differ by weight/size, not face */
+  --font-mono:'IBM Plex Mono',ui-monospace,'Cascadia Code',monospace;
+  --font-ink:'Caveat',ui-rounded,cursive;
+
+  /* DAY (default) — a picked cool periwinkle-grey, never flat grey */
+  --ground:#e7e9f2;
+  --ground-2:#dcdfeb;              /* deeper ground behind the paper */
+  --ambient-a:rgba(102,124,255,.10);
+  --ambient-b:rgba(214,150,220,.10);
+
+  --paper:#ffffff;
+  --page-ink:#1a1c24;              /* fixed dark — paper is always white */
+  --page-ink-2:#5b6072;
+  --page-line:rgba(26,28,36,.14);
+
+  --ink:#1b1d27;
+  --ink-2:#565b6f;
+  --ink-3:#8a8fa4;
+
+  --glass:rgba(255,255,255,.58);
+  --glass-strong:rgba(255,255,255,.74);
+  --glass-brd:rgba(255,255,255,.80);
+  --glass-hi:rgba(255,255,255,.65);        /* specular top highlight */
+  --hair:rgba(24,26,52,.11);
+  --hair-2:rgba(24,26,52,.07);
+
+  --card:#f6f7fc;
+  --card-brd:rgba(24,26,52,.09);
+
+  /* brand: cool iridescent — spent only as a line */
+  --iris-1:#6aa8ff; --iris-2:#6f76f2; --iris-3:#9d7bf0; --iris-4:#f3b7c6;
+  --accent:#5b63ea;
+  --accent-soft:rgba(91,99,234,.12);
+  --iris:linear-gradient(90deg,var(--iris-1),var(--iris-2),var(--iris-3),var(--iris-4));
+
+  /* difficulty: a warm heat scale — a separate axis from the brand */
+  --d1:#d7b45a; --d2:#e0a33e; --d3:#e0863a; --d4:#d76a3c; --d5:#cf5568;
+
+  --shadow-win:0 24px 60px -28px rgba(18,20,50,.42),0 6px 16px -10px rgba(18,20,50,.24);
+  --shadow-card:0 1px 2px rgba(18,20,50,.05);
+  --shadow-card-h:0 12px 28px -14px rgba(18,20,50,.28);
+  --shadow-paper:0 32px 60px -30px rgba(18,20,50,.34),0 8px 20px -14px rgba(18,20,50,.22);
+  --shadow-pop:0 30px 70px -24px rgba(14,16,44,.5);
+
+  --r-win:15px; --r-panel:16px; --r-card:13px; --r-btn:10px; --r-chip:9px; --r-pill:999px;
+}
+.app[data-tone="night"]{
+  --ground:#111219;
+  --ground-2:#0b0c12;
+  --ambient-a:rgba(112,132,255,.20);
+  --ambient-b:rgba(200,140,225,.16);
+
+  --ink:#e9ebf4; --ink-2:#a6abbe; --ink-3:#767b90;
+
+  --glass:rgba(32,34,48,.52);
+  --glass-strong:rgba(38,40,58,.70);
+  --glass-brd:rgba(255,255,255,.12);
+  --glass-hi:rgba(255,255,255,.14);
+  --hair:rgba(255,255,255,.10);
+  --hair-2:rgba(255,255,255,.06);
+
+  --card:rgba(30,32,46,.55);
+  --card-brd:rgba(255,255,255,.09);
+
+  --accent:#8b90ff;
+  --accent-soft:rgba(139,144,255,.16);
+
+  --shadow-win:0 30px 70px -30px rgba(0,0,0,.7),0 8px 20px -12px rgba(0,0,0,.5);
+  --shadow-card:0 1px 2px rgba(0,0,0,.3);
+  --shadow-card-h:0 16px 34px -16px rgba(0,0,0,.6);
+  --shadow-paper:0 40px 80px -34px rgba(0,0,0,.75),0 10px 24px -16px rgba(0,0,0,.55);
+  --shadow-pop:0 40px 90px -28px rgba(0,0,0,.8);
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:var(--ground);
+  color:var(--ink);
+  font-family:var(--font-ui);
+  font-size:14px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+button{font-family:inherit;color:inherit;border:0;background:none;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+
+/* ---------- app window ---------- */
+.stage{position:fixed;inset:0;padding:22px;display:flex}
+.app{
+  position:relative;flex:1;display:grid;
+  grid-template-columns:238px 1fr;grid-template-rows:1fr;
+  min-height:0;border-radius:var(--r-win);overflow:hidden;
+  background:var(--ground);
+  box-shadow:var(--shadow-win);
+  border:1px solid var(--hair);
+}
+/* ambient ground so glass has something to refract — a hint, never a wash */
+.app::before{
+  content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(60% 55% at 8% 4%,var(--ambient-a),transparent 60%),
+    radial-gradient(55% 55% at 100% 100%,var(--ambient-b),transparent 62%);
+}
+
+/* ---------- sidebar ---------- */
+.sidebar{
+  position:relative;z-index:3;grid-column:1;display:flex;flex-direction:column;
+  gap:4px;padding:14px 12px;
+  background:var(--glass);
+  -webkit-backdrop-filter:blur(26px) saturate(165%);backdrop-filter:blur(26px) saturate(165%);
+  border-right:1px solid var(--hair);
+  box-shadow:inset 0 1px 0 var(--glass-hi);
+  transition:opacity .34s ease,transform .4s cubic-bezier(.4,0,.1,1);
+}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 8px 14px}
+.lights{display:flex;gap:7px;padding:2px 8px 12px}
+.lights i{width:11px;height:11px;border-radius:50%;display:block}
+.lights i:nth-child(1){background:#ec6a5e}
+.lights i:nth-child(2){background:#f4be4f}
+.lights i:nth-child(3){background:#61c554}
+.app[data-tone="night"] .lights i{opacity:.9}
+.logo{width:26px;height:26px;flex:none}
+.logo path{fill:none;stroke:url(#iris);stroke-width:1.7;stroke-linejoin:round;stroke-linecap:round}
+.wordmark{display:flex;flex-direction:column;line-height:1.05}
+.wordmark b{font-family:var(--font-disp);font-weight:700;font-size:16.5px;letter-spacing:-.01em}
+.wordmark small{font-size:10px;color:var(--ink-3);letter-spacing:.04em}
+
+.nav-label{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);padding:12px 10px 5px}
+.nav{display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:var(--r-btn);
+  color:var(--ink-2);font-weight:500;font-size:13.5px;position:relative;transition:background .18s,color .18s}
+.nav svg{width:18px;height:18px;flex:none}
+.nav:hover{background:var(--hair-2);color:var(--ink)}
+.nav.active{background:var(--accent-soft);color:var(--accent)}
+.nav.active::before{content:"";position:absolute;left:-12px;top:50%;transform:translateY(-50%);
+  width:3px;height:17px;border-radius:0 3px 3px 0;background:var(--iris)}
+.nav .count{margin-left:auto;font-size:11px}
+
+.subj{display:flex;flex-direction:column;gap:1px;margin-top:2px;overflow:auto}
+.subj-row{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--r-btn);
+  color:var(--ink-2);font-size:13px;transition:background .16s}
+.subj-row:hover{background:var(--hair-2);color:var(--ink)}
+.subj-row .dot{width:7px;height:7px;border-radius:2px;flex:none}
+.subj-row .code{font-size:11px;color:var(--ink-3);margin-left:auto}
+.sidebar-foot{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px;border-top:1px solid var(--hair);
+  color:var(--ink-2);font-size:12.5px}
+.sidebar-foot .av{width:26px;height:26px;border-radius:50%;flex:none;
+  background:linear-gradient(135deg,var(--iris-2),var(--iris-3));color:#fff;display:grid;place-items:center;
+  font-weight:600;font-size:11px;font-family:var(--font-mono)}
+
+/* ---------- main ---------- */
+.main{position:relative;z-index:2;grid-column:2;min-width:0;display:flex;flex-direction:column;
+  background:transparent;transition:background .4s}
+.app[data-view="workspace"] .main{background:var(--ground-2)}
+
+/* soft aurora — an optional bloom allowed ONLY behind the library grid (never the workspace).
+   sits at z0 inside .main; the topbar (z5) and the view content paint above it, so cards stay legible */
+.lib-aurora{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:0;transition:opacity .55s ease;
+  background:
+    radial-gradient(42% 46% at 84% 4%,rgba(111,118,242,.22),transparent 60%),
+    radial-gradient(38% 44% at 6% 24%,rgba(157,123,240,.17),transparent 62%),
+    radial-gradient(34% 40% at 74% 82%,rgba(243,183,198,.13),transparent 64%),
+    radial-gradient(30% 36% at 40% 52%,rgba(106,168,255,.10),transparent 66%)}
+.app[data-view="library"][data-aurora="soft"] .lib-aurora{opacity:1}
+
+/* ---------- topbar ---------- */
+.topbar{position:relative;z-index:5;height:56px;flex:none;display:flex;align-items:center;gap:12px;
+  padding:0 16px;background:var(--glass);
+  -webkit-backdrop-filter:blur(26px) saturate(165%);backdrop-filter:blur(26px) saturate(165%);
+  border-bottom:1px solid var(--hair);box-shadow:inset 0 1px 0 var(--glass-hi)}
+.tb{display:none;align-items:center;gap:12px;width:100%;min-width:0}
+.app[data-view="library"] .tb-lib{display:flex}
+.app[data-view="workspace"] .tb-ws{display:flex}
+
+.title{font-family:var(--font-disp);font-weight:700;font-size:17px;letter-spacing:-.01em;white-space:nowrap}
+.spacer{flex:1}
+
+.search{display:flex;align-items:center;gap:9px;height:34px;padding:0 10px 0 12px;min-width:230px;max-width:420px;flex:1;
+  border-radius:var(--r-pill);background:var(--glass-strong);border:1px solid var(--hair);
+  color:var(--ink-3);font-size:13px;transition:border-color .18s,box-shadow .18s}
+.search:hover{border-color:var(--accent)}
+.search svg{width:16px;height:16px}
+.search .kbd{margin-left:auto}
+.kbd{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);border:1px solid var(--hair);
+  border-radius:6px;padding:2px 6px;background:var(--glass-strong)}
+
+.seg{display:flex;padding:3px;gap:2px;border-radius:var(--r-btn);background:var(--hair-2);border:1px solid var(--hair)}
+.seg button{width:30px;height:26px;border-radius:7px;display:grid;place-items:center;color:var(--ink-3);transition:.16s}
+.seg button svg{width:16px;height:16px}
+.seg button.on{background:var(--glass-strong);color:var(--ink);box-shadow:var(--shadow-card)}
+
+.icobtn{width:34px;height:34px;border-radius:var(--r-btn);display:grid;place-items:center;color:var(--ink-2);
+  border:1px solid transparent;transition:.16s}
+.icobtn:hover{background:var(--hair-2);color:var(--ink)}
+.icobtn svg{width:18px;height:18px}
+
+.tone{display:flex;align-items:center;gap:8px;height:34px;padding:0 6px 0 12px;border-radius:var(--r-pill);
+  border:1px solid var(--hair);background:var(--glass-strong);font-size:12px;color:var(--ink-2)}
+.tone .sw{position:relative;width:44px;height:24px;border-radius:999px;background:var(--hair);border:1px solid var(--hair);transition:.2s}
+.tone .sw::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;
+  background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:.24s cubic-bezier(.4,0,.1,1)}
+.app[data-tone="night"] #toneToggle .sw{background:var(--accent-soft)}
+.app[data-tone="night"] #toneToggle .sw::after{transform:translateX(20px);background:linear-gradient(135deg,var(--iris-2),var(--iris-3))}
+.app[data-aurora="soft"] #auroraToggle .sw{background:var(--accent-soft)}
+.app[data-aurora="soft"] #auroraToggle .sw::after{transform:translateX(20px);background:var(--iris)}
+
+/* ---------- views ---------- */
+.view{flex:1;min-height:0;overflow:auto;position:relative}
+.view-lib{display:none}.view-ws{display:none}
+.app[data-view="library"] .view-lib{display:block}
+.app[data-view="workspace"] .view-ws{display:flex}
+@media (prefers-reduced-motion:no-preference){
+  .app[data-view="library"] .view-lib,.app[data-view="workspace"] .view-ws{animation:rise .4s cubic-bezier(.2,.7,.2,1)}
+}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ---------- library ---------- */
+.lib{max-width:1080px;margin:0 auto;padding:26px 30px 60px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:26px}
+.chip{display:flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:var(--r-pill);
+  border:1px solid var(--hair);background:var(--glass-strong);color:var(--ink-2);font-size:12.5px;font-weight:500;transition:.16s}
+.chip:hover{color:var(--ink);border-color:var(--accent)}
+.chip svg{width:14px;height:14px;opacity:.7}
+.chip.filled{color:var(--ink);border-color:transparent;background:var(--accent-soft)}
+.chip.filled .x{color:var(--ink-3)}
+
+.sec-label{font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);
+  margin:6px 2px 14px;display:flex;align-items:center;gap:10px}
+.sec-label::after{content:"";flex:1;height:1px;background:var(--hair)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:14px;margin-bottom:34px}
+.card{position:relative;text-align:left;display:flex;flex-direction:column;gap:12px;padding:16px;
+  background:var(--card);border:1px solid var(--card-brd);border-radius:var(--r-card);
+  box-shadow:var(--shadow-card);transition:transform .2s cubic-bezier(.2,.7,.2,1),box-shadow .2s,border-color .2s}
+.card:hover{transform:translateY(-3px);box-shadow:var(--shadow-card-h);border-color:var(--hair)}
+.card-top{display:flex;align-items:center;gap:2px}
+.card .code{font-family:var(--font-mono);font-weight:600;font-size:15px;letter-spacing:-.01em}
+.card .pnum{font-family:var(--font-mono);font-size:15px;color:var(--ink-3)}
+.card .bm{margin-left:auto;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:var(--ink-3);transition:.16s}
+.card .bm:hover{background:var(--hair-2);color:var(--ink)}
+.card .bm svg{width:16px;height:16px}
+.card .bm.on{color:var(--accent)}
+.card .bm.on svg{fill:currentColor}
+.card-title{font-weight:600;font-size:15.5px;letter-spacing:-.01em;margin-top:-2px}
+.card-sub{font-size:12.5px;color:var(--ink-2);margin-top:-8px}
+.card-meta{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-2)}
+.card-meta svg{width:14px;height:14px;opacity:.7}
+.card-meta .sc{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);border:1px solid var(--hair);border-radius:5px;padding:1px 5px}
+.docs{display:flex;gap:5px}
+.doc{font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.03em;color:var(--ink-3);
+  border:1px solid var(--hair);border-radius:5px;padding:2px 5px}
+.card-foot{display:flex;align-items:center;gap:10px;margin-top:2px;padding-top:12px;border-top:1px solid var(--hair-2)}
+.meter{display:flex;gap:3px}
+.meter i{width:14px;height:5px;border-radius:2px;background:var(--hair);display:block}
+.diff-l{font-size:12px;font-weight:600}
+.diff-s{margin-left:auto;font-family:var(--font-mono);font-size:12px;color:var(--ink-3)}
+
+.progline{display:flex;align-items:center;gap:9px;font-size:11.5px;color:var(--ink-2);font-family:var(--font-mono)}
+.bar{flex:1;height:4px;border-radius:3px;background:var(--hair);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:3px;background:var(--iris)}
+
+/* ---------- workspace ---------- */
+.ws-back{display:flex;align-items:center;gap:9px}
+.ws-code{font-family:var(--font-mono);font-weight:600;font-size:15px}
+.ws-name{color:var(--ink-2);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ws-sess{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);border:1px solid var(--hair);border-radius:5px;padding:2px 6px}
+
+.timer{display:flex;align-items:center;gap:11px;height:38px;padding:0 6px 0 8px;border-radius:var(--r-pill);
+  border:1px solid var(--hair);background:var(--glass-strong)}
+.ring{position:relative;width:30px;height:30px}
+.ring svg{transform:rotate(-90deg)}
+.ring .trk{fill:none;stroke:var(--hair);stroke-width:3}
+.ring .prg{fill:none;stroke:url(#iris);stroke-width:3;stroke-linecap:round;transition:stroke-dashoffset .9s linear}
+.timer .t{font-family:var(--font-mono);font-size:15px;font-weight:500;letter-spacing:-.02em}
+.timer .tgt{font-family:var(--font-mono);font-size:10px;color:var(--ink-3);margin-top:-2px}
+.timer .pp{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:var(--ink-2)}
+.timer .pp:hover{background:var(--hair-2);color:var(--ink)}
+.timer .pp svg{width:15px;height:15px}
+
+.tools{display:flex;padding:3px;gap:2px;border-radius:var(--r-btn);background:var(--hair-2);border:1px solid var(--hair)}
+.tool{width:32px;height:28px;border-radius:7px;display:grid;place-items:center;color:var(--ink-3);position:relative;transition:.16s}
+.tool svg{width:17px;height:17px}
+.tool:hover{color:var(--ink)}
+.tool.on{color:var(--ink);background:var(--glass-strong);box-shadow:var(--shadow-card)}
+.tool.on::after{content:"";position:absolute;inset:-1px;border-radius:8px;padding:1px;
+  background:var(--iris);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude}
+
+.btn{display:flex;align-items:center;gap:8px;height:34px;padding:0 14px;border-radius:var(--r-btn);
+  font-size:13px;font-weight:600;border:1px solid var(--hair);background:var(--glass-strong);color:var(--ink);transition:.16s}
+.btn:hover{border-color:var(--accent)}
+.btn svg{width:16px;height:16px}
+.btn.on{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+
+/* the page — the hero */
+.ws-body{flex:1;min-height:0;display:flex;justify-content:center;overflow:auto;padding:30px 26px 60px;transition:transform .4s cubic-bezier(.4,0,.1,1)}
+.paper-wrap{position:relative;transition:transform .25s cubic-bezier(.2,.7,.2,1)}
+.paper{width:720px;max-width:100%;background:var(--paper);color:var(--page-ink);
+  border-radius:3px;box-shadow:var(--shadow-paper);padding:60px 64px 80px;position:relative}
+.paper-head{display:flex;justify-content:space-between;align-items:flex-start;
+  padding-bottom:20px;margin-bottom:30px;border-bottom:1.5px solid var(--page-ink)}
+.paper-head .l small{font-family:var(--font-mono);font-size:11px;color:var(--page-ink-2);letter-spacing:.04em}
+.paper-head .l div{font-weight:600;font-size:15px;margin-top:3px}
+.paper-head .r{font-family:var(--font-mono);font-size:13px;text-align:right;color:var(--page-ink)}
+.q{display:flex;gap:16px;margin-bottom:26px}
+.q-no{font-weight:600;font-size:15px;font-family:var(--font-mono)}
+.q-body{flex:1;font-size:15px;line-height:1.75}
+.q-body p{margin:0 0 4px}
+.part{display:flex;gap:12px;margin-top:16px}
+.part .lab{font-weight:500}
+.marks{float:right;font-family:var(--font-mono);font-size:13px;color:var(--page-ink-2)}
+.ans{border-bottom:1px dotted var(--page-line);height:26px;margin-top:12px}
+.hl{background:linear-gradient(transparent 12%,rgba(232,178,72,.5) 12% 88%,transparent 88%);padding:0 2px;border-radius:2px}
+.note{position:absolute;font-family:var(--font-ink);font-size:22px;color:#2f4bbf;transform:rotate(-4deg)}
+.pen{position:absolute;pointer-events:none}
+.pen path{fill:none;stroke:#2f4bbf;stroke-width:2.4;stroke-linecap:round;opacity:.9}
+.eq{font-family:var(--font-mono);font-size:14.5px}
+
+.pagepill{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:6;
+  display:flex;align-items:center;gap:12px;height:34px;padding:0 6px;border-radius:var(--r-pill);
+  background:var(--glass);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+  border:1px solid var(--hair);box-shadow:var(--shadow-card-h),inset 0 1px 0 var(--glass-hi)}
+.pagepill button{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;color:var(--ink-2)}
+.pagepill button:hover{background:var(--hair-2);color:var(--ink)}
+.pagepill button svg{width:15px;height:15px}
+.pagepill .pg{font-family:var(--font-mono);font-size:12px;color:var(--ink-2);min-width:66px;text-align:center}
+
+/* mark scheme sheet */
+.ms{position:absolute;top:0;right:0;bottom:0;width:392px;max-width:82%;z-index:7;transform:translateX(100%);
+  transition:transform .4s cubic-bezier(.4,0,.1,1);
+  background:var(--glass-strong);-webkit-backdrop-filter:blur(30px) saturate(170%);backdrop-filter:blur(30px) saturate(170%);
+  border-left:1px solid var(--glass-brd);box-shadow:-30px 0 60px -30px rgba(14,16,44,.4),inset 1px 0 0 var(--glass-hi);
+  display:flex;flex-direction:column}
+.app[data-ms="open"] .ms{transform:none}
+.app[data-ms="open"] .paper-wrap{transform:translateX(-150px) scale(.94)}
+.ms-head{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--hair)}
+.ms-head b{font-family:var(--font-disp);font-weight:600;font-size:15px}
+.ms-head .tag{font-family:var(--font-mono);font-size:10px;color:var(--ink-3);border:1px solid var(--hair);border-radius:5px;padding:2px 6px}
+.ms-body{padding:18px;overflow:auto}
+.ms-q{font-family:var(--font-mono);font-size:13px;font-weight:600;margin-bottom:8px}
+.ms-ans{font-family:var(--font-mono);font-size:14px;background:var(--card);border:1px solid var(--hair);
+  border-radius:8px;padding:12px 14px;margin-bottom:14px;line-height:1.7}
+.ms-mk{display:flex;gap:10px;align-items:baseline;padding:7px 2px;font-size:13px;border-bottom:1px solid var(--hair-2)}
+.ms-mk .m{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--accent);flex:none;width:26px}
+.ms-mk svg{width:15px;height:15px;color:#61b06a;flex:none}
+
+/* focus mode — chrome recedes (transform + opacity only; no layout animation) */
+.app[data-focus="on"] .sidebar{opacity:0;transform:translateX(-100%);pointer-events:none}
+.app[data-focus="on"] .tb-ws .tools,
+.app[data-focus="on"] .tb-ws .ws-name,
+.app[data-focus="on"] .tb-ws .ws-sess,
+.app[data-focus="on"] .tb-ws .msbtn{opacity:0;pointer-events:none;transition:opacity .25s}
+.app[data-focus="on"] .topbar{background:transparent;border-color:transparent;box-shadow:none}
+.app[data-focus="on"] .main{background:var(--ground-2)}
+.app[data-focus="on"] .ws-body{transform:translateX(-119px)}
+
+/* ---------- command palette ---------- */
+.scrim{position:fixed;inset:0;z-index:50;display:grid;place-items:start center;padding-top:14vh;
+  background:rgba(16,18,40,.28);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.app[data-tone="night"] ~ .scrim{background:rgba(0,0,0,.5)}
+.scrim[hidden]{display:none}
+.pal{width:min(580px,92vw);border-radius:16px;overflow:hidden;background:var(--glass-strong);
+  -webkit-backdrop-filter:blur(34px) saturate(175%);backdrop-filter:blur(34px) saturate(175%);
+  border:1px solid var(--glass-brd);box-shadow:var(--shadow-pop),inset 0 1px 0 var(--glass-hi)}
+@media (prefers-reduced-motion:no-preference){.pal{animation:pop .22s cubic-bezier(.2,.8,.2,1)}}
+@keyframes pop{from{opacity:0;transform:translateY(-10px) scale(.98)}to{opacity:1;transform:none}}
+.pal-in{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--hair)}
+.pal-in svg{width:19px;height:19px;color:var(--ink-3)}
+.pal-in input{flex:1;border:0;background:none;outline:none;color:var(--ink);font-family:var(--font-mono);font-size:15px}
+.pal-in input::placeholder{color:var(--ink-3)}
+.pal-list{max-height:340px;overflow:auto;padding:8px}
+.pal-hint{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);padding:8px 12px 6px}
+.pres{display:flex;align-items:center;gap:13px;padding:10px 12px;border-radius:10px;transition:background .14s;width:100%;text-align:left}
+.pres:hover,.pres.sel{background:var(--accent-soft)}
+.pres .ic{width:30px;height:30px;border-radius:8px;flex:none;display:grid;place-items:center;
+  background:var(--card);border:1px solid var(--hair);color:var(--accent)}
+.pres .ic svg{width:16px;height:16px}
+.pres .code{font-family:var(--font-mono);font-weight:600;font-size:14px}
+.pres .sub{font-size:12px;color:var(--ink-2)}
+.pres .sess{margin-left:auto;font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
+.pal-foot{display:flex;gap:16px;padding:10px 16px;border-top:1px solid var(--hair);color:var(--ink-3);font-size:11px}
+.pal-foot span{display:flex;align-items:center;gap:6px}
+
+/* ---------- demo badge ---------- */
+.badge{position:fixed;left:30px;bottom:30px;z-index:60;display:flex;align-items:center;gap:8px;
+  height:28px;padding:0 12px;border-radius:var(--r-pill);font-size:11px;font-weight:600;letter-spacing:.02em;
+  color:var(--ink-2);background:var(--glass-strong);border:1px solid var(--hair);
+  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:var(--shadow-card)}
+.badge b{background:var(--iris);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:700}
+
+@media (max-width:900px){
+  .stage{padding:0}.app{border-radius:0;grid-template-columns:0 1fr}
+  .sidebar{position:absolute;z-index:20;height:100%;width:238px;transform:translateX(-100%)}
+  .search{min-width:0}
+}
+</style>
+
+<!-- icon sprite + gradient -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="iris" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6aa8ff"/><stop offset=".38" stop-color="#6f76f2"/>
+      <stop offset=".72" stop-color="#9d7bf0"/><stop offset="1" stop-color="#f3b7c6"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <symbol id="i-lib" viewBox="0 0 24 24"><path d="M12 6.5C10 5 6.5 5 4.5 6.2V19c2-1.2 5.5-1.2 7.5.3"/><path d="M12 6.5C14 5 17.5 5 19.5 6.2V19c-2-1.2-5.5-1.2-7.5.3"/></symbol>
+    <symbol id="i-dash" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="9" rx="1.4"/><rect x="13.5" y="3.5" width="7" height="5.5" rx="1.4"/><rect x="13.5" y="12" width="7" height="8.5" rx="1.4"/><rect x="3.5" y="15.5" width="7" height="5" rx="1.4"/></symbol>
+    <symbol id="i-bm" viewBox="0 0 24 24"><path d="M6.5 4.5h11a1 1 0 0 1 1 1V20l-6.5-4.2L5.5 20V5.5a1 1 0 0 1 1-1z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2"/><path d="M12 7.6V12l3 1.8"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20.5 20.5 16.4 16.4"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 8h16M4 16h16"/><circle cx="15" cy="8" r="2.4" fill="currentColor" stroke="none"/><circle cx="9" cy="16" r="2.4" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.1" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6"/></symbol>
+    <symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.6a2.1 2.1 0 0 1 3 3L7.2 18.9 3 20l1.1-4.2z"/></symbol>
+    <symbol id="i-hl" viewBox="0 0 24 24"><path d="M15 4.5l4.5 4.5-8.5 8.5H6.5v-4.5z"/><path d="M5 21h7"/></symbol>
+    <symbol id="i-eraser" viewBox="0 0 24 24"><path d="M4.5 15.2 12.8 6.9a2 2 0 0 1 2.8 0l3 3a2 2 0 0 1 0 2.8L12.3 19H8z"/><path d="M8.5 11l5 5"/><path d="M6 19.2h13"/></symbol>
+    <symbol id="i-zin" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20.5 20.5 16.4 16.4M11 8.4v5.2M8.4 11h5.2"/></symbol>
+    <symbol id="i-zout" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20.5 20.5 16.4 16.4M8.4 11h5.2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-checkc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><path d="M8.4 12.2l2.4 2.4 4.6-4.8"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-focus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><circle cx="12" cy="12" r="3.4"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.5h11a2 2 0 0 1 2 2V20H7a2 2 0 0 1-2-2z"/><path d="M18 16H7a2 2 0 0 0-2 2"/></symbol>
+    <symbol id="i-ret" viewBox="0 0 24 24"><path d="M9 10 5 14l4 4"/><path d="M5 14h11a3 3 0 0 0 3-3V6"/></symbol>
+  </g>
+  <g><symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></symbol>
+     <symbol id="i-pause" viewBox="0 0 24 24"><rect x="7" y="5.5" width="3.4" height="13" rx="1" fill="currentColor"/><rect x="13.6" y="5.5" width="3.4" height="13" rx="1" fill="currentColor"/></symbol></g>
+</svg>
+
+<div class="stage">
+<div class="app" data-view="library" data-tone="day" data-ms="closed" data-focus="off" data-aurora="soft">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="lights"><i></i><i></i><i></i></div>
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 24 24"><path d="M6 3h8l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/></svg>
+      <div class="wordmark"><b>Foolscap</b><small>working name</small></div>
+    </div>
+
+    <div class="nav-label">Study</div>
+    <button class="nav active"><svg><use href="#i-lib"/></svg> Library <span class="count mono">312</span></button>
+    <button class="nav"><svg><use href="#i-dash"/></svg> Dashboard</button>
+    <button class="nav"><svg><use href="#i-bm"/></svg> Bookmarks <span class="count mono">7</span></button>
+    <button class="nav"><svg><use href="#i-clock"/></svg> Recent</button>
+
+    <div class="nav-label">Subjects</div>
+    <div class="subj">
+      <div class="subj-row"><span class="dot" style="background:var(--iris-2)"></span> Mathematics <span class="code mono">9709</span></div>
+      <div class="subj-row"><span class="dot" style="background:var(--d3)"></span> Physics <span class="code mono">9702</span></div>
+      <div class="subj-row"><span class="dot" style="background:var(--d5)"></span> Chemistry <span class="code mono">9701</span></div>
+      <div class="subj-row"><span class="dot" style="background:#5aa38f"></span> Biology <span class="code mono">0610</span></div>
+      <div class="subj-row"><span class="dot" style="background:var(--iris-3)"></span> Computer Sci. <span class="code mono">9618</span></div>
+    </div>
+
+    <div class="sidebar-foot"><span class="av">ZK</span> <div>Offline library<br><span style="color:var(--ink-3);font-size:11px">7.7 GB · 13,530 papers</span></div></div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="lib-aurora" aria-hidden="true"></div>
+    <header class="topbar">
+      <!-- library toolbar -->
+      <div class="tb tb-lib">
+        <div class="title">Library</div>
+        <button class="search" id="openPalette">
+          <svg><use href="#i-search"/></svg> Jump to a paper — try “9709 s24 12”
+          <span class="kbd">⌘K</span>
+        </button>
+        <div class="seg" role="group" aria-label="View">
+          <button class="on" aria-label="Grid view"><svg><use href="#i-grid"/></svg></button>
+          <button aria-label="List view"><svg><use href="#i-list"/></svg></button>
+        </div>
+        <div class="tone" id="auroraToggle" role="button" tabindex="0" aria-label="Toggle soft aurora behind the library">
+          Aurora <span class="sw"></span>
+        </div>
+        <div class="tone" id="toneToggle" role="button" tabindex="0" aria-label="Toggle Day / Night ground">
+          Day <span class="sw"></span> Night
+        </div>
+      </div>
+      <!-- workspace toolbar -->
+      <div class="tb tb-ws">
+        <button class="btn ws-back" id="backBtn"><svg><use href="#i-left"/></svg> Library</button>
+        <span class="ws-code" id="wsCode">9709/12</span>
+        <span class="ws-name" id="wsName">Mathematics · Pure Mathematics 1</span>
+        <span class="ws-sess mono" id="wsSess">s24</span>
+        <span class="spacer"></span>
+        <div class="timer">
+          <div class="ring">
+            <svg width="30" height="30" viewBox="0 0 30 30">
+              <circle class="trk" cx="15" cy="15" r="12.5"/>
+              <circle class="prg" id="ring" cx="15" cy="15" r="12.5"/>
+            </svg>
+          </div>
+          <div><div class="t" id="tval">0:42:10</div><div class="tgt">/ 1:50:00</div></div>
+          <button class="pp" id="pp" aria-label="Pause timer"><svg><use href="#i-pause"/></svg></button>
+        </div>
+        <div class="tools" role="group" aria-label="Annotation tools">
+          <button class="tool on" data-tool="pen" aria-label="Pen"><svg><use href="#i-pen"/></svg></button>
+          <button class="tool" data-tool="hl" aria-label="Highlighter"><svg><use href="#i-hl"/></svg></button>
+          <button class="tool" data-tool="er" aria-label="Eraser"><svg><use href="#i-eraser"/></svg></button>
+        </div>
+        <button class="btn msbtn" id="msBtn"><svg><use href="#i-book"/></svg> Mark scheme</button>
+        <button class="btn" id="focusBtn" aria-label="Focus mode"><svg><use href="#i-focus"/></svg></button>
+      </div>
+    </header>
+
+    <!-- LIBRARY VIEW -->
+    <section class="view view-lib">
+      <div class="lib">
+        <div class="filters">
+          <button class="chip filled">Mathematics <span class="x"><svg style="width:13px;height:13px"><use href="#i-x"/></svg></span></button>
+          <button class="chip">A Level <svg><use href="#i-chev"/></svg></button>
+          <button class="chip">Year <svg><use href="#i-chev"/></svg></button>
+          <button class="chip">Season <svg><use href="#i-chev"/></svg></button>
+          <button class="chip">Paper <svg><use href="#i-chev"/></svg></button>
+          <button class="chip"><svg><use href="#i-sliders"/></svg> Difficulty</button>
+        </div>
+
+        <div class="sec-label">Continue where you left off</div>
+        <div class="grid" id="continueGrid"></div>
+
+        <div class="sec-label">All papers</div>
+        <div class="grid" id="allGrid"></div>
+      </div>
+    </section>
+
+    <!-- WORKSPACE VIEW -->
+    <section class="view view-ws">
+      <div class="ws-body">
+        <div class="paper-wrap">
+          <article class="paper">
+            <div class="paper-head">
+              <div class="l"><small>CAMBRIDGE INTERNATIONAL AS &amp; A LEVEL</small><div>Mathematics · Pure Mathematics 1</div></div>
+              <div class="r">9709/12<br>May/June 2024<br>1 h 50 min</div>
+            </div>
+
+            <div class="q">
+              <div class="q-no">1</div>
+              <div class="q-body">
+                <p>The function f is defined by <span class="eq">f(x) = 2x² − 8x + 5</span> for <span class="eq">x ∈ ℝ</span>.</p>
+                <div class="part"><span class="lab">(a)</span><div>Express f(x) in <span class="hl">the form a(x + b)² + c</span>.<span class="marks">[3]</span>
+                  <div class="ans"></div><div class="ans"></div></div></div>
+                <div class="part"><span class="lab">(b)</span><div>State the coordinates of the stationary point of the curve <span class="eq">y = f(x)</span>.<span class="marks">[2]</span>
+                  <div class="ans"></div></div></div>
+              </div>
+            </div>
+
+            <div class="q">
+              <div class="q-no">2</div>
+              <div class="q-body">
+                <p>The first term of a geometric progression is 12 and the second term is 9.</p>
+                <div class="part"><span class="lab">(a)</span><div>Find the sum to infinity.<span class="marks">[3]</span>
+                  <div class="ans"></div><div class="ans"></div></div></div>
+              </div>
+            </div>
+
+            <!-- annotation ink -->
+            <div class="note" style="top:150px;right:38px">complete the square ✓</div>
+            <svg class="pen" style="top:172px;right:120px;width:120px;height:34px" viewBox="0 0 120 34"><path d="M4 22c18-8 30 6 46-2s28-14 46-6"/></svg>
+          </article>
+
+          <div class="pagepill">
+            <button aria-label="Previous page"><svg><use href="#i-left"/></svg></button>
+            <span class="pg">Page 1 / 12</span>
+            <button aria-label="Next page"><svg style="transform:rotate(180deg)"><use href="#i-left"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MARK SCHEME SHEET -->
+      <aside class="ms">
+        <div class="ms-head"><svg style="width:18px;height:18px;color:var(--accent)"><use href="#i-book"/></svg>
+          <b>Mark scheme</b><span class="tag mono">9709/12 · s24</span>
+          <span class="spacer" style="flex:1"></span>
+          <button class="icobtn" id="msClose" aria-label="Close mark scheme"><svg><use href="#i-x"/></svg></button></div>
+        <div class="ms-body">
+          <div class="ms-q">Question 1(a)</div>
+          <div class="ms-ans">2(x − 2)² − 3<br><span style="color:var(--ink-3)">a = 2,  b = −2,  c = −3</span></div>
+          <div class="ms-mk"><span class="m">B1</span><svg><use href="#i-check"/></svg><span>States a = 2</span></div>
+          <div class="ms-mk"><span class="m">M1</span><svg><use href="#i-check"/></svg><span>Uses (x − 2)² correctly</span></div>
+          <div class="ms-mk"><span class="m">A1</span><svg><use href="#i-check"/></svg><span>c = −3, fully correct</span></div>
+          <div class="ms-q" style="margin-top:22px">Question 1(b)</div>
+          <div class="ms-ans">Stationary point (2, −3)</div>
+          <div class="ms-mk"><span class="m">B1</span><svg><use href="#i-check"/></svg><span>x = 2 (follow through from b)</span></div>
+          <div class="ms-mk"><span class="m">B1</span><svg><use href="#i-check"/></svg><span>y = −3</span></div>
+        </div>
+      </aside>
+    </section>
+  </div>
+</div>
+</div>
+
+<!-- COMMAND PALETTE -->
+<div class="scrim" id="scrim" hidden>
+  <div class="pal" role="dialog" aria-label="Command palette">
+    <div class="pal-in"><svg><use href="#i-search"/></svg><input id="palInput" placeholder="Jump to paper — try 9709 s24 12" autocomplete="off"></div>
+    <div class="pal-list" id="palList"><div class="pal-hint">Papers</div></div>
+    <div class="pal-foot">
+      <span><span class="kbd">↑↓</span> navigate</span>
+      <span><span class="kbd">⏎</span> open</span>
+      <span><span class="kbd">esc</span> close</span>
+    </div>
+  </div>
+</div>
+
+<div class="badge"><b>design demo</b> · tone TBD · not final</div>
+
+<script>
+(function(){
+  "use strict";
+  const app=document.querySelector('.app');
+  const $=(s,r=document)=>r.querySelector(s);
+  const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+
+  /* ---- data ---- */
+  const PAPERS=[
+    {code:'9709',p:'12',subj:'Mathematics',v:'Pure Mathematics 1',sess:'May/June 2024',sc:'s24',diff:58,docs:['QP','MS','GT'],bm:false,prog:.32,spent:'1h 12m'},
+    {code:'9709',p:'32',subj:'Mathematics',v:'Pure Mathematics 3',sess:'Oct/Nov 2023',sc:'w23',diff:67,docs:['QP','MS','GT'],bm:false},
+    {code:'9702',p:'22',subj:'Physics',v:'AS Structured',sess:'May/June 2023',sc:'s23',diff:61,docs:['QP','MS','GT'],bm:true},
+    {code:'0580',p:'42',subj:'Mathematics',v:'Extended',sess:'Feb/March 2024',sc:'m24',diff:44,docs:['QP','MS','GT'],bm:false},
+    {code:'9618',p:'12',subj:'Computer Science',v:'Theory Fundamentals',sess:'May/June 2024',sc:'s24',diff:52,docs:['QP','MS','GT'],bm:false},
+    {code:'9701',p:'42',subj:'Chemistry',v:'A Level Structured',sess:'Oct/Nov 2023',sc:'w23',diff:72,docs:['QP','MS','GT'],bm:true},
+    {code:'0610',p:'61',subj:'Biology',v:'Alternative to Practical',sess:'May/June 2023',sc:'s23',diff:33,docs:['QP','MS','GT'],bm:false},
+    {code:'9231',p:'12',subj:'Further Mathematics',v:'Further Pure 1',sess:'Oct/Nov 2023',sc:'w23',diff:78,docs:['QP','MS','GT'],bm:false}
+  ];
+  const BANDS=[[34,'Gentle','var(--d1)'],[46,'Steady','var(--d2)'],[56,'Typical','var(--d3)'],[70,'Tough','var(--d4)'],[999,'Brutal','var(--d5)']];
+  const band=s=>{for(let i=0;i<BANDS.length;i++)if(s<=BANDS[i][0])return{label:BANDS[i][1],color:BANDS[i][2],lit:i+1};};
+
+  const ic=id=>`<svg><use href="#${id}"/></svg>`;
+  function meter(s){const b=band(s);let m='';for(let i=1;i<=5;i++)m+=`<i style="background:${i<=b.lit?b.color:'var(--hair)'}"></i>`;
+    return `<span class="meter" title="Difficulty ${s}/100">${m}</span><span class="diff-l" style="color:${b.color}">${b.label}</span><span class="diff-s">${s}</span>`;}
+
+  function card(d){
+    const el=document.createElement('button');el.className='card';
+    el.dataset.code=d.code+'/'+d.p;el.dataset.name=d.subj+' · '+d.v;el.dataset.sc=d.sc;
+    el.innerHTML=`
+      <div class="card-top"><span class="code">${d.code}</span><span class="pnum">/${d.p}</span>
+        <span class="bm${d.bm?' on':''}" role="button" aria-label="Bookmark">${ic('i-bm')}</span></div>
+      <div class="card-title">${d.subj}</div>
+      <div class="card-sub">Paper ${d.p} · ${d.v}</div>
+      <div class="card-meta">${ic('i-clock')} ${d.sess} <span class="sc">${d.sc}</span>
+        <span class="docs">${d.docs.map(x=>`<span class="doc">${x}</span>`).join('')}</span></div>
+      ${d.prog!=null?`<div class="progline"><span>${Math.round(d.prog*100)}%</span><span class="bar"><i style="width:${d.prog*100}%"></i></span><span>${d.spent}</span></div>`:''}
+      <div class="card-foot">${meter(d.diff)}</div>`;
+    el.addEventListener('click',e=>{
+      if(e.target.closest('.bm')){e.target.closest('.bm').classList.toggle('on');return;}
+      openPaper(el.dataset);
+    });
+    return el;
+  }
+
+  PAPERS.filter(d=>d.prog!=null).forEach(d=>$('#continueGrid').appendChild(card(d)));
+  PAPERS.filter(d=>d.prog==null).forEach(d=>$('#allGrid').appendChild(card(d)));
+
+  /* ---- view switching ---- */
+  function openPaper(ds){
+    $('#wsCode').textContent=ds.code;$('#wsName').textContent=ds.name;$('#wsSess').textContent=ds.sc;
+    app.dataset.view='workspace';closePalette();
+  }
+  $('#backBtn').addEventListener('click',()=>{app.dataset.view='library';app.dataset.ms='closed';app.dataset.focus='off';});
+
+  /* ---- tone toggle ---- */
+  const tone=$('#toneToggle');
+  const flip=()=>app.dataset.tone=app.dataset.tone==='day'?'night':'day';
+  tone.addEventListener('click',flip);
+  tone.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();flip();}});
+
+  /* ---- aurora toggle (soft bloom behind the library only) ---- */
+  const aur=$('#auroraToggle');
+  const flipA=()=>app.dataset.aurora=app.dataset.aurora==='soft'?'off':'soft';
+  aur.addEventListener('click',flipA);
+  aur.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();flipA();}});
+
+  /* ---- tools ---- */
+  $$('.tool').forEach(t=>t.addEventListener('click',()=>{$$('.tool').forEach(x=>x.classList.remove('on'));t.classList.add('on');}));
+
+  /* ---- mark scheme + focus ---- */
+  $('#msBtn').addEventListener('click',()=>{app.dataset.ms=app.dataset.ms==='open'?'closed':'open';$('#msBtn').classList.toggle('on',app.dataset.ms==='open');});
+  $('#msClose').addEventListener('click',()=>{app.dataset.ms='closed';$('#msBtn').classList.remove('on');});
+  $('#focusBtn').addEventListener('click',()=>{const on=app.dataset.focus==='on';app.dataset.focus=on?'off':'on';$('#focusBtn').classList.toggle('on',!on);});
+
+  /* ---- timer ---- */
+  const R=12.5,C=2*Math.PI*R,ring=$('#ring');ring.style.strokeDasharray=C.toFixed(2);
+  let el=2530,run=true;const tgt=6600;
+  const fmt=s=>{const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return `${h}:${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}`;};
+  function paint(){ring.style.strokeDashoffset=(C*(1-Math.min(el/tgt,1))).toFixed(2);$('#tval').textContent=fmt(el);}
+  paint();
+  setInterval(()=>{if(run){el++;paint();}},1000);
+  $('#pp').addEventListener('click',()=>{run=!run;$('#pp').innerHTML=ic(run?'i-pause':'i-play');$('#pp').setAttribute('aria-label',run?'Pause timer':'Start timer');});
+
+  /* ---- command palette ---- */
+  const scrim=$('#scrim'),input=$('#palInput'),list=$('#palList');
+  function results(q){
+    q=q.trim().toLowerCase();
+    const m=PAPERS.filter(d=>!q||(d.code+d.p+' '+d.subj+' '+d.sc+' '+d.sess).toLowerCase().includes(q));
+    list.innerHTML='<div class="pal-hint">'+(q?m.length+' matches':'Recent & suggested')+'</div>';
+    m.slice(0,6).forEach((d,i)=>{
+      const b=document.createElement('button');b.className='pres'+(i===0?' sel':'');
+      b.innerHTML=`<span class="ic">${ic('i-book')}</span><span><div class="code">${d.code}/${d.p}</div><div class="sub">${d.subj} · ${d.v}</div></span><span class="sess">${d.sess}</span>`;
+      b.addEventListener('click',()=>openPaper({code:d.code+'/'+d.p,name:d.subj+' · '+d.v,sc:d.sc}));
+      list.appendChild(b);
+    });
+  }
+  function openP(){scrim.hidden=false;input.value='';results('');setTimeout(()=>input.focus(),30);}
+  function closePalette(){scrim.hidden=true;}
+  $('#openPalette').addEventListener('click',openP);
+  input.addEventListener('input',()=>results(input.value));
+  scrim.addEventListener('click',e=>{if(e.target===scrim)closePalette();});
+  let sel=0;
+  input.addEventListener('keydown',e=>{
+    const rows=$$('.pres',list);
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();rows[sel]?.classList.remove('sel');
+      sel=(sel+(e.key==='ArrowDown'?1:rows.length-1))%rows.length;rows[sel]?.classList.add('sel');rows[sel]?.scrollIntoView({block:'nearest'});}
+    else if(e.key==='Enter'){rows[sel]?.click();}
+    else{sel=0;}
+  });
+  document.addEventListener('keydown',e=>{
+    if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();scrim.hidden?openP():closePalette();}
+    else if(e.key==='Escape'){closePalette();}
+  });
+})();
+</script>
