@@ -1,0 +1,830 @@
+/* Onboarding — `design/specs/screen-onboarding.md`, all of it. The frame is §1–§2, the sheet §3,
+   the rail row §3.1, the actions row §3.3, the mascot §3.5, the shared selectable/input recipes §4,
+   and the six bodies §5.1–§5.6. Every figure and every string is in OnboardingView.tsx.
+
+   WHERE THIS FILE SITS IN THE CASCADE. It is reached through App's import of the view, which is
+   earlier in main.tsx's module graph than `./styles/index.css`, `./styles/app.css` and
+   `./ui/styles` — so a single-class rule here TIES with a primitive's on specificity and loses.
+   Everything below that has to beat index.css's global `:focus-visible` (which sets
+   `border-radius: 6px` on whatever holds focus) is therefore written one class deeper, and nothing
+   here reaches into a primitive to restyle it.
+
+   NOTHING IN THIS SUBTREE CLIPS. Mr. Bell hangs 84px past the sheet's left edge and 16px below its
+   bottom (§3.5, TRAP 5), so `.onb`, `.onb__stage` and `.onb__panel` are all overflow-visible. The
+   one scroll container is `.onb__body`, which is inside the sheet and nowhere near him.
+
+   THE PANEL'S HEIGHT ARITHMETIC CLOSES BY ITSELF. §6 wants `640 − 96 = 544` and
+   `544 − 13 − 32 − 38 − 32 = 429` of body, and 433 on 05 where Continue is a 34-tall Secondary.
+   Both fall out of `flex: 1` on the body against a hugging rail and actions row — so neither 429
+   nor 433 is written down anywhere, and neither can drift from the button it depends on. */
+
+/* ═══ 1. THE FRAME — §1, §2 ══════════════════════════════════════════════════════════════════ */
+
+/* A direct child of `.app`, over the whole window: there is no sidebar and no topbar on this
+   screen (§1), so the root cannot live in `.main`'s grid column. z-index clears every shell layer
+   it can be mounted beside — sidebar 3 (20 under the 900px breakpoint), topbar 5, workspace chrome
+   6–7 — and stays under the ⌘K scrim's 50, the Dialog's 60 and the Splash's 90, which are all
+   things that may legitimately sit on top of onboarding. */
+.onb {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  box-sizing: border-box;
+  display: flex;
+  /* Column: centred, which lands the design's 140/140 side gutters at the default 1320 window.
+     Row: bottom-pinned against a 100px floor, so the sheet's bottom edge stays 100px off the
+     window's and Mr. Bell keeps the measured 84px of clearance beneath him (§3.5) at every window
+     height. Centring the row instead would split §3's deliberate 120-top / 100-bottom asymmetry;
+     extra height belongs in the top gutter, which nothing is measured against. */
+  justify-content: center;
+  align-items: flex-end;
+  /* 84 is not a taste number: it is exactly how far Mr. Bell hangs past the sheet's left edge, so
+     it is the smallest side gutter that keeps him inside the frame — `.app` clips at the window
+     rounding, and a narrower gutter would cut his claw off. */
+  padding: 24px 84px 100px;
+}
+
+/* `page recess` (§2 layer 4) — full-frame here at 1320x860, NOT the Dashboard's inset
+   238,56 1082x804 (TRAP 6): there is no sidebar or topbar to inset around, and this screen is not
+   inside `.main`, so `.main::before` never draws it. Same recipe as that rule, one step deeper than
+   the veil `.bg-veil` already lays down for every screen. `--ground-veil` is `#ffffff` at alpha 0
+   in Day, so the layer is inert there rather than conditionally rendered — which is what TRAP 7
+   asks for in effect (no zero-alpha paint reaches the compositor) and what background.css already
+   does with the veil. */
+.onb::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--ground-veil);
+  opacity: 0.24;
+}
+
+/* §3.4 — the instance is exactly its own 62x16 frame, so all this does is put it at (12, 14). An
+   absolutely positioned child resolves against `.onb`'s padding box, and `.onb` has no border, so
+   these two numbers are window coordinates and the 84px side gutter above does not shift them. */
+.onb__lights {
+  position: absolute;
+  left: 12px;
+  top: 14px;
+}
+
+/* The sheet's own 1040x640 box (§3), and the reason it exists as a separate element: Mr. Bell is
+   measured against the PANEL's edges, not the window's, so he is positioned in here. `min()` rather
+   than a flat width so a window below the design size shrinks the sheet instead of overflowing it —
+   both percentages resolve against a definite box, because `.onb` is `inset: 0` on a positioned
+   ancestor and its padding is fixed. */
+.onb__stage {
+  position: relative;
+  width: min(1040px, 100%);
+  height: min(640px, 100%);
+}
+
+/* ═══ 2. THE SHEET — §3 ══════════════════════════════════════════════════════════════════════ */
+
+/* Fill is `--card`, NOT `--glass` (TRAP 1): a 1040x640 sheet in chrome glass reads muddy and gives
+   text no stable ground — the one refinement CLAUDE.md's rule 1 records. It is still translucent,
+   because `BACKGROUND_BLUR 26` is on the node, and Figma's background-blur radius is about twice the
+   CSS one, so 26 becomes 13 (TRAP 2). The blur only actually reads in Night, where `--card` carries
+   an alpha of .898; Day's `--card` is opaque and the blur composites nothing. That is the file's
+   own choice, reproduced rather than fudged.
+
+   The elevation is `--shadow-win`. §3 measures the panel's own drop shadow as `0 12px 20px` at
+   Night `#05060c @.34` / Day `#181a34 @.12`, and neither colour is a token — `--shadow-win` is the
+   mode-paired elevation the system does have for a window-sized sheet, and it ships as a token
+   rather than as two rgba() literals.
+
+   It fills the stage absolutely rather than at `100% / 100%`, so the sheet's box never depends on how
+   a percentage height resolves through the `min()` on `.onb__stage`. */
+.onb__panel {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 32px; /* itemSpacing 32 */
+  padding: 48px; /* 48 all sides → the 944 body width */
+  background: var(--card);
+  border: 1px solid var(--card-brd); /* 1px, INSIDE — hence border-box above */
+  border-radius: var(--r-panel); /* 16, bound to radius/panel */
+  box-shadow: var(--shadow-win);
+  -webkit-backdrop-filter: blur(13px);
+  backdrop-filter: blur(13px);
+}
+
+/* §5.6 — 06 alone adds a third panel effect: INNER_SHADOW offset (0,1) at radius and spread 0,
+   which reads as a 1px light-line along the top of the sheet. The spec lists it among the genuinely
+   unbound paints (TRAP 15), but the two measured colours are `rgb(106,168,255)` in Night and
+   `rgb(20,54,200)` in Day — which are `--accent` exactly, per mode. So it is a token after all, and
+   written as one. */
+.onb[data-step='6'] .onb__panel {
+  box-shadow:
+    var(--shadow-win),
+    inset 0 1px 0 color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+/* §5 — 944 wide, and 429 tall (433 on 05) by taking the slack the rail and the actions row leave.
+   `counterAxisAlignItems: MIN` on every step, so children are left-aligned unless they opt into
+   FILL below. `overflow` and `min-height: 0` are for the window this screen can be resized to: at
+   the 680px minimum height, or on a scaled display, 03's 396-tall content genuinely does not fit,
+   and scrolling it is better than cropping it. */
+.onb__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  overflow: hidden auto;
+  /* `primaryAxisAlignItems` per step: CENTER on 01/02/05/06, MIN on 03/04 (§5.1–§5.6). */
+  --onb-slack: auto;
+  gap: 24px;
+}
+
+/* The body scrolls rather than compressing: every direct child keeps its own measured height, which is
+   what makes the overflow above honest instead of a squeeze — and it is the reason none of the sections
+   below restate it. */
+.onb__body > * {
+  flex: none;
+}
+
+/* The vertical alignment, as auto margins on the outermost children rather than
+   `justify-content: center`. Two reasons. The body is a scroll container, and centred flex content
+   that overflows one cannot be scrolled back to at the top — an auto margin resolves to 0 the
+   moment there is no free space, so the same centring degrades into a plain top-aligned scroll. And
+   it makes the axis one variable, which is all §5 actually varies. */
+.onb__body > :first-child {
+  margin-top: var(--onb-slack);
+}
+.onb__body > :last-child {
+  margin-bottom: var(--onb-slack);
+}
+
+/* Per-step gap and slack, straight off §5.1–§5.6. The centred steps' measured top slack falls out
+   of the arithmetic rather than being written: 01 (429−187)/2 = 121 split, 02 51.5, 05 (433−166)/2
+   = 133.5, 06 70.5. 03 and 04 are top-aligned, so their 33 and 80 sit at the bottom by design. */
+.onb[data-step='3'] .onb__body {
+  gap: 20px;
+  --onb-slack: 0;
+}
+.onb[data-step='4'] .onb__body {
+  gap: 28px;
+  --onb-slack: 0;
+}
+.onb[data-step='6'] .onb__body {
+  gap: 28px;
+}
+
+/* The body's FILL-width children. Its counterAxis is MIN, so these are the exceptions: each one is
+   a row or a section whose own strut, grid or grow set only closes across the full 944. */
+.onb-headrow,
+.onb-boards,
+.onb-grid,
+.onb-group,
+.onb-rhythms,
+.onb-status {
+  align-self: stretch;
+}
+
+/* §3.3 — `primaryAxisAlignItems MAX` and `counterAxisAlignItems CENTER`. The centring is
+   load-bearing, not cosmetic (TRAP 4): Primary is 38 tall and Secondary 34, so without it Back and
+   Continue sit on different baselines. `flex: none` keeps the row at its hug height when a short
+   window is squeezing the body. */
+.onb__actions {
+  flex: none;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px; /* itemSpacing 12 */
+}
+
+/* §3.5 — 160x160, the 256 rig at 0.625, and both offsets are the measured overhang rather than a
+   position: the panel spans x 140..1180 and he spans 56..216, so he hangs 84px past its left edge;
+   the panel ends at y 760 and he ends at 776, so 16px below it. Last in the stage, so he paints over
+   the sheet with no z-index at all — §2 puts him at the top of the layer stack.
+ *
+ * `pointer-events: none` IS load-bearing. His 76px of overlap is wider than the sheet's 48px
+ * padding, so he covers the leftmost 28px of the body region — on 02 that is the left edge of the
+ * first board card, which would be unclickable otherwise. He is `aria-hidden` decoration; the press
+ * belongs to whatever is behind him, including the drag region in the gutter.
+ *
+ * The two shadows are §3.5's measured pair. The glow's `rgba(44,123,255,0.2)` is `--bell-cap-mid` at
+ * 20% exactly, so it ships as the token. The contact shadow's `rgba(5,6,12,0.38)` has no token at
+ * all — `--plate` is the app's own near-black, mode-invariant like the measurement itself, and is
+ * the nearest thing in tokens.css. MrBell.css asks the CALL SITE to add the shadow, because a stroke
+ * on the rig would outline all 65 of his rectangles instead of the silhouette. */
+.onb__bell {
+  position: absolute;
+  left: -84px;
+  bottom: -16px;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 14px color-mix(in srgb, var(--plate) 38%, transparent))
+    drop-shadow(0 0 28px color-mix(in srgb, var(--bell-cap-mid) 20%, transparent));
+}
+
+/* ═══ 3. SHARED BODY PIECES — §4, and the heading every step opens with ══════════════════════ */
+
+/* `heading` / `intro` / `headline` — Display/Setup Title over a Body/Default sub. The gap is 10 on
+   01, 02, 05 and 06, and the two exceptions are below. `margin: 0` on the <h1> states a dependency
+   rather than resting on Tailwind's preflight: the measured heights (73 on 01, 57 on 06) are hug
+   results, and a browser's default heading margin blows them apart. */
+.onb-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.onb-heading h1 {
+  margin: 0;
+  color: var(--ink);
+}
+.onb[data-step='3'] .onb-heading {
+  gap: 6px; /* §5.3 `headline` 494:9163 */
+}
+.onb[data-step='4'] .onb-heading {
+  gap: 8px; /* §5.4 `intro` 494:7930 */
+}
+
+/* The sub is a FIXED-width text node in Figma, at a different width per step, and it wraps against
+   that width. `max-width` rather than `width` so it also gives way on a narrower sheet. 03's and
+   06's are one-liners that hug, so they take no rule.
+
+   §5.1 notes that 520 rags badly — it breaks "like." onto a second line — and that ~440 balances it.
+   520 is what the file says, so 520 ships; the note is here so the next reader knows the rag is a
+   measurement and not a mistake. */
+.onb-sub {
+  margin: 0;
+  color: var(--ink-2);
+}
+.onb[data-step='1'] .onb-sub {
+  max-width: 520px;
+}
+.onb[data-step='2'] .onb-sub,
+.onb[data-step='5'] .onb-sub {
+  max-width: 560px;
+}
+.onb[data-step='4'] .onb-sub {
+  max-width: 600px;
+}
+
+/* Body/Meta `--ink-3` — 02's "Studying more than one?", 04's streak note, 05's offline note and 06's
+   footnote. Only 02's is measured with a width (448); the other three hug to one line. */
+.onb-note {
+  margin: 0;
+  color: var(--ink-3);
+}
+.onb[data-step='2'] .onb-note {
+  max-width: 448px;
+}
+
+/* An app addition: the file draws no empty state anywhere on this screen, because a mock always has
+   subjects and sittings to show. 520 matches 01's sub, which is the widest measured prose block on
+   the screen, and `--ink-2` matches the subs — this is a sentence explaining the step, not metadata
+   about it. */
+.onb-empty {
+  margin: 0;
+  max-width: 520px;
+  color: var(--ink-2);
+}
+
+/* §4's selectable surface, shared by 02's board cards, 03's subject tiles and 04's rhythm cards.
+ * Resting is `--ground` with a 1px `--hair` edge; selected is `--accent-soft` with a 2px `--accent`
+ * one. `border-box` is what makes the 1px→2px swap safe: the outer box cannot move, only the inner
+ * one narrows by 2px per axis, and §4 says explicitly not to compensate with padding. It also
+ * declines §4's inset-box-shadow alternative, for the reason Field.tsx declines it — the file
+ * authored one stroke, not two, and every selectable here has a pinned height for the swap to be
+ * invisible against.
+ *
+ * The radius is 13 in all three cases but it is not the same 13: `radius/card` is bound on the board
+ * cards and the subject tiles, while the rhythm cards carry a raw literal (TRAP 9). Same pixel
+ * today, different thing to retune — hence the variable, which `.onb-rhythm` overrides. */
+.onb-select {
+  --onb-select-r: var(--r-card);
+
+  box-sizing: border-box;
+  background: var(--ground);
+  border: 1px solid var(--hair);
+  border-radius: var(--onb-select-r);
+  color: var(--ink);
+  /* These are all <button>s, and a button centres its text; every one of them is a left-aligned
+     card. */
+  text-align: left;
+}
+
+.onb-select[aria-pressed='true'] {
+  background: var(--accent-soft);
+  border-width: 2px;
+  border-color: var(--accent);
+}
+
+/* An app addition. §4 measures resting and selected only — the file has no hover cell for any of
+   these — and this app runs `cursor: default` everywhere, so hover has to be visible or it does not
+   exist. It is the same move Button.css makes for Secondary/Hover: a 1px `--accent` edge and
+   nothing else, so a hovered card never reads stronger than the selected one. */
+.onb-select:not([aria-pressed='true']):hover {
+  border-color: var(--accent);
+}
+
+/* index.css's global `:focus-visible` sets `border-radius: 6px` and loads after this file, so a 13px
+   card squares off while it holds focus unless the radius is restated one class deeper. The ring
+   itself is the global one: nothing here clips, so an outset ring shows on all four sides. */
+.onb-select:focus-visible {
+  border-radius: var(--onb-select-r);
+}
+
+/* ═══ 4. 02 BOARD — §5.2 ═════════════════════════════════════════════════════════════════════ */
+
+/* `3 x 296 + 2 x 28 = 944` (§6). Written as an equal grow set rather than three pinned 296s: the
+   arithmetic is identical at the design width and it stays true on a narrower sheet, where three
+   fixed widths would overflow the row. Same call DashboardView.css makes on its 585:411 columns. */
+.onb-boards {
+  display: flex;
+  gap: 28px;
+}
+
+.onb-board {
+  flex: 1 1 0;
+  min-width: 0;
+  /* `position: relative` for the check, which is ABSOLUTE at (262,12) rather than on the card's own
+     20px padding (TRAP 10). */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* counterAxisAlignItems MIN */
+  gap: 12px; /* itemSpacing 12 */
+  height: 208px; /* FIXED — the card does not hug */
+  padding: 20px;
+}
+
+/* FILL width, autoresize HEIGHT — two lines at 28 tall in the file. */
+.onb-board__blurb {
+  align-self: stretch;
+  color: var(--ink-3);
+}
+
+/* Figma's child 3 is a `strut` with `layoutGrow 1` that pushes the stat to the foot of the card; in
+   CSS that is an auto margin and no element at all, the same substitution Rail.css makes. BASELINE
+   on the cross axis, so the 12px Mono/Meta count and the 11px Body/Meta unit share a writing line.
+   The two spans carry only ramp classes, so the count's `--ink-2` is addressed positionally — the
+   unit's `--ink-3` is the row's own colour. */
+.onb-board__stat {
+  margin-top: auto;
+  display: flex;
+  align-items: baseline;
+  gap: 6px; /* itemSpacing 6 — this is what spaces `papers`, which has no leading space */
+  color: var(--ink-3);
+}
+.onb-board__stat > :first-child {
+  color: var(--ink-2);
+}
+
+/* 18x18 at (262,12) in the 296-wide card, which §5.2 also reads as 16px in from the card's right
+   edge and 12 down from its top — deliberately not the card's own 20px padding (TRAP 10). Anchored
+   to the right edge, because the card is a grow item and (262,12) is only that position at the
+   design width. The glyph is stroked, not filled (TRAP 11), so `color` reaches the stroke through
+   `currentColor`. */
+.onb-board__check {
+  position: absolute;
+  right: 16px;
+  top: 12px;
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+}
+
+/* ═══ 5. 03 SUBJECTS — §5.3 ══════════════════════════════════════════════════════════════════ */
+
+/* `headline row` 494:9162 — 944x53, `itemSpacing 0` and align CENTER. The separation comes from a
+   `layoutGrow: 1` strut, which is why the row carries no gap: the count takes an auto margin
+   instead, exactly as Rail.css does for the same shape. */
+.onb-headrow {
+  display: flex;
+  align-items: center;
+}
+
+/* `count` 494:9167 — V HUGxHUG gap 2, align MAX, so the figure and its caption are right-ragged
+   against the panel's right edge. `--ink-3` is the caption's; the Mono/Stat figure is `--accent` and
+   is addressed positionally, because the two spans carry only ramp classes. Label/Stat uppercases in
+   the text style, so the string stays lowercase (TRAP 20). */
+.onb-count {
+  margin-left: auto;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  color: var(--ink-3);
+}
+.onb-count > :first-child {
+  color: var(--accent);
+}
+
+/* `search` 495:7862 — 440x40 FIXED, pad-x 12, gap 10, `--ground` under a 1px `--hair` edge at
+   `radius/button`. §4's input recipe, resting. It is not `@ui/SearchField`: that component is the
+   topbar's palette opener — a 420x34 glass pill that is a <button> and takes no typing. */
+.onb-search {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 440px;
+  max-width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  background: var(--ground);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-btn);
+  color: var(--ink-3);
+}
+
+/* 16x16, vector stroke `--ink-3` — inherited from the wrapper's `color` (TRAP 11, TRAP 12). */
+.onb-search__glyph {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.onb-search__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--ink);
+  /* No `cursor`: index.css sets `default` on <body> and the app is native, not a web page. */
+}
+.onb-search__input::placeholder {
+  color: var(--ink-3); /* Body/Default `--ink-3` — the measured placeholder */
+}
+
+/* §4: the focus ring REPLACES the resting 1px hairline rather than sitting outside it, because Figma
+   cannot layer a second stroke and the file was authored that way. It goes on the wrapper, not the
+   input, since the wrapper is the box the user sees — and the padding drops to 12−1 so the glyph and
+   the text do not jog a pixel sideways as the border thickens. Field.css makes the identical pair of
+   calls on 01's field. */
+.onb-search:focus-within {
+  border: 2px solid var(--accent);
+  padding: 0 11px;
+}
+.onb-search__input:focus-visible {
+  /* The border above IS this control's focus ring; the global one would be a second concentric
+     accent ring drawn around a borderless input inside it. */
+  outline: none;
+}
+
+/* `grid` 495:8018 — three rows of four 224x66 tiles on a 16 gap. `4 x 224 + 3 x 16 = 944` and
+   `3 x 66 + 2 x 16 = 230` (§6), so four equal columns reproduce both without either number being
+   written. A real grid rather than the file's three AL-H rows, because the .tsx renders one flat list
+   whose length changes with the filter and with "Show all subjects" — 34 subjects is nine rows, and
+   the body scrolls. */
+.onb-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.onb-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px; /* itemSpacing 12 */
+  box-sizing: border-box;
+  height: 66px; /* FIXED */
+  padding: 14px;
+  min-width: 0;
+}
+
+/* 22x22 here and nowhere else on the screen (TRAP 12); SubjectIcon sets its own box from `size`, so
+   this only supplies the paint. Its vectors are stroked and take `currentColor` (TRAP 11). */
+.onb-tile__glyph {
+  flex: none;
+  color: var(--ink-2);
+}
+
+/* Name over syllabus code, gap 2. §5.3 measures the two longest names at 137px and 121px against the
+   162px this column gets on a resting tile, so nothing clips at the design width and the spec says
+   not to add an ellipsis. `nowrap` keeps that measurement honest — a wrapped name would make the
+   pinned 66 wrong — and the clip only ever bites on a sheet narrower than the design. */
+.onb-tile__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.onb-tile__code {
+  color: var(--ink-3);
+}
+
+/* Selected tiles only. Figma's `strut` holds the right gutter for every tile; with nothing after the
+   check there is nothing for a strut to hold open, so it is an auto margin here too. */
+.onb-tile__check {
+  margin-left: auto;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+}
+
+/* `showing row` 495:8164 — H gap 6 CENTER, Body/Meta. `--ink-3` is the count's; the action beside it
+   is `--accent`. */
+.onb-showing {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-3);
+}
+
+/* "Show all subjects" — a text action, so it has no box to put a hover edge on. Underline rather than
+   a wash, because rule 2 allows `--accent-soft` behind exactly one element per screen and 03 has
+   already spent it on the six selected tiles. */
+.onb-link {
+  padding: 0;
+  color: var(--accent);
+}
+.onb-link:hover {
+  text-decoration: underline;
+}
+
+/* ═══ 6. 04 PLAN — §5.4 ══════════════════════════════════════════════════════════════════════ */
+
+/* `target session` 494:7933 and `weekly rhythm` 494:7935 — both V FILL(944)xHUG gap 12. MIN on the
+   cross axis, so the eyebrow, the chip row and the countdown all hug; `rhythm cards` is the one FILL
+   child and opts back in through the stretch group above. */
+.onb-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+/* Label/Section `--ink-2`. The class uppercases, so the stored string stays lowercase (TRAP 20). */
+.onb-eyebrow {
+  color: var(--ink-2);
+}
+
+/* `session chips` 494:8521 — H HUGxHUG gap 10, three Chip instances at 32 tall. Wraps rather than
+   overflows: the caller supplies however many sittings the index knows about, which is not
+   necessarily the file's three. */
+.onb-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* `countdown` 494:8581 — H HUGxHUG gap 8 on BASELINE, so the 19px Mono/Stat figure and the 12px
+   Body/Small tail share a writing line. `--ink` on the figure comes from the panel; the tail steps
+   down. */
+.onb-countdown {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--ink);
+}
+.onb-countdown__to {
+  color: var(--ink-3);
+}
+
+/* `rhythm cards` 494:9170 — `3 x 304 + 2 x 16 = 944` (§6), again as an equal grow set. */
+.onb-rhythms {
+  display: flex;
+  gap: 16px;
+}
+
+/* 304x96 FIXED, pad 16, gap 6. §5.4 notes the content hugs to 98 inside the pinned 96, so the
+   effective bottom padding is 14 rather than 16 — `clipsContent` is false on the cards and nothing is
+   cut, so the 96 stays (TRAP 17). The radius is a raw 13 with nothing bound behind it, unlike the
+   board cards and the subject tiles (TRAP 9); the override records that, so retuning `radius/card`
+   moves those two and not this one. */
+.onb-rhythm {
+  --onb-select-r: 13px;
+
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  height: 96px;
+  padding: 16px;
+  /* TRAP 17's 98-in-96: the content is 2px taller than the box and the file lets it show. */
+  overflow: visible;
+}
+
+/* BASELINE again — the 19px Geist Mono number against the 12px unit. */
+.onb-rhythm__count {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+/* §5.4's table names the ink for the card's name, figure and estimate but not for the unit. `--ink-3`
+   is what every other figure-plus-unit pair on this screen uses — 02's `papers`, 04's countdown tail —
+   so the unit follows them rather than the figure. */
+.onb-rhythm__unit {
+  color: var(--ink-3);
+}
+.onb-rhythm__est {
+  color: var(--ink-3);
+}
+
+/* ═══ 7. 05 BUILDING — §5.5 ══════════════════════════════════════════════════════════════════ */
+
+/* `block progress` 494:9193 — 28 blocks at 24x10 on a gap of 4, and `28 x 24 + 27 x 4 = 780` closes
+   exactly (§6). The 780 is written once here and each block takes a 24 basis, so the row is the
+   file's arithmetic at the design width and shrinks proportionally below it rather than overflowing
+   the 944 body. */
+.onb-blocks {
+  display: flex;
+  gap: 4px;
+  width: 780px;
+  max-width: 100%;
+}
+
+/* Unlit is `--hair`: §5.5 measures 0.14 Night / 0.11 Day, which is exactly what the token already
+   resolves to per mode, so there is no paint opacity to reproduce. Radius 2 is a raw literal with no
+   token behind it (TRAP 9) — the smallest radius token is `--r-chip` at 9, which would round a 10px
+   block into a lozenge. */
+.onb-block {
+  flex: 1 1 24px;
+  min-width: 0;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--hair);
+}
+.onb-block[data-lit] {
+  background: var(--accent);
+}
+
+/* No denominator, so no proportion: the strip carries an accent tint at low strength instead of a lit
+   count, and the sweep below says work is happening. The tint is what remains when the sweep cannot
+   run — which is honest, because it states "building" without stating a fraction. */
+.onb-blocks[data-indeterminate] .onb-block {
+  background: var(--accent);
+  opacity: 0.18;
+}
+
+/* `status` 495:7867 — FILLxHUG at the full 944 even though the bar above stops at 780, which is
+   intentional: `61%` lands on the same right-hand column as the step label and the button (TRAP 16).
+   Do not shrink the row to the bar. */
+.onb-status {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink-3);
+}
+
+/* Whatever the ingest is currently walking — a subject name off the drive, so it can be long. The
+   right-hand figure is fixed-width text and must not be pushed off the row. */
+.onb-status__now {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Figma's 1px `layoutGrow: 1` strut, as an auto margin. Mono/Small a step brighter than the left. */
+.onb-status__pct {
+  margin-left: auto;
+  flex: none;
+  color: var(--ink-2);
+}
+
+/* An app addition: the file draws 05 only as a build in progress, never as one that failed. The
+   Notice and its retry are stacked at 560 — the same width as this step's sub — so the error reads as
+   part of the same column of prose rather than as a 944-wide banner. */
+.onb-fail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  width: 560px;
+  max-width: 100%;
+}
+
+/* ═══ 8. 06 READY — §5.6 ═════════════════════════════════════════════════════════════════════ */
+
+/* `summary` 495:8157 — 560 FIXED x HUG, pad 20, `itemSpacing 0`, `--ground` under a 1px `--hair`
+   edge. Height closes at `20 + 40 + 1 + 40 + 1 + 40 + 20 = 162` (§6), which is a hug result and so is
+   not written here. Radius is a raw 13, not `radius/card` (TRAP 9). `margin: 0` because this is a
+   <dl> and a browser gives one a block margin. */
+.onb-summary {
+  box-sizing: border-box;
+  margin: 0;
+  width: 560px;
+  max-width: 100%;
+  padding: 20px;
+  background: var(--ground);
+  border: 1px solid var(--hair);
+  border-radius: 13px;
+}
+
+/* FILL width (520 = 560 − 40), pad-y 12, gap 12, CENTER → 40 tall. */
+.onb-summary__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+/* Figma models the separators as 1px `--hair-2` rects BETWEEN the rows. An adjacent-sibling border-top
+   is the same picture at the same full inner width, with no extra elements and no last-row special
+   case — the substitution DashboardView.css and LibraryView.css both make. */
+.onb-summary__row + .onb-summary__row {
+  border-top: 1px solid var(--hair-2);
+}
+
+/* The <dt>. §5.6's FIXED 120 label column is what aligns the three values, and it is on the inner
+   span rather than on the <dt> itself so the 16px glyph keeps its own 12px gutter OUTSIDE the column —
+   otherwise the icon eats 28 of the 120 and the values shift left. */
+.onb-summary__label {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink-3);
+}
+.onb-summary__label > span {
+  width: 120px;
+}
+
+/* Icon-set instances resized 24→16 with their vector strokes bound to `--accent` (§5.6, TRAP 11). */
+.onb-summary__glyph {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+}
+
+/* Body/Strong `--ink`, hug — §5.6 is explicit that the values use it and not a Mono style, even though
+   all three contain numbers. `margin: 0` cancels the <dd> indent a browser applies. */
+.onb-summary__value {
+  margin: 0;
+  min-width: 0;
+  color: var(--ink);
+}
+
+/* ═══ 9. MOTION ══════════════════════════════════════════════════════════════════════════════ */
+
+/* The step change. `Motion — Startup` (391:2) and `Motion — Mr. Bell` (331:289) carry this screen's
+   only measured timelines and neither covers the step swap (§ TRAPS 19), so this is app.css's own
+   `.view` entrance at the same easing and a shorter travel: the body is remounted on `key={step}`,
+   which is what replays it. Transform and opacity only. */
+@media (prefers-reduced-motion: no-preference) {
+  .onb__body {
+    animation: onb-step-in 0.34s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+
+  /* Paint-only, and short enough that a pointer crossing a row of three cards does not smear. */
+  .onb-select {
+    transition:
+      background-color 0.16s,
+      border-color 0.16s;
+  }
+
+  /* The indeterminate sweep. Each block carries its own 40ms `animation-delay` inline from the .tsx,
+     so one 1.4s track staggered across 28 blocks is a band travelling left to right. It exists only
+     when there is NO denominator: the determinate bar is a static lit count, so the thing CLAUDE.md
+     protects — "a progress bar is information, not decoration" — is never the thing animating here. */
+  .onb-blocks[data-indeterminate] .onb-block {
+    animation: onb-sweep 1.4s linear infinite;
+  }
+}
+
+@keyframes onb-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes onb-sweep {
+  from,
+  70%,
+  to {
+    opacity: 0.18;
+  }
+  12% {
+    opacity: 1;
+  }
+}
+
+/* Everything above collapses. app.css closes with a blanket
+   `*, *::before, *::after { animation-duration: 0.01ms !important }`, which already stops both
+   animations in this app; these rules are what keeps the file correct on its own, and they set
+   `animation-name` rather than a duration so neither track can be revived by a later !important.
+   The body simply appears at its resting pose, and the block strip holds the accent tint that says
+   "building" without claiming a fraction. */
+@media (prefers-reduced-motion: reduce) {
+  .onb__body,
+  .onb-blocks[data-indeterminate] .onb-block {
+    animation: none;
+  }
+
+  .onb-select {
+    transition: none;
+  }
+}
