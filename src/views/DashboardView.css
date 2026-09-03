@@ -1,0 +1,395 @@
+/* Dashboard — `design/specs/screen-dashboard.md` §0-§8. Paint, type colour and the flex tracks;
+   every figure and every string is in DashboardView.tsx.
+
+   NO FIXED WIDTHS except the ones the file itself fixes. TRAP 22: the whole composition is
+   auto-layout plus `layoutGrow` ratios that happen to land on a 12 x 63 / 24 grid, so the hero row
+   is a 2:1:1:1 grow set and `cols` is 585:411 — reproduced as ratios, the measured 391.2 / 195.6 /
+   585 / 411 fall out exactly at 1020 without any of them being written down anywhere. The one
+   genuinely fixed thing on the screen is the activity grid, and it fixes its own 714 in
+   ActivityGrid.css.
+
+   Card surfaces come from `@ui/Card`, so nothing here restates `--card` / `--card-brd` / `--r-card`.
+   The three rules that do override a card are written `.bell-card.db-*`: this stylesheet is reached
+   through App's import of the view, which is earlier in main.tsx's module graph than `./ui/styles`,
+   so a single-class rule here would tie with Card.css on specificity and lose the cascade. */
+
+/* §0 content — 1020 x 747 in four rows on a 20 gap, inset 31 / 26 / 31 / 31 in the page recess.
+   Capped and centred at 1020 + 2 x 31, exactly as `.lv` and `.settings` are: 1082 is the main
+   column's own width at the design size, so the cap only ever bites on a wider window — and here it
+   has to, because the activity grid is pinned at 714 in ActivityGrid.css while everything around it
+   is a grow ratio. Uncapped, a maximised window stretches §3b's 246 rail to several hundred px with
+   the graph still sitting at 714, and pulls the hero row's 391.2 / 195.6 / 195.6 / 195.6 far off
+   every measured value. The bottom is the file's own 31, not the 60 the two scrolling screens take:
+   `content` is 747 in an 804 recess, so this screen does not scroll at the design size. */
+.db {
+  max-width: 1082px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  padding: 26px 31px 31px;
+}
+
+/* §1 greeting — 44 tall as a hug result: 24 + 6 + 14. `margin: 0` on both children because an <h1>
+   and a <p> arrive with browser margins that would blow that 44 apart. Tailwind's preflight zeroes
+   them today, so this states the dependency rather than leaving a measured height resting on it —
+   the same call SettingsView.css makes on its own <h1> / <p> pair. */
+.db-greet {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.db-greet-title {
+  margin: 0;
+  color: var(--ink);
+}
+.db-greet-sub {
+  margin: 0;
+  color: var(--ink-3);
+}
+
+/* §2 hero + stats — authored FIXED 92 with all four children stretched. Nothing inside defines 92
+   (TRAP 5): the hero holds 78 of content and a Stat 63, and both align MIN, so the slack sits
+   under them. Never centre either column. */
+.db-top {
+  display: flex;
+  gap: 14px;
+  height: 92px;
+}
+.db-stat {
+  flex: 1 1 0;
+}
+
+/* §2a hero · days to exam — the file's one tinted, edged card, and the screen's ONLY --accent-soft
+   element, which is the entire budget the design system allows the wash. */
+.db-hero {
+  flex: 2 1 0;
+  min-width: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 12px 14px;
+  background: var(--accent-soft);
+  /* 1px --accent at FULL strength, inside. The wash is soft; the edge is not. */
+  border: 1px solid var(--accent);
+  border-radius: var(--r-card);
+  overflow: hidden;
+}
+.db-hero-cap {
+  color: var(--ink-2);
+}
+
+/* BASELINE, not centre: the 13-tall date sits at y 16 in the 34-tall row, on the figure's own
+   writing line. Centre or end breaks both the alignment and the row height. */
+.db-hero-value {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  overflow: hidden;
+}
+.db-hero-num {
+  color: var(--ink);
+  white-space: nowrap;
+}
+.db-hero-date {
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+/* The plan row is the one FILL child of a MIN-aligned column, hence the explicit stretch. */
+.db-hero-plan {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+}
+.db-hero-plan-count {
+  flex: none;
+  color: var(--ink-2);
+}
+
+/* §3 year activity — a Card at the 16 inset carrying the module's own gap 12. */
+.bell-card.db-year {
+  gap: 12px;
+}
+
+/* §3a head — label, an UNFILLED strut, then the range. Deliberately not SectionLabel: that
+   component's trailing element is a filled --hair rule, and the three near-identical 1px flex
+   children on this screen are not interchangeable (TRAP 10). */
+.db-year-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.db-year-label {
+  flex: none;
+  color: var(--ink-2);
+}
+.db-year-strut {
+  flex: 1 0 0;
+  min-width: 0;
+  height: 1px;
+}
+.db-year-range {
+  flex: none;
+  color: var(--ink-3);
+}
+
+/* §3b main — the graph is fixed at 714, so the rail takes the remainder (246 at the design width)
+   and the row top-aligns, leaving the measured 40px free beneath the 90-tall rail. */
+.db-year-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 28px;
+}
+.db-graph {
+  position: relative;
+  flex: none;
+}
+
+/* §3c legend — the note at x 0, an unfilled strut, then Less / ramp / More at x 581. ActivityGrid
+   draws only the ramp half of that row, so the note is laid over the row's left end and the ramp is
+   pushed right. Two classes deep on purpose: it has to beat `.ag-legend` whichever order the two
+   sheets land in. A `note` prop on the primitive would be the cleaner fix. */
+.db-graph .ag-legend {
+  justify-content: flex-end;
+}
+.db-graph-note {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  color: var(--ink-3);
+}
+
+/* §3 rail — two rows of two grow-1 tiles: 117 + 12 + 117 = 246. */
+.db-rail {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.db-rail-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  overflow: hidden;
+}
+.db-rail-tile {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+}
+.db-rail-value {
+  color: var(--ink);
+  white-space: nowrap;
+}
+.db-rail-cap {
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+/* §5 cols — 585 : 411 over a 24 gutter. The ratio is the grid's own arithmetic (span n = 87n − 24,
+   so 7 col = 585, 5 col = 411, 585 + 24 + 411 = 1020); as a grow pair it stays true at any width,
+   where two pinned widths would drift the moment the window is not 1082. */
+.db-cols {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+.db-col {
+  flex: 585 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.db-col--right {
+  flex: 411 1 0;
+}
+
+/* One module = its sec-label plus its card, in a named region. The gap matches the column's own
+   because §5 measures a uniform 16 between all four children of a column, label to card included
+   (23 + 16 = 39, 120 + 16 = 136, 160 + 16 = 176). */
+.db-mod {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* §7a resume card — the file's one HORIZONTAL card, so it flips Card's column. 16 + 49 + 16 = 81. */
+.bell-card.db-resume {
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+}
+.db-resume-icon {
+  flex: none;
+  color: var(--ink-2);
+}
+.db-resume-body {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.db-resume-id {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+/* `.t-title-card` is 15 / 600 at −1% where the file measures ls 0 (TRAP 8). The ramp class wins
+   anyway: naming a class is the house rule, and re-deriving three metrics for 0.15px of tracking is
+   how seventeen ad-hoc font sizes accumulated last time. */
+.db-resume-name {
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.db-resume-code {
+  flex: none;
+  color: var(--ink-2);
+}
+.db-resume-meta {
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* §7b subject progress and §8a due for review — both are Cards at the `list` inset (6 / 16) with
+   gap 0 and explicit separators, where session coverage uses a gap 4 and none at all (TRAP 11). A
+   `border-top` on every row after the first is the same 1px of --hair-2 at the same full inner
+   width as the file's `sep` RECTs, and it needs no special case for the last row.
+   §7b: 6 + 5·34 + 4·1 + 6 = 186, pitch 35.  §8a: 6 + 4·30 + 3·1 + 6 = 135, pitch 31. */
+.bell-card.db-progress,
+.bell-card.db-review {
+  gap: 0;
+}
+
+.db-prow,
+.db-rrow {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  /* Rows are <button>s wherever the caller can act on one, and a button centres its text by
+     default. */
+  text-align: left;
+  overflow: hidden;
+}
+.db-prow + .db-prow,
+.db-rrow + .db-rrow {
+  border-top: 1px solid var(--hair-2);
+}
+
+.db-prow {
+  gap: 12px;
+  padding: 8px 0;
+}
+.db-rrow {
+  gap: 10px;
+  padding: 7px 0;
+}
+
+.db-prow-icon,
+.db-rrow-icon {
+  flex: none;
+  color: var(--ink-2);
+}
+
+/* FIXED, never hugging: the meter and the columns after it have to start on the same x in every
+   row, and a subject name is the one thing here whose length is not ours to choose. */
+.db-prow-name {
+  flex: none;
+  width: 130px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.db-prow-band {
+  flex: none;
+  width: 58px;
+}
+.db-prow-pct {
+  flex: none;
+  width: 34px;
+  text-align: right;
+  color: var(--ink-3);
+}
+
+.db-rrow-name {
+  flex: none;
+  width: 84px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.db-rrow-code {
+  flex: none;
+  width: 34px;
+  color: var(--ink-3);
+}
+
+/* A pure spacer with NO fill — on this screen only the sec-label's rule is a filled 1px flex child
+   (TRAP 10), and this row has no rule. */
+.db-rrow-strut {
+  flex: 1 0 0;
+  min-width: 0;
+  height: 1px;
+}
+.db-rrow-pct {
+  flex: none;
+  width: 30px;
+  text-align: right;
+  color: var(--ink-2);
+}
+.db-rrow-band {
+  flex: none;
+  width: 50px;
+  text-align: right;
+}
+
+/* §8b session coverage — CoverageMatrix owns the whole column track; the only thing left is the
+   glyph's paint, which the file dims to --ink-2 along with the row name. Set on the <svg> itself
+   rather than by reaching into `.cov-label`. */
+.db-cov-icon {
+  flex: none;
+  color: var(--ink-2);
+}
+
+/* An interactive row's only affordance: the app runs `cursor: default` everywhere, so hover has to
+   be visible or it does not exist. The accent on the name is a line, not a wash, and it marks the
+   row as live — which is exactly what rule 2 reserves the accent for. */
+button.db-prow:hover .db-prow-name,
+button.db-rrow:hover .db-rrow-name {
+  color: var(--accent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .db-prow-name,
+  .db-rrow-name {
+    transition: color 0.16s;
+  }
+}
+
+/* Every module keeps its card when it has nothing to show. A fresh install reads zero and says so
+   rather than collapsing the row, and no module ever fills the gap with a plausible-looking number.
+   No padding of its own: the empty state sits in a default 16-inset Card. */
+.db-empty {
+  display: block;
+  color: var(--ink-3);
+}
