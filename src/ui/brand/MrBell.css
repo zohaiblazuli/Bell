@@ -1,0 +1,822 @@
+/* Mr. Bell — the 256px rig. The geometry, the nesting and the six joint centres are documented in
+   MrBell.tsx; this file is only what has to be CSS.
+ *
+ * The twelve timelines from `design/specs/motion-mr-bell.md` §3 are at the bottom, keyed off
+ * `data-anim` on the root. How a Figma track became a rule, so the next person can check one against
+ * the spec rather than trusting it:
+ *
+ *   percent      = t ÷ duration. The spec's times are seconds on the frame's own timeline.
+ *   HOLD         = hold the previous value until this time, THEN jump. Written as a doubled stop —
+ *                  `22%,45.9% { -8px }` — never as a plain keyframe, or the step tweens and the
+ *                  whole pixel-art read collapses (TRAPS 2).
+ *   easing       = belongs to the segment that ENDS at the keyframe it is written on (§2 rule 1), so
+ *                  in CSS it goes on the keyframe that OPENS that segment. That is why several
+ *                  timelines carry `animation-timing-function` inside their keyframe blocks.
+ *   rotation     = every angle here is already CSS-signed. Figma is CCW-positive and the file's
+ *                  authored number is the negation (TRAPS 1). Do not "fix" a sign against the file.
+ *   translate    = viewBox units, which is what the spec's px are: `transform-box: view-box` is the
+ *                  initial value, so 8px here is 8 rig units — 5 screen px at the sidebar's 160.
+ *   HEIGHT       = a real `height` animation on the top-anchored stalk rect, never `scaleY`, or its
+ *                  foot leaves the shell (§7.5).
+ *   fills[0]     = `fill` on the lens paths. The spec bakes alpha 0.42 into every colour because a
+ *                  Figma colour keyframe overrides the paint's opacity; here `fill-opacity: 0.42`
+ *                  already does that, so only the hue animates.
+ *
+ * The five craft rules, all of which cost the Figma build a revision (§7):
+ *   1. A jump arc goes on the WHOLE crab, never `body` — on `body` the shell rises and the legs stay
+ *      planted. So `hop` and `scuttle` translate `.bell` itself and leave `body` the squash and bob.
+ *   2. Fast poses step, slow poses ease at ~4px. `idle` bobs a stepped 8; `sleep` and `slump` are
+ *      smooth and half-amplitude, because a stepped sag reads as a twitch.
+ *   3. Anything perched on the stalks needs its own matching translation, or the eyes climb out of
+ *      their glasses. `.specs` carries eye L's exact keyframes in `periscope` and `alarm` — and in
+ *      `slump` deliberately twice as far, which IS the glasses slipping down his face.
+ *   4. Claw motion is rotational from the shoulder. The rungs are 20x4 at ~4° off-axis, so a
+ *      translate would break the rung grid. Where the push-up needs the pincer to reach inward, the
+ *      rotation is paired with a translate that `shell` hides.
+ *   5. The right eye is never synchronous with the left — blinks +40ms, periscope +60ms. `alarm` is
+ *      the deliberate exception: perfectly simultaneous, which is what makes it read as a shock.
+ *
+ * The animation hooks are classes, not ids: two instances can sit on one screen (the 160px sidebar
+ * mascot and the 96px update dialog), which rules out unique ids, and `@keyframes` are driven by
+ * class anyway. Available:
+ *   .body · .claw-l · .claw-r · .shell · .eye-l · .eye-r (each .stalk .socket .pupil) · .specs
+ *   (.frame-l .frame-r .lens) · .legs-l · .legs-r · .lower-legs-l · .lower-legs-r (each .seg-1
+ *   .seg-2) · .dust-l/.dust-r · .zzz-1/.zzz-2 · .streak. The 28 spectacle parts also carry
+ *   `--x-order`, their rank in the left-to-right sweep `lens draw-on` needs, so its stagger is one
+ *   `animation-delay: calc(…)` rule instead of 28. */
+
+.bell {
+  display: block;
+  /* `clipsContent` is false and the ink genuinely leaves the box: claw L reaches x -6 and claw R
+     x 265.879, i.e. 2.34% of `size` past the left edge and 3.86% past the right. The UA stylesheet
+     clips the outermost <svg> whatever the attribute says, so this has to be CSS (spec §7) — and no
+     ancestor slot may add `overflow: hidden` either (motion TRAPS 20). */
+  overflow: visible;
+  /* Pixel art on an 8px grid. Without this, abutting rects seam at fractional device pixels, and
+     the sidebar slot centres him on a half pixel (`left: calc(50% - 1px)`). Crisp edges mean no
+     anti-aliasing, though, which the tilted claws and the lens outlines cannot afford — they opt
+     back out below. */
+  shape-rendering: crispEdges;
+}
+
+/* index.css gives the icon sprite `svg { fill: none; stroke: currentColor; stroke-width: 1.75 }`
+   and both halves inherit into every shape here. Without the fills below he paints nothing at all;
+   without this reset each of his 65 rects gets its own 1.75px border, which grids the shell into
+   squares and turns each claw into a ladder (TRAPS 12). Never give him a stroke: he is rectangles,
+   so a stroke outlines every block rather than the silhouette. The call site adds a `drop-shadow`
+   instead — the sidebar placement already carries one. Same opt-out app.css does for `.logo-word`. */
+.bell rect,
+.bell path {
+  stroke: none;
+}
+
+/* One class per token rather than per node, so a brand or tone change is one declaration (spec §7).
+   All three are mode-invariant: the rig looks identical in Day and Night. */
+.bell .cap-mid {
+  /* 17 rects: shell x3, sockets x2, pincers x12 */
+  fill: var(--bell-cap-mid);
+}
+.bell .cap-lo {
+  /* 20 rects: arms x8, stalks x2, legs x6, lower legs x4 */
+  fill: var(--bell-cap-lo);
+}
+.bell .pupil {
+  /* 2 rects. `--page-ink` does not move between modes, so the pupils stay dark on Night by design */
+  fill: var(--page-ink);
+}
+
+/* ── THE SPECTACLES ARE RAW, AND THAT IS THE INSTRUCTION ─────────────────────────────────────────
+   26 bars at raw #000000, and two lens vectors at raw #0079b5 with 42% fill opacity under a raw 1px
+   #000000 stroke. These five values are the only unbound colours in the app and they are unbound on
+   purpose, by Zohaib: the spectacles read ink-black in both tones. `--ink` is white on Night and
+   would erase them; `--page-ink` would grey them. Do not tokenise them, do not re-whiten them, do
+   not raise the lens opacity, do not drop the outline. (spec §4, TRAPS 6, TRAPS 7; motion TRAPS 10) */
+.bell .specs-ink {
+  fill: #000000;
+}
+.bell .lens {
+  fill: #0079b5;
+  /* 42% *paint* opacity in Figma, which is the fill's alpha and not the node's — a `fill-opacity`,
+     never an `opacity`, or the black outline fades with it. */
+  fill-opacity: 0.42;
+  stroke: #000000;
+  stroke-width: 1;
+  /* the sprite's global `stroke-linejoin: round` would round the octagon's corners; Figma miters */
+  stroke-linejoin: miter;
+}
+
+/* The tilted claw rungs (~20x4 at ~4° off-axis) and the lens outlines are the two places crisp
+   edges hurt: with anti-aliasing off, a 4° edge staircases and a sub-pixel stroke drops out. */
+.bell .claw-l,
+.bell .claw-r,
+.bell .lens {
+  shape-rendering: geometricPrecision;
+}
+
+/* Every limb group carries its `transform-origin` inline, from BELL_PIVOTS in MrBell.tsx: the six
+   joint centres are measured rig geometry rather than styling, so they live in one place where an
+   animation rule cannot lose one. Rotate `.claw-l` `.claw-r` `.legs-l` `.legs-r` `.lower-legs-l`
+   `.lower-legs-r` about them; translate and scale `.body`.
+
+   The socket is the exception that needs its own box: a blink squashes it about its own centre
+   (`SCALE_Y` to 1/3) while the pupil fades — two tracks, or the pupil floats inside a shut eye
+   (motion TRAPS 5, TRAPS 13). */
+.bell .socket {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+/* The pupil scales about its own centre too — `alarm` halves it, `lens draw-on` takes it to 0.75. */
+.bell .pupil {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────────────────────────
+   THE EXTRAS. Three timelines need art the master rig does not have, so it lives in the rig and
+   stays invisible until its own mood animates it. Nothing below paints at rest.
+   ───────────────────────────────────────────────────────────────────────────────────────────────── */
+
+.bell .dust,
+.bell .zzz,
+.bell .glint {
+  opacity: 0;
+}
+.bell .dust {
+  fill: var(--bell-cap-hi);
+}
+.bell .zzz {
+  fill: var(--bell-cap-hi);
+  font-family: var(--font-ui);
+  /* A `<text>` inherits the sprite's global stroke as readily as a rect does. */
+  stroke: none;
+}
+/* Raw white at 0.6, from the file. It is a specular highlight on glass, not a surface colour, so it
+   has no token and should not acquire one — every tone value in the system would tint it. */
+.bell .streak {
+  fill: #ffffff;
+  fill-opacity: 0.6;
+  stroke: none;
+}
+/* The streak is a hard-edged bar sliding under a clip; crisp edges are exactly right for it. */
+.bell .glint {
+  shape-rendering: crispEdges;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════════════════════
+   1 · IDLE — 2.5s, seamless loop. spec §3.1
+   Every track is back at its t=0 value by 2.35s, so the last 150ms is the seam. One pixel of bob is
+   8 rig units; at the sidebar's 160px instance that is 5 screen px.
+   ═════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+@keyframes bell-idle-bob {
+  0%, 21.9% { transform: translateY(0) }
+  22%, 45.9% { transform: translateY(-8px) }
+  46%, 71.9% { transform: translateY(0) }
+  72%, 93.9% { transform: translateY(-8px) }
+  94%, 100% { transform: translateY(0) }
+}
+/* 2°, not 3°: moving to the shoulder pivot bought the same tip travel for a smaller angle (§7.4). */
+@keyframes bell-idle-claw-l {
+  0%, 100% { transform: rotate(0deg) }
+  50% { transform: rotate(-2deg) }
+}
+@keyframes bell-idle-claw-r {
+  0%, 100% { transform: rotate(0deg) }
+  50% { transform: rotate(2deg) }
+}
+/* A free 3x3 look-around: the pupil steps ±8 inside a 24px socket and never leaves it (§1). */
+@keyframes bell-idle-pupil {
+  0%, 15.9% { transform: translate(0, 0) }
+  16%, 35.9% { transform: translate(-8px, 0) }
+  36%, 55.9% { transform: translate(8px, 0) }
+  56%, 71.9% { transform: translate(8px, 8px) }
+  72%, 100% { transform: translate(0, 0) }
+}
+/* A blink is two tracks — squash the socket alone and the pupil floats in a shut eye (TRAPS 13). */
+@keyframes bell-idle-lid-l {
+  0%, 81.9% { transform: scaleY(1) }
+  82%, 86.3% { transform: scaleY(0.333) }
+  86.4%, 100% { transform: scaleY(1) }
+}
+@keyframes bell-idle-lid-r {
+  0%, 83.5% { transform: scaleY(1) }
+  83.6%, 87.9% { transform: scaleY(0.333) }
+  88%, 100% { transform: scaleY(1) }
+}
+@keyframes bell-idle-blink-l {
+  0%, 81.9% { opacity: 1 }
+  82%, 86.3% { opacity: 0 }
+  86.4%, 100% { opacity: 1 }
+}
+@keyframes bell-idle-blink-r {
+  0%, 83.5% { opacity: 1 }
+  83.6%, 87.9% { opacity: 0 }
+  88%, 100% { opacity: 1 }
+}
+
+[data-anim='idle'] .body { animation: bell-idle-bob 2.5s linear infinite }
+[data-anim='idle'] .claw-l { animation: bell-idle-claw-l 2.5s ease-in-out infinite }
+[data-anim='idle'] .claw-r { animation: bell-idle-claw-r 2.5s ease-in-out infinite }
+[data-anim='idle'] .eye-l .socket { animation: bell-idle-lid-l 2.5s linear infinite }
+[data-anim='idle'] .eye-r .socket { animation: bell-idle-lid-r 2.5s linear infinite }
+/* Both pupils dart together — the +40ms offset in this timeline is on the blink, not the look. */
+[data-anim='idle'] .eye-l .pupil {
+  animation: bell-idle-pupil 2.5s linear infinite, bell-idle-blink-l 2.5s linear infinite;
+}
+[data-anim='idle'] .eye-r .pupil {
+  animation: bell-idle-pupil 2.5s linear infinite, bell-idle-blink-r 2.5s linear infinite;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════════════════════
+   2 · SPECS PUSH-UP — 1.2s, one-shot. spec §3.2
+   The claw arrives at 0.24 and the specs jump on the frame it lands. There is no hover pause: an
+   earlier cut had one and it read as hesitation. Rotation and translation share one `transform`, so
+   they share one keyframes — `translate() rotate()` in that order, which turns about the shoulder
+   first and then reaches inward, the way the file composes them.
+   ═════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+@keyframes bell-push-claw {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    animation-timing-function: ease-out;
+  }
+  20% {
+    transform: translate(-56px, -2px) rotate(-62deg);
+    animation-timing-function: ease-in-out;
+  }
+  28.33% {
+    transform: translate(-60px, -2px) rotate(-68deg);
+    animation-timing-function: ease-in-out;
+  }
+  62.5%, 100% { transform: translate(0, 0) rotate(0deg) }
+}
+/* Two whole pixels by 0.40, then settle. All stepped. */
+@keyframes bell-push-specs {
+  0%, 26.6% { transform: translateY(0) }
+  26.67%, 33.2% { transform: translateY(-8px) }
+  33.33%, 51.6% { transform: translateY(-16px) }
+  51.67%, 64.9% { transform: translateY(-8px) }
+  65%, 100% { transform: translateY(0) }
+}
+@keyframes bell-push-pupil {
+  0%, 29.9% { transform: translate(0, 0) }
+  30%, 56.6% { transform: translate(0, -8px) }
+  56.67%, 100% { transform: translate(0, 0) }
+}
+/* The blink closes the shot: L at 0.95, R 40ms behind. */
+@keyframes bell-push-lid-l {
+  0%, 84.9% { transform: scaleY(1) }
+  85%, 94.1% { transform: scaleY(0.333) }
+  94.17%, 100% { transform: scaleY(1) }
+}
+@keyframes bell-push-lid-r {
+  0%, 88.2% { transform: scaleY(1) }
+  88.33%, 97.4% { transform: scaleY(0.333) }
+  97.5%, 100% { transform: scaleY(1) }
+}
+@keyframes bell-push-blink-l {
+  0%, 84.9% { opacity: 1 }
+  85%, 94.1% { opacity: 0 }
+  94.17%, 100% { opacity: 1 }
+}
+@keyframes bell-push-blink-r {
+  0%, 88.2% { opacity: 1 }
+  88.33%, 97.4% { opacity: 0 }
+  97.5%, 100% { opacity: 1 }
+}
+
+/* THREE TEMPOS FOR ONE GESTURE, and the file warns not to share the CSS across them (TRAPS 15):
+   standalone peaks at 0.24 / 0.34 and returns at 0.75; the update notice does 0.16 / 0.24 / 0.52 and
+   the dialog 0.17 / 0.25 / 0.53. Measured as ratios those are 0.689x and 0.717x of the standalone on
+   every beat — the same shape played faster, not a different curve. So one duration variable
+   reproduces both exactly rather than two more keyframe sets: at 0.827s the notice's beats land on
+   0.165 / 0.234 / 0.517 and at 0.86s the dialog's on 0.172 / 0.244 / 0.538, every one inside 5ms of
+   the file. `UpdateFlow.css` sets it; nothing else should need to. */
+[data-anim='specs-push-up'] {
+  --bell-flick: 1.2s;
+}
+[data-anim='specs-push-up'] .claw-r { animation: bell-push-claw var(--bell-flick) both }
+[data-anim='specs-push-up'] .specs { animation: bell-push-specs var(--bell-flick) linear both }
+[data-anim='specs-push-up'] .eye-l .socket { animation: bell-push-lid-l var(--bell-flick) linear both }
+[data-anim='specs-push-up'] .eye-r .socket { animation: bell-push-lid-r var(--bell-flick) linear both }
+[data-anim='specs-push-up'] .eye-l .pupil {
+  animation: bell-push-pupil var(--bell-flick) linear both,
+    bell-push-blink-l var(--bell-flick) linear both;
+}
+[data-anim='specs-push-up'] .eye-r .pupil {
+  animation: bell-push-pupil var(--bell-flick) linear both,
+    bell-push-blink-r var(--bell-flick) linear both;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════════════════════
+   3 · PERISCOPE — 1.6s, loop. spec §3.3
+   The stalk grows exactly as much as the eye rises, on the same timestamps, so its foot never leaves
+   the shell. `.specs` gets eye L's keyframes with NO offset — it is one object across both eyes, and
+   without this track the eyes climb out of their glasses (§7.3). Right eye +60ms.
+   The extended pose holds 0.39 → 1.15 and the scan happens inside it.
+   ═════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+@keyframes bell-peri-eye-l {
+  0%, 14.3% { transform: translateY(0) }
+  14.375%, 19.3% { transform: translateY(-8px) }
+  19.375%, 24.3% { transform: translateY(-16px) }
+  24.375%, 71.8% { transform: translateY(-24px) }
+  71.875%, 76.8% { transform: translateY(-16px) }
+  76.875%, 81.8% { transform: translateY(-8px) }
+  81.875%, 100% { transform: translateY(0) }
+}
+@keyframes bell-peri-eye-r {
+  0%, 18% { transform: translateY(0) }
+  18.125%, 23% { transform: translateY(-8px) }
+  23.125%, 28% { transform: translateY(-16px) }
+  28.125%, 75.5% { transform: translateY(-24px) }
+  75.625%, 80.5% { transform: translateY(-16px) }
+  80.625%, 85.5% { transform: translateY(-8px) }
+  85.625%, 100% { transform: translateY(0) }
+}
+/* Real `height`, top-anchored, never `scaleY` — that is what welds the foot to the shell (§7.5). */
+@keyframes bell-peri-stalk-l {
+  0%, 14.3% { height: 16px }
+  14.375%, 19.3% { height: 24px }
+  19.375%, 24.3% { height: 32px }
+  24.375%, 71.8% { height: 40px }
+  71.875%, 76.8% { height: 32px }
+  76.875%, 81.8% { height: 24px }
+  81.875%, 100% { height: 16px }
+}
+@keyframes bell-peri-stalk-r {
+  0%, 18% { height: 16px }
+  18.125%, 23% { height: 24px }
+  23.125%, 28% { height: 32px }
+  28.125%, 75.5% { height: 40px }
+  75.625%, 80.5% { height: 32px }
+  80.625%, 85.5% { height: 24px }
+  85.625%, 100% { height: 16px }
+}
+@keyframes bell-peri-pupil {
+  0%, 28% { transform: translate(0, 0) }
+  28.125%, 34.3% { transform: translate(-8px, 0) }
+  34.375%, 49.9% { transform: translate(8px, 0) }
+  50%, 65.5% { transform: translate(0, 0) }
+}
+
+[data-anim='periscope'] .eye-l { animation: bell-peri-eye-l 1.6s linear infinite }
+[data-anim='periscope'] .eye-r { animation: bell-peri-eye-r 1.6s linear infinite }
+[data-anim='periscope'] .eye-l .stalk { animation: bell-peri-stalk-l 1.6s linear infinite }
+[data-anim='periscope'] .eye-r .stalk { animation: bell-peri-stalk-r 1.6s linear infinite }
+[data-anim='periscope'] .specs { animation: bell-peri-eye-l 1.6s linear infinite }
+[data-anim='periscope'] .pupil { animation: bell-peri-pupil 1.6s linear infinite }
+
+/* ═════════════════════════════════════════════════════════════════════════════════════════════════
+   4 · LENS DRAW-ON — 1.8s, loop. spec §3.4
+   All 28 spectacle parts snap on in x order, `t(i) = 0.05 + 0.028i`. Paint order is not x order, so
+   each part carries its rank as `--x-order` and one `animation-delay` does the work of 28 rules.
+
+   ONE DIVERGENCE, and it is the only one in this file. The file clears all 28 together at 1.68,
+   leaving a single 120ms blank beat before the loop — an earlier cut cleared at 1.55 and the 250ms
+   gap read as a glitch. A shared absolute stop under a per-part delay is not expressible in CSS: a
+   keyframe percentage cannot read `--x-order`, and the alternative is 28 hand-written keyframe
+   blocks whose percentages nobody can check against the spec. So the clear ripples off in the same
+   order it came on. The reveal — the part anyone actually watches — is exact.
+   ═════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+@keyframes bell-lens-part {
+  /* 0.02s of the 1.8s cycle: the spec's own pre-roll keyframe, which is what makes it a snap. */
+  0%, 1.1% { opacity: 0 }
+  1.11%, 90.5% { opacity: 1 }
+  90.56%, 100% { opacity: 0 }
+}
+@keyframes bell-lens-pupil {
+  0%, 5.5% { transform: scale(1); animation-timing-function: ease-out }
+  19.44% { transform: scale(0.75); animation-timing-function: ease-out }
+  75%, 100% { transform: scale(1) }
+}
+
+[data-anim='lens-draw-on'] .specs-ink,
+[data-anim='lens-draw-on'] .lens {
+  animation: bell-lens-part 1.8s linear infinite;
+  animation-delay: calc(var(--x-order, 0) * 0.028s);
+}
+[data-anim='lens-draw-on'] .pupil { animation: bell-lens-pupil 1.8s infinite }
+
+/* ═════════════════════════════════════════════════════════════════════════════════════════════════
+   5 · ALARM — 0.9s, one-shot. spec §3.5
+   Both claws snap up, both stalks stretch HALF a periscope, pupils halve, and the shell judders on
+   alternating 50ms frames. No left/right offset anywhere — the deliberate exception to §7.7, and the
+   simultaneity is what makes it read as a shock rather than a look.
+   ═════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+@keyframes bell-alarm-claw-l {
+  0% { transform: rotate(0deg); animation-timing-function: ease-out }
+  20%, 68.8% { transform: rotate(78deg); animation-timing-function: ease-in-out }
+  94.44%, 100% { transform: rotate(0deg) }
+}
+@keyframes bell-alarm-claw-r {
+  0% { transform: rotate(0deg); animation-timing-function: ease-out }
+  20%, 68.8% { transform: rotate(-78deg); animation-timing-function: ease-in-out }
+  94.44%, 100% { transform: rotate(0deg) }
+}
+@keyframes bell-alarm-eye {
+  0% { transform: translateY(0); animation-timing-function: ease-out }
+  15.56%, 77.7% { transform: translateY(-16px); animation-timing-function: ease-in-out }
+  94.44%, 100% { transform: translateY(0) }
+}
+@keyframes bell-alarm-stalk {
+  0% { height: 16px; animation-timing-function: ease-out }
+  15.56%, 77.7% { height: 32px; animation-timing-function: ease-in-out }
+  94.44%, 100% { height: 16px }
+}
+@keyframes bell-alarm-pupil {
+  0%, 15.5% { transform: scale(1) }
+  15.56%, 79.9% { transform: scale(0.5) }
+  80%, 100% { transform: scale(1) }
+}
+/* Eight stepped 50ms beats. A ±2 judder, which at the sidebar's 160px is 1.25 screen px — small on
+   purpose: this is a shiver, not a shake. */
+@keyframes bell-alarm-judder {
+  0%, 24.4% { transform: translateX(0) }
+  24.44%, 28.8% { transform: translateX(-2px) }
+  28.89%, 34.3% { transform: translateX(2px) }
+  34.44%, 39.9% { transform: translateX(-2px) }
+  40%, 45.5% { transform: translateX(2px) }
+  45.56%, 51% { transform: translateX(-2px) }
+  51.11%, 56.6% { transform: translateX(2px) }
+  56.67%, 62.1% { transform: translateX(-2px) }
+  62.22%, 75.5% { transform: translateX(2px) }
+  75.56%, 100% { transform: translateX(0) }
+}
+
+[data-anim='alarm'] .body { animation: bell-alarm-judder 0.9s linear both }
+[data-anim='alarm'] .claw-l { animation: bell-alarm-claw-l 0.9s both }
+[data-anim='alarm'] .claw-r { animation: bell-alarm-claw-r 0.9s both }
+[data-anim='alarm'] .eye-l,
+[data-anim='alarm'] .eye-r { animation: bell-alarm-eye 0.9s both }
+[data-anim='alarm'] .stalk { animation: bell-alarm-stalk 0.9s both }
+[data-anim='alarm'] .specs { animation: bell-alarm-eye 0.9s both }
+[data-anim='alarm'] .pupil { animation: bell-alarm-pupil 0.9s linear both }
+
+/* ═════════════════════════════════════════════════════════════════════════════════════════════════
+   6 · DOUBLE-TAKE — 1.0s, one-shot. spec §3.6
+   Glance away, come back, snap away again — and the body overshoots on the SECOND snap, not the
+   first. Those four steps are the only overshoot spelled out by hand anywhere in the file; do not
+   replace them with a spring, because the steps are what keep it pixel-honest.
+   ═════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+@keyframes bell-take-pupil {
+  0%, 11.9% { transform: translate(0, 0) }
+  12%, 29.9% { transform: translate(8px, 0) }
+  30%, 37.9% { transform: translate(0, 0) }
+  38%, 61.9% { transform: translate(8px, 0) }
+  62%, 100% { transform: translate(0, 0) }
+}
+@keyframes bell-take-body {
+  0%, 34% { transform: translateX(0); animation-timing-function: ease-out }
+  40%, 45.9% { transform: translateX(3px) }
+  46%, 53.9% { transform: translateX(-4px) }
+  54%, 61.9% { transform: translateX(2px) }
+  62%, 100% { transform: translateX(0) }
+}
+@keyframes bell-take-lid-l {
+  0%, 80.9% { transform: scaleY(1) }
+  81%, 91.9% { transform: scaleY(0.333) }
+  92%, 100% { transform: scaleY(1) }
+}
+@keyframes bell-take-lid-r {
+  0%, 84.9% { transform: scaleY(1) }
+  85%, 95.9% { transform: scaleY(0.333) }
+  96%, 100% { transform: scaleY(1) }
+}
+@keyframes bell-take-blink-l {
+  0%, 80.9% { opacity: 1 }
+  81%, 91.9% { opacity: 0 }
+  92%, 100% { opacity: 1 }
+}
+@keyframes bell-take-blink-r {
+  0%, 84.9% { opacity: 1 }
+  85%, 95.9% { opacity: 0 }
+  96%, 100% { opacity: 1 }
+}
+
+[data-anim='double-take'] .body { animation: bell-take-body 1s linear both }
+[data-anim='double-take'] .eye-l .socket { animation: bell-take-lid-l 1s linear both }
+[data-anim='double-take'] .eye-r .socket { animation: bell-take-lid-r 1s linear both }
+[data-anim='double-take'] .eye-l .pupil {
+  animation: bell-take-pupil 1s linear both, bell-take-blink-l 1s linear both;
+}
+[data-anim='double-take'] .eye-r .pupil {
+  animation: bell-take-pupil 1s linear both, bell-take-blink-r 1s linear both;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════════════════════════
+   7 · SCUTTLE — 1.2s, loop. spec §3.7
+   Nine 16px steps of 120ms, entering off-frame left at −144. The TRAVEL is on the whole crab and the
+   BOB is on `body`, so the legs carry the walk and the shell only bobs (§7.1). Both upper legs move
+   together and both lower legs in opposition, flipping on alternating steps — the two sides are
+   mirrored art, so identical CSS angles read as a left/right alternation.
+
+   This is the one timeline whose Figma frame clips, and it must: he starts wholly outside the box.
+   The clip is scoped to the mood so the claws' 6px/10px overhang survives everywhere else (TRAPS 20).
+   ═════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+[data-anim='scuttle'] { overflow: hidden }
+
+@keyframes bell-scuttle-walk {
+  0%, 9.9% { transform: translateX(-144px) }
+  10%, 19.9% { transform: translateX(-128px) }
+  20%, 29.9% { transform: translateX(-112px) }
+  30%, 39.9% { transform: translateX(-96px) }
+  40%, 49.9% { transform: translateX(-80px) }
+  50%, 59.9% { transform: translateX(-64px) }
+  60%, 69.9% { transform: translateX(-48px) }
+  70%, 79.9% { transform: translateX(-32px) }
+  80%, 89.9% { transform: translateX(-16px) }
+  90%, 100% { transform: translateX(0) }
+}
+/* Half the leg cadence: down on even steps, up on odd. */
+@keyframes bell-scuttle-bob {
+  0%, 9.9% { transform: translateY(0) }
+  10%, 19.9% { transform: translateY(-8px) }
+  20%, 29.9% { transform: translateY(0) }
+  30%, 39.9% { transform: translateY(-8px) }
+  40%, 49.9% { transform: translateY(0) }
+  50%, 59.9% { transform: translateY(-8px) }
+  60%, 69.9% { transform: translateY(0) }
+  70%, 79.9% { transform: translateY(-8px) }
+  80%, 89.9% { transform: translateY(0) }
+  90%, 99.9% { transform: translateY(-8px) }
+  100% { transform: translateY(0) }
+}
+@keyframes bell-scuttle-legs {
+  0%, 19.9% { transform: rotate(-10deg) }
+  20%, 39.9% { transform: rotate(10deg) }
+  40%, 59.9% { transform: rotate(-10deg) }
+  60%, 79.9% { transform: rotate(10deg) }
+  80%, 99.9% { transform: rotate(-10deg) }
+  100% { transform: rotate(0deg) }
+}
+@keyframes bell-scuttle-lower {
+  0%, 19.9% { transform: rotate(10deg) }
+  20%, 39.9% { transform: rotate(-10deg) }
+  40%, 59.9% { transform: rotate(10deg) }
+  60%, 79.9% { transform: rotate(-10deg) }
+  80%, 99.9% { transform: rotate(10deg) }
+  100% { transform: rotate(0deg) }
+}
+
+[data-anim='scuttle'] { animation: bell-scuttle-walk 1.2s linear infinite }
+[data-anim='scuttle'] .body { animation: bell-scuttle-bob 1.2s linear infinite }
+[data-anim='scuttle'] .legs-l,
+[data-anim='scuttle'] .legs-r { animation: bell-scuttle-legs 1.2s linear infinite }
+[data-anim='scuttle'] .lower-legs-l,
+[data-anim='scuttle'] .lower-legs-r { animation: bell-scuttle-lower 1.2s linear infinite }
+
+/* ═════════════════════════════════════════════════════════════════════════════════════════════════
+   8 · HOP — 1.0s, one-shot. spec §3.8
+   The ARC is on the crab and the SQUASH is on `body` — this is the rule that cost the Figma build a
+   revision: authored on `body`, the shell rose and the legs stayed planted (§7.1). The dust puffs
+   are siblings of the legs for the same reason: they belong to the ground, not to him.
+   Anticipation crouch to 0.12 · rise to −32 by 0.42 with the legs tucking · land 0.66 · a one-frame
+   landing squash at 0.68 · recover 0.80.
+   ═════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+@keyframes bell-hop-arc {
+  0% { transform: translateY(0); animation-timing-function: ease-out }
+  12% { transform: translateY(4px); animation-timing-function: ease-out }
+  42% { transform: translateY(-32px); animation-timing-function: ease-in }
+  66%, 100% { transform: translateY(0) }
+}
+/* A centre squash, not a bottom one: SCALE_* scales about the node's own centre and `body`'s pivot
+   IS its centre. Reaching for `transform-origin: bottom` because "squash comes from the ground"
+   would not match the file (TRAPS 5). */
+@keyframes bell-hop-squash {
+  0% { transform: scaleY(1); animation-timing-function: ease-out }
+  12% { transform: scaleY(0.9); animation-timing-function: ease-out }
+  30% { transform: scaleY(1.06); animation-timing-function: ease-out }
+  50%, 67.9% { transform: scaleY(1) }
+  68%, 79.9% { transform: scaleY(0.92); animation-timing-function: ease-out }
+  80%, 100% { transform: scaleY(1) }
+}
+@keyframes bell-hop-legs-l {
+  0%, 12% { transform: rotate(0deg); animation-timing-function: ease-out }
+  42% { transform: rotate(-14deg); animation-timing-function: ease-in }
+  66%, 100% { transform: rotate(0deg) }
+}
+@keyframes bell-hop-legs-r {
+  0%, 12% { transform: rotate(0deg); animation-timing-function: ease-out }
+  42% { transform: rotate(14deg); animation-timing-function: ease-in }
+  66%, 100% { transform: rotate(0deg) }
+}
+@keyframes bell-hop-lower-l {
+  0%, 12% { transform: rotate(0deg); animation-timing-function: ease-out }
+  42% { transform: rotate(-12deg); animation-timing-function: ease-in }
+  66%, 100% { transform: rotate(0deg) }
+}
+@keyframes bell-hop-lower-r {
+  0%, 12% { transform: rotate(0deg); animation-timing-function: ease-out }
+  42% { transform: rotate(12deg); animation-timing-function: ease-in }
+  66%, 100% { transform: rotate(0deg) }
+}
+/* The puffs appear on the landing frame and slide outward as they fade. */
+@keyframes bell-hop-dust-l {
+  0%, 67.9% { opacity: 0; transform: translateX(0) }
+  68% { opacity: 0.9; transform: translateX(0); animation-timing-function: ease-out }
+  92%, 100% { opacity: 0; transform: translateX(-14px) }
+}
+@keyframes bell-hop-dust-r {
+  0%, 67.9% { opacity: 0; transform: translateX(0) }
+  68% { opacity: 0.9; transform: translateX(0); animation-timing-function: ease-out }
+  92%, 100% { opacity: 0; transform: translateX(14px) }
+}
+
+[data-anim='hop'] { animation: bell-hop-arc 1s both }
+[data-anim='hop'] .body { animation: bell-hop-squash 1s both }
+[data-anim='hop'] .legs-l { animation: bell-hop-legs-l 1s both }
+[data-anim='hop'] .legs-r { animation: bell-hop-legs-r 1s both }
+[data-anim='hop'] .lower-legs-l { animation: bell-hop-lower-l 1s both }
+[data-anim='hop'] .lower-legs-r { animation: bell-hop-lower-r 1s both }
+[data-anim='hop'] .dust-l { animation: bell-hop-dust-l 1s both }
+[data-anim='hop'] .dust-r { animation: bell-hop-dust-r 1s both }
+
+/* ═════════════════════════════════════════════════════════════════════════════════════════════════
+   9 · SLUMP — 1.4s, one-shot that ENDS ON THE POSE. spec §3.9
+   Everything eases, nothing steps: a stepped sag reads as a twitch (§7.2). The claw signs are the
+   exact inverse of alarm's raise. The specs sag TWICE as far as the eyes and start 350ms late — that
+   8px difference is the glasses slipping down his face, and it is the one place §7.3's pairing rule
+   is used in reverse.
+   ═════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+@keyframes bell-slump-body {
+  0% { transform: translateY(0) }
+  46.43%, 100% { transform: translateY(4px) }
+}
+@keyframes bell-slump-claw-l {
+  0% { transform: rotate(0deg) }
+  50%, 100% { transform: rotate(-10deg) }
+}
+@keyframes bell-slump-claw-r {
+  0% { transform: rotate(0deg) }
+  50%, 100% { transform: rotate(10deg) }
+}
+@keyframes bell-slump-eye {
+  0% { transform: translateY(0) }
+  39.29%, 100% { transform: translateY(8px) }
+}
+@keyframes bell-slump-stalk {
+  0% { height: 16px }
+  39.29%, 100% { height: 8px }
+}
+@keyframes bell-slump-pupil {
+  0% { transform: translate(0, 0) }
+  42.86%, 100% { transform: translate(0, 8px) }
+}
+@keyframes bell-slump-specs {
+  0%, 25% { transform: translateY(0) }
+  64.29%, 100% { transform: translateY(16px) }
+}
+
+[data-anim='slump'] .body { animation: bell-slump-body 1.4s ease-in-out both }
+[data-anim='slump'] .claw-l { animation: bell-slump-claw-l 1.4s ease-in-out both }
+[data-anim='slump'] .claw-r { animation: bell-slump-claw-r 1.4s ease-in-out both }
+[data-anim='slump'] .eye-l,
+[data-anim='slump'] .eye-r { animation: bell-slump-eye 1.4s ease-in-out both }
+[data-anim='slump'] .stalk { animation: bell-slump-stalk 1.4s ease-in-out both }
+[data-anim='slump'] .pupil { animation: bell-slump-pupil 1.4s ease-in-out both }
+[data-anim='slump'] .specs { animation: bell-slump-specs 1.4s ease-in-out both }
+
+/* ═════════════════════════════════════════════════════════════════════════════════════════════════
+   10 · SLEEP — 3.0s, loop. spec §3.10
+   The breath is deliberately asymmetric — 1.15s in, 300ms hold, 1.55s out — and half amplitude, for
+   the same reason slump eases: this pose was first given idle's stepped 8px bob and read as a hop,
+   because nothing else was moving to absorb the step (§7.2). The lids breathe with it, so the pose is
+   never completely still. Eyes are held shut for the whole timeline; the left claw is a static tuck.
+   ═════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+@keyframes bell-sleep-breath {
+  0% { transform: translateY(0) }
+  38.33%, 48.33% { transform: translateY(-4px) }
+  100% { transform: translateY(0) }
+}
+@keyframes bell-sleep-lid {
+  0% { transform: scaleY(0.333) }
+  38.33%, 48.33% { transform: scaleY(0.27) }
+  100% { transform: scaleY(0.333) }
+}
+/* 16px then 12px, each rising 40 units and fading, the second picking up as the first clears. */
+@keyframes bell-sleep-z1 {
+  0%, 6.67% { opacity: 0; transform: translateY(0) }
+  15% { opacity: 0.85; animation-timing-function: ease-out }
+  46.67%, 100% { opacity: 0; transform: translateY(-40px) }
+}
+@keyframes bell-sleep-z2 {
+  0%, 46.67% { opacity: 0; transform: translateY(0) }
+  55% { opacity: 0.85; animation-timing-function: ease-out }
+  86.67%, 100% { opacity: 0; transform: translateY(-40px) }
+}
+
+[data-anim='sleep'] .body { animation: bell-sleep-breath 3s ease-in-out infinite }
+[data-anim='sleep'] .socket { animation: bell-sleep-lid 3s ease-in-out infinite }
+/* Single-keyframe tracks in the file: a lone keyframe holds in both directions. Static here. */
+[data-anim='sleep'] .pupil { opacity: 0 }
+[data-anim='sleep'] .claw-l { transform: rotate(-14deg) }
+[data-anim='sleep'] .zzz-1 { animation: bell-sleep-z1 3s linear infinite }
+[data-anim='sleep'] .zzz-2 { animation: bell-sleep-z2 3s linear infinite }
+
+/* ═════════════════════════════════════════════════════════════════════════════════════════════════
+   11 · GLINT — 0.8s, one-shot. spec §3.11
+   A 8x45 bar crosses the spectacle row in twelve stepped 16px hops while both lenses brighten and
+   settle. The bar leaves the clip on its last step (−16 + 192 = 176 > 173), which is why there is no
+   exit fade. The bright value is raw `#6cc8f0`, NOT `--bell-cap-hi` (`#58c8ff`) — the file picked it
+   by hand and it is one of the two lens colours that are deliberately not tokens (TRAPS 12).
+   ═════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+@keyframes bell-glint-streak {
+  0%, 12.4% { transform: translateX(0) }
+  12.5%, 17.4% { transform: translateX(16px) }
+  17.5%, 22.4% { transform: translateX(32px) }
+  22.5%, 27.4% { transform: translateX(48px) }
+  27.5%, 32.4% { transform: translateX(64px) }
+  32.5%, 37.4% { transform: translateX(80px) }
+  37.5%, 42.4% { transform: translateX(96px) }
+  42.5%, 47.4% { transform: translateX(112px) }
+  47.5%, 52.4% { transform: translateX(128px) }
+  52.5%, 57.4% { transform: translateX(144px) }
+  57.5%, 62.4% { transform: translateX(160px) }
+  62.5%, 67.4% { transform: translateX(176px) }
+  67.5%, 100% { transform: translateX(192px) }
+}
+@keyframes bell-glint-clip {
+  0%, 12.4% { opacity: 0 }
+  12.5%, 72.4% { opacity: 1 }
+  72.5%, 100% { opacity: 0 }
+}
+@keyframes bell-glint-lens {
+  0%, 12.5% { fill: #0079b5; animation-timing-function: ease-out }
+  37.5% { fill: #6cc8f0; animation-timing-function: ease-out }
+  75%, 100% { fill: #0079b5 }
+}
+
+[data-anim='glint'] .streak { animation: bell-glint-streak 0.8s linear both }
+[data-anim='glint'] .glint { animation: bell-glint-clip 0.8s linear both }
+[data-anim='glint'] .lens { animation: bell-glint-lens 0.8s both }
+
+/* ═════════════════════════════════════════════════════════════════════════════════════════════════
+   12 · TONE HANDOFF — 1.0s, one-shot. spec §3.12
+   The crab does not change at all: his own tokens are mode-invariant, so only the lenses cross from
+   the Day glass tint to the Night one. Nothing happens in the first 200ms or the last 300ms, which is
+   the whole point — he holds still while the ground moves under him. The ground is the host's job;
+   `AppBackground` and the tone crossfade own it, and a frame's own fill cannot be keyframed anyway
+   (TRAPS 6), which is why the Figma frame carries a separate rect for it.
+   Both values are raw: `#7fc4e0` is not a token either (TRAPS 12).
+   ═════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+@keyframes bell-handoff-lens {
+  0%, 20% { fill: #7fc4e0 }
+  70%, 100% { fill: #0079b5 }
+}
+
+[data-anim='tone-handoff'] .lens { animation: bell-handoff-lens 1s ease-in-out both }
+
+/* ═════════════════════════════════════════════════════════════════════════════════════════════════
+   REDUCED MOTION — the OS setting and the Settings switch collapse to the same thing.
+   Every track goes to its t=0 value with no fill-mode leftovers, EXCEPT slump and sleep: those two
+   are poses rather than idles, so they render their END state statically (motion §9). A slumped crab
+   that snaps upright under reduced motion is telling the user the wrong thing.
+   `[data-motion='off']` is set on `.app` by the Settings switch; the media query is the OS.
+   ═════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  .bell,
+  .bell * {
+    animation: none !important;
+  }
+}
+[data-motion='off'] .bell,
+[data-motion='off'] .bell * {
+  animation: none !important;
+}
+
+/* The two end poses, held rather than animated. Written once and applied under both gates. */
+@media (prefers-reduced-motion: reduce) {
+  .bell[data-anim='slump'] .body { transform: translateY(4px) }
+  .bell[data-anim='slump'] .claw-l { transform: rotate(-10deg) }
+  .bell[data-anim='slump'] .claw-r { transform: rotate(10deg) }
+  .bell[data-anim='slump'] .eye-l,
+  .bell[data-anim='slump'] .eye-r { transform: translateY(8px) }
+  .bell[data-anim='slump'] .stalk { height: 8px }
+  .bell[data-anim='slump'] .pupil { transform: translate(0, 8px) }
+  .bell[data-anim='slump'] .specs { transform: translateY(16px) }
+  .bell[data-anim='sleep'] .socket { transform: scaleY(0.333) }
+  .bell[data-anim='sleep'] .pupil { opacity: 0 }
+  .bell[data-anim='sleep'] .claw-l { transform: rotate(-14deg) }
+}
+[data-motion='off'] .bell[data-anim='slump'] .body { transform: translateY(4px) }
+[data-motion='off'] .bell[data-anim='slump'] .claw-l { transform: rotate(-10deg) }
+[data-motion='off'] .bell[data-anim='slump'] .claw-r { transform: rotate(10deg) }
+[data-motion='off'] .bell[data-anim='slump'] .eye-l,
+[data-motion='off'] .bell[data-anim='slump'] .eye-r { transform: translateY(8px) }
+[data-motion='off'] .bell[data-anim='slump'] .stalk { height: 8px }
+[data-motion='off'] .bell[data-anim='slump'] .pupil { transform: translate(0, 8px) }
+[data-motion='off'] .bell[data-anim='slump'] .specs { transform: translateY(16px) }
+[data-motion='off'] .bell[data-anim='sleep'] .socket { transform: scaleY(0.333) }
+[data-motion='off'] .bell[data-anim='sleep'] .pupil { opacity: 0 }
+[data-motion='off'] .bell[data-anim='sleep'] .claw-l { transform: rotate(-14deg) }
