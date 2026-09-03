@@ -1,17 +1,34 @@
-/* The screen background stack, ported from the Figma compositions.
+/* The screen background stack, in the paint order the Figma compositions use.
  *
- * Figma builds this from ~50 nodes: two oversized blurred ambient ellipses, then `clouds` —
- * a `sky` gradient rect plus five base/highlight frame pairs holding 46 blurred lobes — then,
- * on Day, a `blue_orb` raster at DARKEN, or on Night a `veil` and a `page recess` scrim.
+ * Read off `Library — Day` (`40:1080`) and `Library — Night` (`46:417`) on the file's
+ * `Screen — Library` page. The two are independently tuned compositions, not one composition with a
+ * mode flip, and after this pass they no longer even share a layer list — so every layer below
+ * belongs to exactly one tone and is inert in the other:
  *
- * Reproducing 50 blurred nodes under the glass chrome's backdrop-filter would be the wrong
- * trade, so `clouds` and the orb ship as WebP exported straight from the file at 2x. They cost
- * 23 / 35 / 22 KB — diffuse blurred art compresses to almost nothing and upscales invisibly.
- * The blooms stay CSS so they can be retuned without re-exporting, and the two scrims stay CSS
- * because the recess has to track the sidebar and topbar, i.e. the layout.
+ *   DAY                                          NIGHT
+ *   z0  ambient-a   1621x930    .34  DARKEN      z0  ambient-a   1584x946    .40  normal
+ *   z1  ambient-b   1452x946    .34  normal      z1  ambient-b   1495x806    .60  DIFFERENCE
+ *   z2  bkg_image   1636x924   1.0   DARKEN      z2  bkg_image   1551x1017   .76  HARD-LIGHT
+ *                                               z3  veil        full-bleed  .18  DARKEN
  *
- * Night is a BRIGHT stack knocked down by translucent layers, not a dark base. If a change
- * makes it read near-black, an opacity has been flattened somewhere.
+ * WHAT REPLACED WHAT. The 46-node `clouds` field, Day's `blue_orb 1` and Night's `page recess` have
+ * all been deleted from the file. One raster per tone — `bkg_image_day` (`80:4822`) and
+ * `bkg_image_night` (`80:4823`) — does the work of the first two, and `veil` alone does the work of
+ * the third. The alpha-recovery dance `clouds` needed (`scripts/recover-clouds-alpha.py`: export
+ * over a black plate and a white plate, solve `a = 1 - (W - B)`) does NOT apply to these. Both are
+ * opaque RGB uploads, so `download_assets` hands back the artist's own file under `rawImages` and
+ * there is nothing to recover. Take the raw upload, never a node render: a render is composited in
+ * context, which is exactly how a flattened asset got shipped last time.
+ *
+ * THE BLEND MODES ARE THE POINT, which is why `.bg` paints the frame's fill itself. `isolation:
+ * isolate` makes this element the blend group's root, and against a transparent backdrop DARKEN,
+ * DIFFERENCE and HARD-LIGHT all degrade to normal — Day would render as a plain photograph. In the
+ * file these layers blend against the frame's own solid `ground/base`, and this is that fill.
+ *
+ * Night is still a BRIGHT stack knocked down by translucent layers, not a dark base. If a change
+ * makes Night read near-black, an opacity or a blend mode has been flattened somewhere.
+ * `scripts/figma-probe.py` measures the file's renders in `.shots/figma/library-*.png`;
+ * `scripts/tone-verify.py <shot.png> day|night` checks a capture of the app against them.
  */
 
 .bg {
@@ -20,111 +37,225 @@
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  /* Contains the orb's DARKEN blend, so it cannot reach past .app into the page. */
+  /* The frame fill the whole stack blends against — see the header. `isolation` then keeps DARKEN
+     and DIFFERENCE from reaching past `.app` into the page and the window plate behind it. */
+  background: var(--ground);
   isolation: isolate;
+  transition: var(--tone-ground);
+
+  /* THE ONE PLACE THE STACK'S SCALE IS SET. `--bg-scale` is what one design pixel is worth, so every
+     length below is written as `<Figma number> * var(--bg-scale)` and the whole composition moves
+     together. `1px` is Figma 1:1.
+
+     It is FROZEN AT 1 for every window from the 1040x680 minimum up to 1345x876. The app's default
+     window is 1320x860 — the design's own size — so at the sizes this app actually runs at, dragging
+     the window no longer rescales the background: it crops and reveals instead, and the composition
+     is Figma's to the pixel.
+
+     Above that it has to grow, and the reason is in the art. Both rasters only just cover the design
+     frame — the smallest scale that leaves no gap at 1320x860 is 0.977, a 2% margin — so past
+     1345x876 a frozen layer runs out and exposes bare `--ground`, which is not subtle: the art's edge
+     composites up to 146/255 away from the ground it would give way to, in both tones. So `1px` is a
+     floor, and the two terms above it are the real coverage requirement, not `cover`'s: solved
+     exactly for both layers with a 1px margin — including the rotated Night quad, whose corners are
+     what bind — then reduced to the tightest safe pair, W/1345 and H/876.
+
+     TO FREEZE IT COMPLETELY, set this to a single constant: `1px` holds Figma 1:1 and lets a window
+     wider than 1345px show ground at the edges, `1.88px` covers a maximised window on a 2560x1440
+     display but renders the design 88% zoomed at 1320x860. Neither is a good default — the first
+     gaps, the second is tied to one display — but either is one value, here. The real fix is more
+     art: place the rasters on a rect that overhangs the frame twice as far in Figma and a constant
+     `1px` covers everything. */
+  --bg-scale: max(1px, 0.074349vw, 0.114155vh);
 }
 
-.bg > * {
+/* Every layer is placed the same way: `50%` for the window's own centre, plus the layer's Figma
+   coordinate measured from the frame's centre (660, 430), times `--bg-scale`. So `left: calc(50% -
+   707 * var(--bg-scale))` IS Figma's x = -47, and at scale 1 the whole stack is the file's own
+   coordinate system with its origin on the window's centre. `50%` on an absolute child of `.bg`
+   resolves against `.bg`, which is `inset: 0`, so it is the window — the same quantity the `vw`/`vh`
+   in `--bg-scale` measure. An earlier pass did this with container queries; nothing here needs a
+   container now that the scale is one declaration on `.bg`.
+   
+   PERCENTAGE SIZES WOULD NOT DO, and this is the reason the geometry is written out rather than
+   stretched to fit. A percentage keeps a layer's box at the right FRACTION of the window but changes
+   its proportions with the window's aspect — and one isotropic blur cannot be 17% of an ellipse's
+   vertical semi-axis and 10% of its horizontal one at the same time, so the blooms bleed further
+   down the screen than the file has them. That showed up as a blue wash reaching into the left of
+   Day's content region. One scale on both axes, always. */
+.bg-bloom,
+.bg-art {
   position: absolute;
-  inset: 0;
-}
-
-/* The two ambient blooms. Geometry is Figma's: ambient-a is 1584x946 centred at (105.6, 34.4),
-   ambient-b 1452x946 centred on the bottom-right corner. In Figma both are opaque and get their
-   translucency from a 160px layer blur compositing over the ground; here the alpha is explicit,
-   which is what --bg-bloom-* are for. */
-.bg-ambient {
-  --bg-bloom-a: 58%;
-  --bg-bloom-b: 46%;
-  background:
-    radial-gradient(
-      60% 55% at 8% 4%,
-      color-mix(in srgb, var(--ambient-a) var(--bg-bloom-a), transparent),
-      transparent 74%
-    ),
-    radial-gradient(
-      55% 55% at 100% 100%,
-      color-mix(in srgb, var(--ambient-b) var(--bg-bloom-b), transparent),
-      transparent 76%
-    );
-}
-
-.app[data-tone='night'] .bg-ambient {
-  --bg-bloom-a: 72%;
-  --bg-bloom-b: 58%;
-}
-
-/* `clouds`, exported per tone. Night's copy carries its own `pattern 1` HARD_LIGHT raster and
-   the dimmer 0.26 highlights; Day's carries the brighter 0.52 ones. Same geometry in both.
-
-   Both layers are always present and their opacities trade, because `background-image` cannot be
-   transitioned and a hard cut on the largest surface on screen is exactly what you notice. Timings
-   come from `Motion — Tone` `171:8` (motion spec §6.3): the incoming ground leads at 0.28s, and the
-   ordering matters more than the numbers — ground and chrome first, content gated behind them, so the
-   grid never floats without a page plane under it. */
-.bg-clouds {
-  background-size: cover;
-  background-position: center;
+  /* Each layer belongs to one tone and fades out of the other, so the tone cross is a crossfade of
+     two whole stacks — the same trick `Motion — Tone` (`171:8`) uses, and the only one available:
+     `background-image`, `mix-blend-mode` and a layer's geometry can none of them be transitioned,
+     and a hard cut on the largest surface on screen is precisely what the eye catches. Timing from
+     the motion spec §6.3 — the incoming ground leads at 0.28s, and the ordering (ground and chrome
+     first, content gated behind them) matters more than the number. */
   transition: opacity 0.28s ease-out;
 }
-.bg-clouds-day {
-  background-image: url('../assets/bg/bg-clouds-day.webp');
-}
-.bg-clouds-night {
-  background-image: url('../assets/bg/bg-clouds-night.webp');
-  opacity: 0;
-}
-.app[data-tone='night'] .bg-clouds-day {
-  opacity: 0;
-}
-.app[data-tone='night'] .bg-clouds-night {
-  opacity: 1;
+
+/* The two blooms per tone.
+ *
+ * Real blurred ellipses rather than radial-gradient approximations, because that is what the file
+ * has and it removes every hand-tuned stop: an opaque ellipse under LAYER_BLUR 160. A gradient
+ * cannot express this honestly — the blur spreads a fixed distance, so its falloff is a different
+ * fraction of each semi-axis, and one stop list has to lie about one of them.
+ *
+ * THE BLUR RADIUS IS MEASURED, NOT DERIVED. foundations.md T5's "Figma blur radius is 2x the CSS
+ * blur" is measured on BACKGROUND_BLUR (`Glass/Chrome Blur 26` → `blur(13px)`), and the file does
+ * not settle whether that carries over to LAYER_BLUR. Both readings were built and measured against
+ * the Figma render: sigma 80 put all three Night regions within 1.1 luminance and Day's bloom cores
+ * within 6.4 at 0.4 saturation points, where sigma 160 cost Night up to 6.8 and Day's top bar 11.8.
+ * Six measurements beat one derivation, so 80 — carried on `--bg-scale` like every other length, so
+ * a frozen scale also means a static blur that does not re-render while the window is dragged. */
+.bg-bloom {
+  border-radius: 50%;
+  filter: blur(calc(80 * var(--bg-scale)));
 }
 
-/* The blooms scale as well as brighten — `ambient-a` from 1.12 and `ambient-b` from 1.15 in the file.
-   Here there is one layer rather than two stacked screens, so the scale is a settle on the tone that
-   arrives rather than a cross-fade, over the file's own 0.75s. */
-.bg-ambient {
-  transition: opacity 0.5s ease-out, transform 0.75s ease-out;
-}
-
-/* Day's orb fades rather than being dropped: `display: none` cannot transition, and on the way back
-   to Day it would pop in at full strength while everything else was still crossing. */
-.bg-orb,
-.bg-veil {
-  transition: opacity 0.3s ease-out;
-}
-
-/* Day only. Node opacity 0.46 with a DARKEN blend — raising it also takes brightness down,
-   which is what stops Day reading too bright. */
-.bg-orb {
-  background-image: url('../assets/bg/bg-orb-day.webp');
+/* The art, `background-size: cover` because the file's fill is `scaleMode: FILL`. Both rasters were
+   sized to their rect's aspect (2720x1536 in a 1636x924 box, 2512x1648 in a 1550.79x1017.4 one), so
+   `cover` crops nothing — it only scales. */
+.bg-art {
   background-size: cover;
   background-position: center;
-  opacity: 0.46;
+}
+
+/* ---------- Day: `Library — Day` 40:1080 ---------- */
+
+/* z0 — 1621x930 at (-686.4, -438.6), and the one layer in Day's stack whose fill is raw on the node
+   rather than a bound token. `#d595fa` is an orchid, not the blue `ambient/a` carries, and it is at
+   DARKEN: it does not add light to the top-left of the screen, it takes it away, which is what casts
+   Day's sidebar lilac instead of the old wash of blue. Bound tokens are still the rule for colour
+   work (`ambient/b` below is one, and so is every token in `tokens.css`) — but a fill the file leaves
+   unbound is a node-level decision, and reading it back as one keeps this greppable against Figma.
+   Three of the four blooms are unbound now; only Day's b still follows a variable. */
+.bg-bloom-a-day {
+  left: calc(50% - 1346.4 * var(--bg-scale));
+  top: calc(50% - 868.6 * var(--bg-scale));
+  width: calc(1621 * var(--bg-scale));
+  height: calc(930 * var(--bg-scale));
+  background: #d595fa;
+  mix-blend-mode: darken;
+  opacity: 0.34;
+}
+
+/* z1 — 1452x946 at (594, 387), centred almost exactly on the frame's bottom-right corner. Still
+   bound to `ambient/b`, so it follows the token. Painted after a, matching z0/z1 in the file. */
+.bg-bloom-b-day {
+  left: calc(50% - 66 * var(--bg-scale));
+  top: calc(50% - 43 * var(--bg-scale));
+  width: calc(1452 * var(--bg-scale));
+  height: calc(946 * var(--bg-scale));
+  background: var(--ambient-b);
+  opacity: 0.34;
+}
+
+/* z2 — 1636x924 at (-47, -24): the art overhangs the frame on all four sides, which is why it is
+   placed and sized rather than stretched to `inset: 0`. Node opacity is 1 and the blend is DARKEN,
+   so this layer is what keeps Day off white — it can only subtract. */
+.bg-art-day {
+  left: calc(50% - 707 * var(--bg-scale));
+  top: calc(50% - 454 * var(--bg-scale));
+  width: calc(1636 * var(--bg-scale));
+  height: calc(924 * var(--bg-scale));
+  background-image: url('../assets/bg/bg-image-day.webp');
   mix-blend-mode: darken;
 }
 
-.app[data-tone='night'] .bg-orb {
-  opacity: 0;
+/* ---------- Night: `Library — Night` 46:417 ---------- */
+
+/* z0 — 1584x946 at (-686.4, -438.6): Day's origin exactly, 37 narrower and 16 taller. A deep
+   unbound `#0836ce` at plain normal blending — in Night the bloom does add light. */
+.bg-bloom-a-night {
+  left: calc(50% - 1346.4 * var(--bg-scale));
+  top: calc(50% - 868.6 * var(--bg-scale));
+  width: calc(1584 * var(--bg-scale));
+  height: calc(946 * var(--bg-scale));
+  background: #0836ce;
 }
 
-/* Night only: the full-bleed veil. `--ground-veil` is transparent in Day, so the layer is inert
-   there rather than conditionally rendered. */
+/* z1 — 1495x806 at (551, 527): its top edge 140px further down the frame than Day's b, and 140
+   shorter, at DIFFERENCE. Over the near-black ground DIFFERENCE is indistinguishable from an add,
+   which is where the cobalt across the lower half comes from; where it crosses the brighter `a`
+   bloom beneath it the two subtract instead. Not interchangeable with `screen`, which only ever adds
+   light: reaching for `screen` here is what pinned the composite's blue channel and cost the hue in
+   an earlier pass. */
+.bg-bloom-b-night {
+  left: calc(50% - 109 * var(--bg-scale));
+  top: calc(50% + 97 * var(--bg-scale));
+  width: calc(1495 * var(--bg-scale));
+  height: calc(806 * var(--bg-scale));
+  background: #67c5ff;
+  mix-blend-mode: difference;
+}
+
+/* z2 — the one layer in the file that is rotated, and the reason this stack is placed by transform
+   rather than by `inset`. The rect is 1550.79x1017.4 turned -175.139° about its own top-left, which
+   lands its bounding box at (-90, -135) 1631.43x1145.15 — it covers the frame with the raster
+   arriving very nearly upside-down, and the near-180° turn is what puts the art's bright arc under
+   the content grid instead of over the sidebar.
+   
+   The numbers are Figma's `absoluteTransform` for `80:4823`, minus the frame's own origin, read
+   straight off the node: the 2x2 part is exactly `rotate(175.139deg)` in CSS's y-down convention
+   (cos -0.996403, sin 0.084742), and the translation column is the (1541.43, 878.74) below. Do not
+   "simplify" this to a centred full-bleed layer — the crop would change, and with it which part of
+   the arc reads through the glass.
+   
+   HARD-LIGHT at 0.76 over `ground/base` #111219: on the dark ground the light half of the art
+   behaves as a screen and the dark half as a multiply, which is where Night's contrast between the
+   cobalt sweep and the near-black corners comes from. */
+.bg-art-night {
+  left: calc(50% + 881.43 * var(--bg-scale));
+  top: calc(50% + 448.74 * var(--bg-scale));
+  width: calc(1550.79 * var(--bg-scale));
+  height: calc(1017.4 * var(--bg-scale));
+  background-image: url('../assets/bg/bg-image-night.webp');
+  transform-origin: 0 0;
+  transform: rotate(175.139deg);
+  mix-blend-mode: hard-light;
+}
+
+/* z3 — Night's full-bleed veil, the last thing before the chrome, at the file's own 0.18 and now at
+   DARKEN. It is what `page recess` used to do as well, over the whole frame instead of the content
+   region — so there is no longer a second scrim on `.main`, and nothing in the app has to track the
+   sidebar and top bar to stay registered with the file.
+   
+   IT TRANSITIONS THE PAINT, NOT THE OPACITY. `opacity` is 0.18 in both tones — the flip lives
+   entirely in `--ground-veil`, which is `#ffffff` at alpha 0 in Day — so transitioning opacity
+   animated a constant and the ~14 luminance of a full-bleed veil arrived in a single frame at t=0,
+   ahead of everything else. Interpolating from `rgba(255,255,255,0)` to `#0b0c12` is safe:
+   transitions premultiply, so it does not pass through a visible white. */
 .bg-veil {
-  background: var(--ground-veil);
-  opacity: 0.18;
-}
-
-/* `page recess` — the content region's own scrim, one step deeper than the veil. Attached to
-   .main rather than absolutely placed at (238, 56, 1082, 804) as Figma has it, so it follows
-   the sidebar and topbar instead of desyncing from them. */
-.main::before {
-  content: '';
   position: absolute;
   inset: 0;
-  z-index: 0;
-  pointer-events: none;
   background: var(--ground-veil);
-  opacity: 0.24;
+  opacity: 0.18;
+  mix-blend-mode: darken;
+  transition: var(--tone-ground);
+}
+
+/* ---------- which tone owns which layer ----------
+   Every layer above is live in one tone and zeroed in the other, and both sets stay in the DOM so
+   the pair can trade. At opacity 0 a layer contributes nothing through any blend mode, so an inert
+   stack costs a composite and no colour. */
+.bg-bloom-a-night,
+.bg-bloom-b-night,
+.bg-art-night {
+  opacity: 0;
+}
+.app[data-tone='night'] .bg-bloom-a-day,
+.app[data-tone='night'] .bg-bloom-b-day,
+.app[data-tone='night'] .bg-art-day {
+  opacity: 0;
+}
+.app[data-tone='night'] .bg-bloom-a-night {
+  opacity: 0.4;
+}
+.app[data-tone='night'] .bg-bloom-b-night {
+  opacity: 0.6;
+}
+.app[data-tone='night'] .bg-art-night {
+  opacity: 0.76;
 }
