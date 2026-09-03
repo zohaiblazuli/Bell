@@ -12,6 +12,15 @@
  *
  * Night is a BRIGHT stack knocked down by translucent layers, not a dark base. If a change
  * makes it read near-black, an opacity has been flattened somewhere.
+ *
+ * That warning went unheeded once, so here is what it looked like when it happened. The blooms were
+ * painted BENEATH the opaque cloud WebP, where nothing could see them, and the veil ran at the 0.18
+ * the file measures against a stack in which `clouds` was translucent. Between them the Night sidebar
+ * composite came out at luminance 66 against the ~85 the render shows. Three things fixed it, in
+ * descending order of how much they mattered: the blooms moved above the field and screen; their
+ * falloff stopped fading from the centre and started holding to ~78% the way a 160px-blurred ellipse
+ * does; and the veil came down to 0.05. `scripts/bg-compare.py` measures the result against a render,
+ * which is how each of those was chosen rather than guessed.
  */
 
 .bg {
@@ -32,26 +41,42 @@
 /* The two ambient blooms. Geometry is Figma's: ambient-a is 1584x946 centred at (105.6, 34.4),
    ambient-b 1452x946 centred on the bottom-right corner. In Figma both are opaque and get their
    translucency from a 160px layer blur compositing over the ground; here the alpha is explicit,
-   which is what --bg-bloom-* are for. */
+   which is what --bg-bloom-* are for.
+
+   `screen` and drawn ABOVE the cloud field, not below it. In Figma they sit under `clouds`, but
+   `clouds` there is 46 translucent lobes and here it is one opaque WebP — under that, a bloom is a
+   bloom nobody sees, which is precisely how Night ended up ~20 luminance short of the render. Screen
+   only ever adds light, so it cannot reintroduce the darkening this whole file warns about.
+
+   THE FALLOFF, which is what was actually wrong. The geometry above is Figma's and was always right;
+   the stops were not. In the file each bloom is an OPAQUE ellipse under a 160px layer blur, and a
+   blurred hard-edged shape holds full strength across almost all of itself and softens only within
+   ~160px of its edge. Modelled as a gradient fading from the centre out to 74%, bloom A had already
+   reached transparent by the time it got to the sidebar's mid-height — normalised distance there is
+   0.84 — so the whole left column was lit by nothing at all. Holding the colour to ~78% and fading
+   over the last fifth is what a blurred ellipse actually looks like. */
 .bg-ambient {
   --bg-bloom-a: 58%;
   --bg-bloom-b: 46%;
+  mix-blend-mode: screen;
   background:
     radial-gradient(
       60% 55% at 8% 4%,
-      color-mix(in srgb, var(--ambient-a) var(--bg-bloom-a), transparent),
-      transparent 74%
+      color-mix(in srgb, var(--ambient-a) var(--bg-bloom-a), transparent) 0%,
+      color-mix(in srgb, var(--ambient-a) var(--bg-bloom-a), transparent) 78%,
+      transparent 100%
     ),
     radial-gradient(
       55% 55% at 100% 100%,
-      color-mix(in srgb, var(--ambient-b) var(--bg-bloom-b), transparent),
-      transparent 76%
+      color-mix(in srgb, var(--ambient-b) var(--bg-bloom-b), transparent) 0%,
+      color-mix(in srgb, var(--ambient-b) var(--bg-bloom-b), transparent) 80%,
+      transparent 100%
     );
 }
 
 .app[data-tone='night'] .bg-ambient {
   --bg-bloom-a: 72%;
-  --bg-bloom-b: 58%;
+  --bg-bloom-b: 29%;
 }
 
 /* `clouds`, exported per tone. Night's copy carries its own `pattern 1` HARD_LIGHT raster and
@@ -110,10 +135,17 @@
 }
 
 /* Night only: the full-bleed veil. `--ground-veil` is transparent in Day, so the layer is inert
-   there rather than conditionally rendered. */
+   there rather than conditionally rendered.
+
+   0.05, RE-DERIVED, not the 0.18 the file measures — and the reason is the trade at the top of this
+   sheet. In Figma the veil sits over 46 translucent lobes with the blooms showing through them; here
+   it sits over one opaque WebP. 0.18 of near-black over that put the Night sidebar composite at
+   luminance 66 against the ~85 the render shows and the ~90 `foundations.md` measures, and no amount
+   of bloom could recover it: the arithmetic does not reach. Measured back from the render with
+   `scripts/bg-compare.py`, which is also how `--bg-bloom-b` came down from 58 to 29. */
 .bg-veil {
   background: var(--ground-veil);
-  opacity: 0.18;
+  opacity: 0.05;
 }
 
 /* `page recess` — the content region's own scrim, one step deeper than the veil. Attached to
