@@ -1,0 +1,295 @@
+/* Chip — the filter pill. Figma set `21:20`; geometry from `design/specs/components-controls.md`
+ * §2, palette paints from `foundations.md` §5 and controls §8.
+ *
+ * Supersedes `.chip`, `.chip:hover`, `.chip svg`, `.chip.filled` and `.chip.filled .x` in
+ * app.css (~L440–470). The class name is deliberately unchanged, so ui.css's later import wins
+ * while both files exist; `border: 0` on the pill and `opacity: 1` on the icon are there only to
+ * undo that old block and can go when it does. `.chip-gap` — the filter row's 8×1 strut — is row
+ * layout, not chip, and stays in app.css.
+ *
+ * Where the spec and those old rules disagree the spec wins, called out at each site: the label
+ * is 12px (was 12.5), the icon is 18px at full strength (was 14 at opacity .7), and the 1px
+ * stroke is drawn inside the measured box instead of being added to it.
+ */
+
+/* ── palette paints ─────────────────────────────────────────────────────────────────────────
+ * The six Board/Season `Wash` + `Edge` gradient paint styles, in foundations §5.1's own 8-digit
+ * hex form so this block diffs against the spec line for line.
+ *
+ * The four literal palettes are this layer's one exception to tokens-only: A Level and all three
+ * seasons are RAW, UNBOUND Figma paints (foundations T3). There is no variable behind them and
+ * nothing in tokens.css to point at, and they are mode-invariant by design rather than by a
+ * flattened alpha (screen-library-settings §5.1). IGCSE and O Level *are* bound, so they read
+ * `--bell-cap-*` and retone with nothing, exactly as the file does. If scripts/tokens.mjs ever
+ * harvests paint styles, all six move out of here unchanged.
+ *
+ * `--chip-edge-0` is the Edge's stop 0 as a flat colour. Hover strokes with that rather than the
+ * gradient (foundations T10), and it is also the only stop the extractor can see of a gradient
+ * stroke (T3) — every Edge's second stop is INFERRED, so check the Filled ring in Figma before
+ * calling it final. Reverting is one line: point `--chip-edge` at `--chip-edge-0`.
+ *
+ * Neutral defines nothing: its Default is the base rule, its Hover falls back to `--accent`
+ * (spec §8 has no Neutral Edge; this is what app.css already did), and its Filled is flat
+ * `--accent-soft`.
+ */
+.chip[data-palette='a-level'] {
+  --chip-wash: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--board-a-level-a) 40%, transparent),
+    color-mix(in srgb, var(--board-a-level-b) 40%, transparent)
+  );
+  --chip-edge: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--board-a-level-a) 90%, transparent),
+    color-mix(in srgb, var(--board-a-level-b) 90%, transparent)
+  );
+  --chip-edge-0: color-mix(in srgb, var(--board-a-level-a) 90%, transparent);
+}
+.chip[data-palette='feb-march'] {
+  --chip-wash: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--season-m-a) 28%, transparent),
+    color-mix(in srgb, var(--season-m-b) 28%, transparent)
+  );
+  --chip-edge: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--season-m-a) 70%, transparent),
+    color-mix(in srgb, var(--season-m-b) 70%, transparent)
+  );
+  --chip-edge-0: color-mix(in srgb, var(--season-m-a) 70%, transparent);
+}
+.chip[data-palette='may-june'] {
+  --chip-wash: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--season-s-a) 28%, transparent),
+    color-mix(in srgb, var(--season-s-b) 28%, transparent)
+  );
+  --chip-edge: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--season-s-a) 70%, transparent),
+    color-mix(in srgb, var(--season-s-b) 70%, transparent)
+  );
+  --chip-edge-0: color-mix(in srgb, var(--season-s-a) 70%, transparent);
+}
+.chip[data-palette='oct-nov'] {
+  --chip-wash: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--season-w-a) 28%, transparent),
+    color-mix(in srgb, var(--season-w-b) 28%, transparent)
+  );
+  --chip-edge: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--season-w-a) 70%, transparent),
+    color-mix(in srgb, var(--season-w-b) 70%, transparent)
+  );
+  --chip-edge-0: color-mix(in srgb, var(--season-w-a) 70%, transparent);
+}
+
+/* IGCSE and O Level are the two washes whose stops are bound at alpha 1, so they are saturated
+ * blue rather than a tint (controls TRAP 2 / foundations T11). Being opaque *and* mode-invariant,
+ * their label cannot follow `--ink`, which flips to white in Night: `--ink` on O Level Filled is
+ * ~1.9:1 in Day (the spec calls it near-illegible) and `--ink` on IGCSE Filled inverts to ~1.9:1
+ * in Night. Both therefore pin a mode-invariant foreground — the paper inks over the light cyan
+ * wash (~6:1 across the label), `--white` over the dark navy one (~5.8:1). This is the explicit
+ * decision TRAP 2 demands: the paint ships exactly as measured, the text does not follow it down.
+ */
+.chip[data-palette='igcse'] {
+  --chip-wash: linear-gradient(90deg, var(--bell-cap-mid), var(--bell-cap-hi));
+  --chip-edge: linear-gradient(90deg, var(--bell-cap-mid), var(--bell-cap-hi));
+  --chip-edge-0: var(--bell-cap-mid);
+  --chip-ink: var(--page-ink);
+  --chip-ink-dim: var(--page-ink-2);
+}
+.chip[data-palette='o-level'] {
+  --chip-wash: linear-gradient(90deg, var(--bell-cap-lo), var(--bell-cap-mid));
+  --chip-edge: linear-gradient(90deg, var(--bell-cap-lo), var(--bell-cap-mid));
+  --chip-edge-0: var(--bell-cap-lo);
+  --chip-ink: var(--white);
+  --chip-ink-dim: color-mix(in srgb, var(--white) 78%, transparent);
+}
+
+/* ── the box ────────────────────────────────────────────────────────────────────────────────
+ * Identical for all 21 variants, and the `State=Default` paint with it: `--glass-strong`,
+ * a 1px `--hair` stroke and an `--ink-2` label, whatever the palette says.
+ */
+.chip {
+  --chip-ring: var(--hair);
+
+  position: relative;
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: none; /* HUG: a chip is never asked to fill or shrink */
+  align-items: center; /* counterAxisAlignItems CENTER */
+  gap: 7px; /* itemSpacing 7 */
+  height: 32px; /* pinned — the height sets the box, which is why padding is 0 vertically */
+  padding: 0 12px;
+  border: 0; /* the stroke is ::after; see below. Also undoes app.css's 1px border */
+  border-radius: var(--r-pill); /* 999. NOT --r-chip, which is 9 despite the name */
+  background-color: var(--glass-strong);
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden; /* clipsContent: true */
+  transition:
+    color 0.16s,
+    background-color 0.16s;
+}
+
+/* The 1px stroke, as a masked ring inside the box — the same pattern as `.tool.on::after` in
+ * app.css. Three reasons it is not a `border`: Figma's stroke alignment is INSIDE, so the
+ * measured 66 already contains the stroke and a border would render 68; the ring vanishes
+ * entirely on Filled/Neutral, which with a border would jump the hug by 2px; and `border-color`
+ * cannot hold the gradient Edge paints. `--chip-ring` is the flat colour, `--chip-ring-image` the
+ * gradient — separated so the flat states can cross-fade and the gradient can simply appear.
+ */
+.chip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background-color: var(--chip-ring);
+  background-image: var(--chip-ring-image, none);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  transition: background-color 0.16s;
+}
+
+/* `State=Hover` — fill unchanged, label to `--ink`, stroke to the palette Edge's stop 0.
+ * Neutral has no Edge paint, so it falls back to `--accent`, which is what app.css did.
+ */
+.chip:hover:not(.filled):not(:disabled):not([aria-disabled='true']) {
+  --chip-ring: var(--chip-edge-0, var(--accent));
+
+  color: var(--ink);
+}
+
+/* `State=Filled` — the selected state. Neutral is the flat one: `--accent-soft`, no stroke.
+ * There is no Filled·Hover cell in the set, so a filled chip deliberately does not react to
+ * hover; it already reads as selected.
+ */
+.chip.filled {
+  --chip-ring: transparent;
+
+  background-color: var(--accent-soft);
+  color: var(--chip-ink, var(--ink));
+}
+
+/* Filled on the six palettes: the Wash gradient *replaces* the fill rather than sitting on top of
+ * `--accent-soft` — four of the six are translucent (α .28–.40) and have to composite onto the
+ * screen ground the way the single Figma paint does. The Edge becomes the ring.
+ */
+.chip.filled:not([data-palette='neutral']) {
+  --chip-ring-image: var(--chip-edge);
+
+  background-color: transparent;
+  background-image: var(--chip-wash);
+}
+
+/* Disabled is node opacity, not a recolour (TRAP 10): the stroke and the label dim with it, and
+ * there is no disabled palette to build.
+ */
+.chip:disabled,
+.chip[aria-disabled='true'] {
+  opacity: 0.55;
+}
+
+/* ── children ───────────────────────────────────────────────────────────────────────────────
+ * Child order is icon → label → code → close. The three slots below are `flex: none`; the label
+ * needs no class at all, because `nowrap` text cannot be shrunk below its own min-content width,
+ * which is what makes the hug honest.
+ *
+ * The label carries `.t-body-chip` (SF Pro Medium 12) from type.css. app.css set 12.5px on the
+ * pill itself, so every label comes back a fraction narrower — the ramp is the measured value.
+ */
+
+/* Only reached when the chip has both a body action and a close, and it must not disturb the
+ * measured box: the negative left margin cancels its own padding, so the body target quietly
+ * gains the pill's 12px left padding and full 32px height with every child still where Figma
+ * puts it.
+ */
+.chip-main {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  align-self: stretch;
+  margin-left: -12px;
+  padding: 0 0 0 12px;
+  border-radius: var(--r-pill);
+}
+
+/* An 18px slot, not 14 at opacity .7 as app.css drew it — so a chip with a glyph is 4px wider
+ * than it used to be and the glyph reads at full strength. Season and Subject glyphs carry their
+ * own gradient paints and ignore the pill's colour (TRAP 14); a plain sprite icon inherits
+ * `currentColor`, and a 24-box symbol in an 18px slot lands the spec's 1.3125 stroke by itself.
+ */
+.chip-icon {
+  display: flex;
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+.chip-icon > svg {
+  width: 100%;
+  height: 100%;
+  opacity: 1;
+}
+
+.chip-code {
+  flex: none;
+  color: var(--ink-3);
+}
+
+/* The close is 14px of glyph and inherits the pill's colour in Default and Hover — both states
+ * paint it the same as the label. Filled is the one that breaks step (TRAP 15).
+ */
+.chip-x {
+  position: relative;
+  display: flex;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+}
+.chip-x > svg {
+  width: 100%;
+  height: 100%;
+}
+/* 14px is a measured glyph, not a pointer target: reach the pill's full 32px height (14 + 2×9)
+ * without moving anything. The expansion stays inside the pill, so `overflow: hidden` clips none
+ * of it.
+ */
+.chip-x::after {
+  content: '';
+  position: absolute;
+  inset: -9px;
+  border-radius: var(--r-pill);
+}
+
+/* Filled steps the close *down* to `--ink-3` where Hover had raised it to `--ink` — Figma is
+ * non-monotonic here on purpose, and app.css's `.chip.filled .x` agrees. The code sits at
+ * `--ink-3` in all three states, so the two only part company on the opaque washes, where both
+ * follow that palette's mode-invariant ink.
+ */
+.chip.filled .chip-code,
+.chip.filled .chip-x {
+  color: var(--chip-ink-dim, var(--ink-3));
+}
+
+/* The global `:focus-visible` rule squares the radius to 6px, so a pill has to restate its own.
+ * In the split chip the ring belongs to the pill rather than to the body button, whose outline
+ * would be clipped on three sides by the pill's own `overflow: hidden` — hence `:has`, which sits
+ * inside the same engine floor as the `mask-composite` and `color-mix` already in app.css.
+ */
+.chip:focus-visible,
+.chip:has(.chip-main:focus-visible),
+.chip-x:focus-visible {
+  border-radius: var(--r-pill);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.chip-main:focus-visible {
+  outline: none;
+}
