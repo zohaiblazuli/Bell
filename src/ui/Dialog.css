@@ -1,0 +1,121 @@
+/* Dialog — `design/specs/update-and-startup.md` §A1 (Update Dialog `437:7`). */
+
+.dlg-scrim {
+  position: fixed;
+  inset: 0;
+  /* Above app.css's ⌘K palette at 50, so a dialog raised from the palette is not buried.
+     Integration note: App.tsx toggles the palette on ⌘K from a window listener with no modal
+     guard, so ⌘K while a dialog is open still opens the palette — behind the dialog, but owning
+     the keyboard, because it captures keys at the window. Gate that toggle on the dialog. */
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  /* Figma has no backdrop node — the artefact is just the panel — so the scrim follows the app's
+     existing modal treatment (app.css `.scrim`): the --scrim token over a 6px blur. That also
+     means the panel's own translucency composites over an already-blurred backdrop, which is what
+     lets glass/strong read as glass without a second backdrop-filter on the panel itself. */
+  background: var(--scrim);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.dlg-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* counterAxisAlignItems: CENTER */
+  gap: 18px; /* itemSpacing 18 */
+  box-sizing: border-box;
+  width: 420px; /* FIXED. Height hugs: 20+96+18+20+18+28+18+38+24 = the measured 280. */
+  padding: 20px 24px 24px; /* top 20 · sides 24 · bottom 24 */
+  border-radius: var(--r-panel);
+  background: var(--glass-strong);
+  /* Hairline as an inset ring, same as the Update Notice: Figma's INSIDE stroke does not consume
+     layout, and a real 1px border would shrink the content box to 370 and quietly break the
+     measured 372 that the action row's 181 + 10 + 181 depends on.
+     The measured local shadow is `0 16 40 0 rgba(13,15,38,.28)` — the Popover shadow ink at a
+     lower alpha, authored by hand on a Day board — so the token carries it and Night deepens with
+     the rest of the elevation family.
+     NOTE for integration: the build brief asked for `--card` here. The file measures
+     `--glass-strong` on `--glass-brd`, and a modal is chrome rather than content (which is the one
+     thing the glass tokens are for), so the spec wins. One line to change if that is wrong. */
+  box-shadow: inset 0 0 0 1px var(--glass-brd), var(--shadow-pop);
+  overflow: clip;
+  color: var(--ink);
+}
+
+/* The panel is only a focus anchor — tabIndex −1, so a press on its own padding keeps focus inside
+   the modal instead of dropping it on <body> and breaking Escape. The visible ring belongs to the
+   real controls in `actions`, which keep index.css's --accent one. */
+.dlg-panel:focus-visible {
+  outline: none;
+}
+
+/* `437:8` — the update dialog passes a 96px Mr. Bell; the slot does not size its own art. */
+.dlg-art {
+  display: flex; /* kills the inline-baseline gap under an <svg> child */
+  flex: none;
+}
+
+.dlg-title {
+  margin: 0;
+  /* The measured node hugs at 189 and is nowrap. Stretching it to the 372 content box renders
+     that string identically and lets a longer title wrap instead of being cut by `overflow: clip`. */
+  align-self: stretch;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.dlg-body {
+  align-self: stretch; /* fill: 420 − 48 = 372, where the measured copy wraps to 2 lines */
+  text-align: center;
+  /* Spec TRAP 4: `437:106` is bound to --ink-2 but both text runs override to an unbound #070707.
+     That is the bug; the binding ships. */
+  color: var(--ink-2);
+}
+
+.dlg-actions {
+  align-self: stretch; /* 372 */
+  display: flex;
+  /* NOT stretch, and this is the whole point of the row: Primary is 38 tall and Secondary 34 by
+     design, so centring drops Secondary to y = 2 and the two labels share one optical centre line
+     (spec TRAP 5). Equalising the heights destroys the intended look. */
+  align-items: center;
+  gap: 10px; /* itemSpacing 10 — 181 + 10 + 181 = 372 exactly */
+}
+
+/* Which is how both buttons measure 181 wide. */
+.dlg-actions > * {
+  flex: 1 0 0;
+  min-width: 0;
+}
+
+/* Timings from `Motion — Update` `448:102` (motion spec §5): the scrim runs 0.08 → 0.30 and the panel
+   0.10 → 0.30 with its scale settling a frame later at 0.32. Expressed as a delay plus a duration
+   rather than as keyframe percentages, because the two do not start together — the scrim leads by
+   20ms, which is what stops the panel appearing to punch a hole in nothing.
+
+   The scale starts at 0.94, which is the file's value and much further than the 0.985 an earlier pass
+   guessed: at 420 x 280 a 1.5% scale is invisible, and the panel read as a straight fade. */
+@media (prefers-reduced-motion: no-preference) {
+  .dlg-scrim {
+    animation: dlg-fade 0.22s ease-out 0.08s both;
+  }
+  .dlg-panel {
+    animation: dlg-pop 0.22s ease-out 0.1s both;
+  }
+}
+
+@keyframes dlg-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* No translate: the file scales from the centre and does not lift. A 6px drop would fight the scale,
+   and on a panel this small the two together read as a wobble. */
+@keyframes dlg-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
