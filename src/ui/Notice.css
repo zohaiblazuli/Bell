@@ -1,0 +1,48 @@
+/* Notice — rationale and spec citations live in Notice.tsx.
+ *
+ * `.bell-notice` because `app.css` still holds `.err`, whose five call sites this replaces, and
+ * because the design system's own `Update Notice` (`440:115`) has first claim on `.notice`
+ * (components-data.md §5 writes that CSS out). The variant is a modifier class rather than
+ * `data-tone`, which means Day/Night everywhere else in this app. */
+
+.bell-notice {
+  display: flex;
+  /* Not `center`, which is the 06 summary row's counterAxisAlignItems: these strings are error text
+     that wraps — an index path, a failed sitting — and the glyph belongs on the first line. A 16px
+     glyph against Body/Default's ~15.5px line box centres on that line by itself, so no nudge. */
+  align-items: flex-start;
+  gap: 12px; /* summary row `495:8167` itemSpacing 12 */
+  padding: 12px 14px; /* the Stat tile's measured inset, `24:5` */
+  border: 1px solid var(--danger); /* hero `495:8446`: 1px, INSIDE, at full strength */
+  border-radius: var(--r-card); /* 13 — it is a card */
+  background: var(--danger-soft); /* the tinted wash; the alpha is inside the token */
+  color: var(--ink);
+  /* No shadow and no outer margin. Cards in the content region carry neither (screen-dashboard
+     TRAP 21), and the gap to whatever sits above is the parent's itemSpacing — `.err` baked in a
+     `margin-top: 16px` that two call sites then had to override inline. */
+}
+
+.bell-notice--info {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.bell-notice__glyph {
+  width: 16px; /* the file's row-glyph size — onboarding TRAP 12 */
+  height: 16px;
+  flex: none;
+  /* The glyph carries the tone, the text stays `--ink`. `warn`'s dot is `fill="currentColor"`
+     (icons.md §parity 3), so this `color` reaches it as well as the triangle's stroke. */
+  color: var(--danger);
+}
+
+.bell-notice--info .bell-notice__glyph {
+  color: var(--accent);
+}
+
+.bell-notice__text {
+  min-width: 0;
+  /* These strings are machine text — index paths, pdf.js failures — and can arrive with no break
+     opportunity in them at all. Breaking mid-token beats widening the card out of its column. */
+  overflow-wrap: anywhere;
+}
