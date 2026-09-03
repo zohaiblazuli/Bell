@@ -1,0 +1,105 @@
+/* Button — `design/specs/components-controls.md` §1, set `22:47`. Supersedes `.btn`,
+   `.btn:hover`, `.btn svg`, `.btn.on`, `.btn.primary`, `.btn.primary:hover` and `.btn:disabled`
+   in app.css. Every rule is element-qualified with `button` for the same reason Switch.css is:
+   index.css's global `:focus-visible` sets `border-radius: 6px` and loads after ui.css, so a bare
+   `.bell-btn` ties on specificity and loses — a 10px button would square off while focused. */
+
+button.bell-btn {
+  /* Secondary/Default is the base rule; Toggle and Primary are overrides on top of it. */
+  display: inline-flex; /* HUG width. A block-level flex box would fill a non-flex parent. */
+  align-items: center; /* counter CENTER */
+  justify-content: flex-start; /* primary MIN — only shows if a call site widens the button */
+  gap: 8px; /* itemSpacing 8 */
+  /* Stroke alignment is INSIDE on every control in the set (§0), so the 1px border must not grow
+     the 34. Tailwind's preflight already sets this globally; declared here so the box is right
+     even if this component is read or reused on its own. */
+  box-sizing: border-box;
+  height: 34px; /* FIXED — 123 x 34 at the default label. Primary is 38, see below. */
+  padding: 0 14px; /* 0/14/0/14. Vertical padding is 0 because the height is pinned, not hugged. */
+  border: 1px solid var(--hair);
+  border-radius: var(--r-btn); /* bound to radius/button = 10 */
+  background: var(--glass-strong);
+  color: var(--ink); /* the label and the icon's currentColor both come off this */
+  white-space: nowrap; /* the width hugs the label, so wrapping is never the intent */
+  flex: none; /* an action row must not squeeze a hug-width control */
+  overflow: hidden; /* clipsContent = true on every control in the set (§0) */
+}
+
+/* Secondary Hover and Toggle Hover are the same move: a 1px `--accent` edge, nothing else.
+   The guard is not decorative — Chrome still matches `:hover` on a disabled <button>. */
+button.bell-btn:not(.bell-btn--primary, :disabled, [aria-disabled='true']):hover {
+  border-color: var(--accent);
+}
+
+/* Style=Toggle. Figma has no "toggle off" face: Secondary is it, which is exactly why the two
+   share 123 x 34 — flipping the state cannot move the box. */
+button.bell-btn--on {
+  background: var(--accent-soft);
+  /* Figma records stroke `none` here. Kept as a transparent 1px instead of removing the border,
+     so the label does not jog 1px sideways as the state flips. */
+  border-color: transparent;
+  color: var(--accent);
+}
+
+button.bell-btn--primary {
+  /* 38, not 34. The set is deliberately not uniform — the spec notes the action rows centre on
+     the cross axis precisely because of it. Do not normalise. */
+  height: 38px;
+  padding: 0 18px; /* 0/18/0/18 → 131 total at the default label */
+  border-color: transparent; /* Figma: stroke none */
+  background: var(--grad-btn); /* paint style `Blue/Primary Button 135` = 135deg cap-lo → cap-mid */
+  color: var(--white); /* bound to Primitives/white, not to paper — the roles are unrelated */
+  /* DS-A (§9): drop shadow offset (0, 10), blur 24, spread −14. Figma's colour is `#6F76F2`,
+     stale from the pre-reblue iris palette (§10 trap 9), inline and unbound — so it neither
+     retones nor follows the brand. It is also not a token, and this file ships tokens only.
+     app.css's `--bell-cap-mid` at 90% is the same geometry in the current blue; keeping it means
+     the port changes no pixels here. */
+  box-shadow: 0 10px 24px -14px color-mix(in srgb, var(--bell-cap-mid) 90%, transparent);
+  position: relative; /* containing block for the hover veil */
+  isolation: isolate; /* keeps that veil's z-index: -1 inside the button */
+}
+
+/* Figma records no Primary hover at all: Default, Hover and Disabled carry identical paint
+   (§10 trap 8). A primary action with no feedback reads as dead on a desktop, so we keep one and
+   write down which: a 7% `--white` specular veil, animated on opacity because the house rule
+   animates opacity and transform only. app.css's `filter: brightness(1.06)` is the same idea but
+   also lifts the shadow and forces a compositing layer. */
+button.bell-btn--primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1; /* above the gradient, below the label and glyph */
+  border-radius: inherit;
+  background: var(--white);
+  opacity: 0;
+  pointer-events: none;
+}
+
+button.bell-btn--primary:not(:disabled, [aria-disabled='true']):hover::after {
+  opacity: 0.07;
+}
+
+/* §0 / §10 trap 10: Figma dims the whole node rather than recolouring, so the border and the
+   Primary glow dim with it. Do not build a disabled palette. */
+button.bell-btn:disabled,
+button.bell-btn[aria-disabled='true'] {
+  opacity: 0.55;
+}
+
+/* 16 x 16 (§1). Do NOT set stroke-width: the sprite symbols are authored in a 24-unit viewBox at
+   1.75, so a 16px render already lands on the spec's 1.16667 device stroke (1.75 × 16/24).
+   Writing 1.16667 here would thin it to 0.78. */
+.bell-btn svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  button.bell-btn {
+    transition: background-color 0.16s, border-color 0.16s, color 0.16s;
+  }
+  button.bell-btn--primary::after {
+    transition: opacity 0.16s;
+  }
+}

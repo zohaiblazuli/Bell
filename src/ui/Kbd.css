@@ -1,0 +1,30 @@
+/* Kbd — `design/specs/components-controls.md` §6, node `13:4`.
+ *
+ * Keeps the `.kbd` class from `src/styles/app.css`, whose block this supersedes: that block is
+ * already the spec to the pixel, and the rules that position a cap key off it — `.search .kbd
+ * { margin-left: auto }`, which pushes the cap to the right of the search field — belong to the
+ * field, not to the cap. `ui.css` is imported after `app.css`, so this block wins while both live.
+ *
+ * Type comes from `.t-mono-small` in the markup (Geist Mono Regular 11), so it is not restated
+ * here; that class also outranks Tailwind preflight's `kbd { font-family: … }`.
+ */
+
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  flex: none;
+  white-space: nowrap;
+  /* 2 t/b, 6 l/r. 19 x 18 for `K` and 52 x 18 for `Ctrl K` are hug results, not values to pin. */
+  padding: 2px 6px;
+  /* 6 raw px, deliberately not --r-btn 10 — spec TRAP 11 lists this as one of the literals. */
+  border-radius: 6px;
+  background: var(--glass-strong);
+  /* Figma's stroke is INSIDE, and the spec's `width = 12 + textWidth` leaves the hairline no layout
+     space at all: with a real border `Ctrl K` would measure 54 x 20 in a search field the screen
+     spec pins at 52 x 18. Hence an inset ring, plus `border: 0` to cancel app.css's border while
+     both files are live. */
+  border: 0;
+  box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--ink-3);
+}

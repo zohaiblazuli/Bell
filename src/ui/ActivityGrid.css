@@ -1,0 +1,129 @@
+/* ActivityGrid — the year activity graph. Geometry lives in the component's viewBox; this file is
+ * only paint, type and the legend's flow.
+ *
+ * Every cell carries the same 0.5px `--hair-2` hairline, **including level 0**. That is what makes
+ * the graph read as a lattice of slots waiting to be filled rather than a scatter of dots — remove
+ * it and the empty half of the year disappears.
+ *
+ * Level 0 is neutral and OPAQUE on purpose: a desaturated brand tint reads as "a little activity",
+ * a grey reads as "an empty slot", and on a translucent card a transparent cell would let the
+ * background modulate "empty" across the width of the grid.
+ */
+
+.ag {
+  display: flex;
+  flex-direction: column;
+  /* `graph` is VERTICAL itemSpacing 4; the svg carries the first three rows internally, so this
+     gap only separates the legend. */
+  gap: 4px;
+}
+
+.ag-svg {
+  display: block;
+  /* The grid is a fixed 714 x 113 picture, not a fluid one — it is the only genuinely fixed-width
+     thing on the dashboard, and 53 columns at a 13px pitch is what decides the content width. */
+  flex: none;
+  overflow: visible;
+}
+
+.ag-svg:focus-visible {
+  outline: none;
+}
+
+/* Month and day labels are Body/Meta on --ink-3. Set here rather than via a .t-* class because SVG
+   <text> does not inherit the ramp's class-based rules through the viewBox in every engine. */
+.ag-month,
+.ag-day {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 400;
+  fill: var(--ink-3);
+  stroke: none;
+}
+
+.ag-cell {
+  stroke: var(--hair-2);
+  stroke-width: 0.5;
+}
+
+.ag-l0 {
+  fill: var(--activity-0);
+}
+.ag-l1 {
+  fill: var(--activity-1);
+}
+.ag-l2 {
+  fill: var(--activity-2);
+}
+.ag-l3 {
+  fill: var(--activity-3);
+}
+.ag-l4 {
+  fill: var(--activity-4);
+}
+
+/* The keyboard cursor. It sits out in the 3px gutter so it never covers the colour it points at,
+   and it is the grid's only focus affordance — there is one tab stop, not 368. */
+.ag-cursor {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+.ag-band {
+  fill: var(--accent);
+  /* 55% — measured. Enough to read as a marked window, not enough to compete with the cells. */
+  fill-opacity: 0.55;
+  stroke: none;
+}
+
+.ag-legend {
+  display: flex;
+  align-items: center;
+  /* gap comes from the component: 4px, not the grid's 3, which is what makes the strip 66 wide. */
+}
+
+.ag-legend-cap {
+  color: var(--ink-3);
+}
+
+/* The legend swatches are 10x10 like the cells, and carry the same hairline so the ramp is read in
+   the same material as the graph. */
+.ag-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 0.5px var(--hair-2);
+}
+.ag-swatch.ag-l0 {
+  background: var(--activity-0);
+}
+.ag-swatch.ag-l1 {
+  background: var(--activity-1);
+}
+.ag-swatch.ag-l2 {
+  background: var(--activity-2);
+}
+.ag-swatch.ag-l3 {
+  background: var(--activity-3);
+}
+.ag-swatch.ag-l4 {
+  background: var(--activity-4);
+}
+
+/* The swatches are <span>s, so the fill rules above must not be shadowed by the <rect> ones. */
+.ag-swatch {
+  fill: none;
+}
+
+/* Announces the focused day without putting a visible caption on the card. */
+.ag-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

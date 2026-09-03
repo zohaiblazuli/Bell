@@ -1,0 +1,39 @@
+/* Rail — rationale and spec citations live in Rail.tsx. `app.css`'s `.seg` is the segmented
+   control's button, so these segments are named well clear of it. */
+
+.bell-rail {
+  display: flex;
+  align-items: center; /* counterAxisAlignItems CENTER */
+  /* 13, and it comes from the 11px Body/Meta line box rather than from the 6px segments (§3.1). A
+     min rather than a height, because that line box is whatever the resolved face makes it. */
+  min-height: 13px;
+}
+
+.bell-rail__segs {
+  display: flex;
+  gap: 6px; /* `rail` itemSpacing 6 */
+}
+
+.bell-rail__seg {
+  width: 44px;
+  height: 6px;
+  /* A raw 3 with no token behind it (TRAP 9). The smallest radius token is `--r-chip` at 9, which
+     would round a 6px bar into a lozenge. */
+  border-radius: 3px;
+  background: var(--hair);
+  flex: none;
+}
+
+.bell-rail__seg[data-lit] {
+  background: var(--accent);
+}
+
+.bell-rail__step {
+  /* Figma's `strut` is a 1px-tall FILL frame with no fill; in CSS that is an auto margin and no
+     element at all. The row's own itemSpacing is 0 for the same reason. */
+  margin-left: auto;
+  color: var(--ink-3);
+  /* The panel is 1040 wide in the design and the label cannot wrap there. This keeps the 13px row
+     from silently becoming two lines anywhere narrower. */
+  white-space: nowrap;
+}

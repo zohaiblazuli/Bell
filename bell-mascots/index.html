@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bell Mascot Concepts</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: #0c0a1a;
+      color: #e8e4f0;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Ambient background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background: radial-gradient(ellipse at 30% 20%, rgba(120, 60, 200, 0.08) 0%, transparent 50%),
+                  radial-gradient(ellipse at 70% 80%, rgba(200, 100, 60, 0.06) 0%, transparent 50%);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    header {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 60px 20px 20px;
+    }
+
+    header h1 {
+      font-size: 3rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #c084fc, #f59e0b, #f97316);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -1px;
+    }
+
+    header p {
+      font-size: 1.1rem;
+      color: #9a8fad;
+      margin-top: 8px;
+    }
+
+    .grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 32px;
+      max-width: 1500px;
+      margin: 40px auto;
+      padding: 0 32px 80px;
+    }
+
+    .card {
+      background: linear-gradient(145deg, rgba(30, 25, 50, 0.9), rgba(20, 16, 40, 0.95));
+      border: 1px solid rgba(140, 100, 220, 0.12);
+      border-radius: 24px;
+      padding: 40px 32px 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.3s, box-shadow 0.4s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 24px;
+      background: radial-gradient(circle at 50% 0%, rgba(140, 80, 220, 0.06) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(140, 100, 220, 0.3);
+      box-shadow: 0 20px 60px rgba(100, 50, 180, 0.12);
+    }
+
+    .card-number {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: rgba(160, 130, 220, 0.4);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    .mascot-container {
+      width: 220px;
+      height: 220px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+
+    .card-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: #e8e0f4;
+    }
+
+    .card-style {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #c084fc;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 12px;
+    }
+
+    .card-desc {
+      font-size: 0.9rem;
+      color: #8a7fa0;
+      text-align: center;
+      line-height: 1.5;
+      max-width: 280px;
+    }
+
+    /* ============================================
+       MASCOT 1: MINIMAL BLOB
+       ============================================ */
+    @keyframes blob-float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-8px); }
+    }
+    @keyframes blob-blink {
+      0%, 92%, 100% { ry: 6; }
+      95% { ry: 1; }
+    }
+    @keyframes hat-bell-swing {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(5deg); }
+      75% { transform: rotate(-5deg); }
+    }
+
+    .mascot-1 {
+      animation: blob-float 3s ease-in-out infinite;
+    }
+    .mascot-1 .eye-left, .mascot-1 .eye-right {
+      animation: blob-blink 4s ease-in-out infinite;
+    }
+    .mascot-1 .eye-right {
+      animation-delay: 0.15s;
+    }
+
+    /* ============================================
+       MASCOT 2: KAWAII FULL BODY
+       ============================================ */
+    @keyframes kawaii-bounce {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      30% { transform: translateY(-6px) rotate(-1deg); }
+      60% { transform: translateY(-3px) rotate(1deg); }
+    }
+    @keyframes kawaii-wave {
+      0%, 60%, 100% { transform: rotate(0deg); }
+      10% { transform: rotate(15deg); }
+      20% { transform: rotate(-10deg); }
+      30% { transform: rotate(12deg); }
+      40% { transform: rotate(-5deg); }
+    }
+    @keyframes kawaii-blink {
+      0%, 90%, 100% { transform: scaleY(1); }
+      94% { transform: scaleY(0.1); }
+    }
+    @keyframes blush-pulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 0.8; }
+    }
+
+    .mascot-2 {
+      animation: kawaii-bounce 2.5s ease-in-out infinite;
+    }
+    .mascot-2 .bell-hand {
+      transform-origin: 145px 95px;
+      animation: kawaii-wave 3s ease-in-out infinite;
+    }
+    .mascot-2 .k-eye {
+      animation: kawaii-blink 3.5s ease-in-out infinite;
+    }
+    .mascot-2 .blush {
+      animation: blush-pulse 2s ease-in-out infinite;
+    }
+
+    /* ============================================
+       MASCOT 3: FLAT GEOMETRIC
+       ============================================ */
+    @keyframes geo-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+    @keyframes geo-bell-bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+    @keyframes geo-smile {
+      0%, 80%, 100% { d: path("M 82 128 Q 100 140 118 128"); }
+      90% { d: path("M 82 128 Q 100 145 118 128"); }
+    }
+
+    .mascot-3 {
+      animation: geo-pulse 4s ease-in-out infinite;
+    }
+    .mascot-3 .geo-bell-left {
+      animation: geo-bell-bounce 1.8s ease-in-out infinite;
+    }
+    .mascot-3 .geo-bell-right {
+      animation: geo-bell-bounce 1.8s ease-in-out infinite 0.3s;
+    }
+    .mascot-3 .geo-bell-top {
+      animation: geo-bell-bounce 1.8s ease-in-out infinite 0.6s;
+    }
+
+    /* ============================================
+       MASCOT 4: ABSTRACT BELL-JESTER HYBRID
+       ============================================ */
+    @keyframes bell-sway {
+      0%, 100% { transform: rotate(-8deg); }
+      50% { transform: rotate(-2deg); }
+    }
+    @keyframes bell-ring {
+      0%, 85%, 100% { transform-origin: 100px 50px; transform: rotate(0deg); }
+      88% { transform: rotate(4deg); }
+      91% { transform: rotate(-4deg); }
+      94% { transform: rotate(3deg); }
+      97% { transform: rotate(-2deg); }
+    }
+    @keyframes clapper-swing {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(3px); }
+      75% { transform: translateX(-3px); }
+    }
+    @keyframes wink {
+      0%, 88%, 100% { rx: 5; ry: 5; }
+      92% { rx: 5; ry: 1.5; }
+    }
+
+    .mascot-4 {
+      animation: bell-sway 4s ease-in-out infinite;
+    }
+    .mascot-4 .clapper {
+      animation: clapper-swing 2s ease-in-out infinite;
+    }
+    .mascot-4 .wink-eye {
+      animation: wink 5s ease-in-out infinite;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      header h1 { font-size: 2rem; }
+      .grid { grid-template-columns: 1fr; gap: 24px; padding: 0 16px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🔔 Bell Mascot Concepts</h1>
+    <p>Four coded directions for your jester mascot — hover to interact</p>
+  </header>
+
+  <div class="grid">
+
+    <!-- ======== CARD 1: MINIMAL BLOB ======== -->
+    <div class="card">
+      <span class="card-number">Concept 01</span>
+      <div class="mascot-container">
+        <svg class="mascot-1" viewBox="0 0 200 240" width="200" height="240" xmlns="http://www.w3.org/2000/svg">
+          <!-- Body blob -->
+          <ellipse cx="100" cy="160" rx="55" ry="58" fill="#9b7bcb"/>
+          <ellipse cx="100" cy="155" rx="50" ry="52" fill="#b99bde"/>
+
+          <!-- Little arms -->
+          <ellipse cx="55" cy="170" rx="14" ry="10" fill="#9b7bcb" transform="rotate(-15 55 170)"/>
+          <ellipse cx="145" cy="170" rx="14" ry="10" fill="#9b7bcb" transform="rotate(15 145 170)"/>
+
+          <!-- Jester hat -->
+          <!-- Left flap -->
+          <path d="M 55 115 Q 30 70 20 50 Q 25 48 30 52 Q 45 80 70 110 Z" fill="#f0b429"/>
+          <circle cx="22" cy="48" r="6" fill="#f0b429"/>
+          <!-- Center flap -->
+          <path d="M 80 108 Q 90 40 100 20 Q 110 40 120 108 Z" fill="#f0b429"/>
+          <circle cx="100" cy="18" r="7" fill="#f0b429"/>
+          <!-- Right flap -->
+          <path d="M 145 115 Q 170 70 180 50 Q 175 48 170 52 Q 155 80 130 110 Z" fill="#f0b429"/>
+          <circle cx="178" cy="48" r="6" fill="#f0b429"/>
+          <!-- Hat band -->
+          <path d="M 55 118 Q 100 100 145 118 Q 100 125 55 118 Z" fill="#7c5cad"/>
+
+          <!-- Face -->
+          <ellipse class="eye-left" cx="82" cy="150" rx="6" ry="6" fill="#3d2a5c"/>
+          <ellipse class="eye-right" cx="118" cy="150" rx="6" ry="6" fill="#3d2a5c"/>
+          <!-- Smile -->
+          <path d="M 87 166 Q 100 177 113 166" fill="none" stroke="#3d2a5c" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="card-style">Minimal Blob</div>
+      <div class="card-title">Friendly & Clean</div>
+      <div class="card-desc">Claude-style soft blob body with a jester hat. Maximum simplicity, works at any size.</div>
+    </div>
+
+    <!-- ======== CARD 2: KAWAII FULL BODY ======== -->
+    <div class="card">
+      <span class="card-number">Concept 02</span>
+      <div class="mascot-container">
+        <svg class="mascot-2" viewBox="0 0 200 230" width="200" height="230" xmlns="http://www.w3.org/2000/svg">
+          <!-- Legs -->
+          <rect x="68" y="180" width="22" height="28" rx="8" fill="#6b3fa0"/>
+          <rect x="110" y="180" width="22" height="28" rx="8" fill="#6b3fa0"/>
+          <!-- Shoes -->
+          <ellipse cx="79" cy="210" rx="16" ry="7" fill="#562d8a"/>
+          <ellipse cx="121" cy="210" rx="16" ry="7" fill="#562d8a"/>
+
+          <!-- Body -->
+          <ellipse cx="100" cy="148" rx="48" ry="50" fill="#7c4dbd"/>
+          <!-- Outfit split -->
+          <path d="M 100 98 L 100 198" stroke="#6b3fa0" stroke-width="1.5" opacity="0.5"/>
+          <!-- Belt -->
+          <rect x="60" y="158" width="80" height="8" rx="3" fill="#f0b429"/>
+          <rect x="94" y="155" width="12" height="14" rx="3" fill="#d4960f"/>
+
+          <!-- Buttons -->
+          <circle cx="92" cy="130" r="3" fill="#f0b429"/>
+          <circle cx="92" cy="145" r="3" fill="#f0b429"/>
+
+          <!-- Collar ruffles -->
+          <path d="M 55 105 Q 60 95 68 105 Q 74 95 82 105 Q 88 95 95 105 Q 100 95 108 105 Q 114 95 122 105 Q 128 95 135 105 Q 140 95 145 105" fill="none" stroke="#e8d5f5" stroke-width="3" stroke-linecap="round"/>
+          <path d="M 58 108 Q 63 100 70 108 Q 76 100 83 108 Q 89 100 96 108 Q 101 100 109 108 Q 115 100 123 108 Q 129 100 136 108 Q 141 100 142 108" fill="none" stroke="#d4b8e8" stroke-width="2.5" stroke-linecap="round"/>
+
+          <!-- Left arm (mitten) -->
+          <path d="M 52 130 Q 38 140 42 155" stroke="#7c4dbd" stroke-width="10" stroke-linecap="round" fill="none"/>
+          <circle cx="42" cy="157" r="8" fill="#6b3fa0"/>
+
+          <!-- Right arm + bell (animated group) -->
+          <g class="bell-hand">
+            <path d="M 148 130 Q 162 120 158 105" stroke="#7c4dbd" stroke-width="10" stroke-linecap="round" fill="none"/>
+            <circle cx="158" cy="103" r="8" fill="#6b3fa0"/>
+            <!-- Handheld bell -->
+            <rect x="154" y="78" width="8" height="10" rx="2" fill="#8b6914"/>
+            <path d="M 150 88 Q 148 95 150 100 L 166 100 Q 168 95 166 88 Z" fill="#f0b429"/>
+            <circle cx="158" cy="102" r="2.5" fill="#8b6914"/>
+          </g>
+
+          <!-- Head -->
+          <circle cx="100" cy="72" r="30" fill="#fde8d0"/>
+
+          <!-- Eyes -->
+          <g class="k-eye">
+            <ellipse cx="88" cy="70" rx="5" ry="6" fill="#2d1a4e"/>
+            <circle cx="86" cy="68" r="2" fill="white" opacity="0.7"/>
+          </g>
+          <g class="k-eye" style="animation-delay: 0.1s">
+            <ellipse cx="112" cy="70" rx="5" ry="6" fill="#2d1a4e"/>
+            <circle cx="110" cy="68" r="2" fill="white" opacity="0.7"/>
+          </g>
+
+          <!-- Mouth -->
+          <path d="M 92 80 Q 100 90 108 80" fill="#c0395e" stroke="#9e2d4d" stroke-width="0.5"/>
+          <path d="M 94 80 Q 100 84 106 80" fill="none" stroke="white" stroke-width="0.5" opacity="0.3"/>
+
+          <!-- Blush -->
+          <ellipse class="blush" cx="78" cy="78" rx="7" ry="4" fill="#f0a0b0" opacity="0.5"/>
+          <ellipse class="blush" cx="122" cy="78" rx="7" ry="4" fill="#f0a0b0" opacity="0.5" style="animation-delay: 0.5s"/>
+
+          <!-- Eyebrows -->
+          <path d="M 82 62 Q 88 58 93 62" fill="none" stroke="#5c3d1a" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M 107 62 Q 112 58 118 62" fill="none" stroke="#5c3d1a" stroke-width="1.5" stroke-linecap="round"/>
+
+          <!-- Jester hat -->
+          <!-- Hat band -->
+          <path d="M 68 55 Q 100 48 132 55 Q 100 58 68 55 Z" fill="#f0b429"/>
+
+          <!-- Left point -->
+          <path d="M 72 55 Q 50 20 38 8" fill="none" stroke="#9b3dbf" stroke-width="14" stroke-linecap="round"/>
+          <path d="M 72 55 Q 50 20 38 8" fill="none" stroke="#c850c0" stroke-width="10" stroke-linecap="round"/>
+          <circle cx="36" cy="6" r="5" fill="#f0b429"/>
+
+          <!-- Right point -->
+          <path d="M 128 55 Q 150 20 162 8" fill="none" stroke="#9b3dbf" stroke-width="14" stroke-linecap="round"/>
+          <path d="M 128 55 Q 150 20 162 8" fill="none" stroke="#c850c0" stroke-width="10" stroke-linecap="round"/>
+          <circle cx="164" cy="6" r="5" fill="#f0b429"/>
+
+          <!-- Stars on hat -->
+          <text x="55" y="36" font-size="6" fill="#f0b429" opacity="0.7">★</text>
+          <text x="140" y="36" font-size="6" fill="#f0b429" opacity="0.7">★</text>
+        </svg>
+      </div>
+      <div class="card-style">Kawaii Full-Body</div>
+      <div class="card-title">Playful & Expressive</div>
+      <div class="card-desc">Chibi jester with full outfit, ruffled collar, and a bell in hand. Maximum personality.</div>
+    </div>
+
+    <!-- ======== CARD 3: FLAT GEOMETRIC ======== -->
+    <div class="card">
+      <span class="card-number">Concept 03</span>
+      <div class="mascot-container">
+        <svg class="mascot-3" viewBox="0 0 200 200" width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+          <!-- Face circle (outline style) -->
+          <circle cx="100" cy="118" r="40" fill="none" stroke="#2d1060" stroke-width="7"/>
+          <circle cx="100" cy="118" r="36" fill="white"/>
+
+          <!-- Eyes (dots) -->
+          <circle cx="87" cy="113" r="5" fill="#2d1060"/>
+          <circle cx="113" cy="113" r="5" fill="#2d1060"/>
+
+          <!-- Smile -->
+          <path d="M 85 128 Q 100 140 115 128" fill="none" stroke="#2d1060" stroke-width="3" stroke-linecap="round"/>
+
+          <!-- Hat - Left flap -->
+          <g class="geo-bell-left">
+            <path d="M 68 95 L 30 55 Q 26 50 32 50 L 55 68 Z" fill="#f0b429"/>
+            <path d="M 68 95 L 42 62 Q 40 58 44 58 L 60 72 Z" fill="#2d1060"/>
+            <circle cx="30" cy="50" r="7" fill="#f0b429"/>
+          </g>
+
+          <!-- Hat - Right flap -->
+          <g class="geo-bell-right">
+            <path d="M 132 95 L 170 55 Q 174 50 168 50 L 145 68 Z" fill="#f0b429"/>
+            <path d="M 132 95 L 158 62 Q 160 58 156 58 L 140 72 Z" fill="#2d1060"/>
+            <circle cx="170" cy="50" r="7" fill="#2d1060"/>
+          </g>
+
+          <!-- Hat - Center point -->
+          <g class="geo-bell-top">
+            <path d="M 85 88 L 100 22 L 115 88 Z" fill="#2d1060"/>
+            <path d="M 92 88 L 100 35 L 108 88 Z" fill="#f0b429" opacity="0.4"/>
+            <circle cx="100" cy="20" r="7" fill="#f0b429"/>
+          </g>
+        </svg>
+      </div>
+      <div class="card-style">Flat Geometric</div>
+      <div class="card-title">Icon-Ready</div>
+      <div class="card-desc">Bold two-tone geometric jester face. Works perfectly as a favicon or app icon.</div>
+    </div>
+
+    <!-- ======== CARD 4: ABSTRACT BELL-JESTER HYBRID ======== -->
+    <div class="card">
+      <span class="card-number">Concept 04</span>
+      <div class="mascot-container">
+        <svg class="mascot-4" viewBox="0 0 200 220" width="200" height="220" xmlns="http://www.w3.org/2000/svg">
+          <!-- Bell body (the body IS a bell shape) -->
+          <path d="M 60 100 Q 55 60 70 50 L 100 45 L 130 50 Q 145 60 140 100 Q 145 145 150 155 Q 155 165 150 168 L 50 168 Q 45 165 50 155 Q 55 145 60 100 Z"
+                fill="#5b2d8e"/>
+
+          <!-- Inner bell highlight -->
+          <path d="M 72 100 Q 68 68 78 58 L 95 52 Q 70 80 72 120 Q 70 148 62 160 L 56 165 Q 52 158 58 145 Q 62 130 72 100 Z"
+                fill="#e8673a" opacity="0.85"/>
+
+          <!-- Clapper -->
+          <g class="clapper">
+            <line x1="100" y1="165" x2="100" y2="185" stroke="#5b2d8e" stroke-width="3"/>
+            <circle cx="100" cy="188" r="6" fill="#5b2d8e"/>
+          </g>
+
+          <!-- Face area (lighter circle) -->
+          <circle cx="100" cy="108" r="28" fill="white"/>
+
+          <!-- Eyes -->
+          <circle cx="90" cy="104" r="4.5" fill="#2d1060"/>
+          <ellipse class="wink-eye" cx="112" cy="104" rx="5" ry="5" fill="#2d1060"/>
+
+          <!-- Smirk -->
+          <path d="M 88 118 Q 98 126 115 118" fill="none" stroke="#2d1060" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Smirk dimple -->
+          <path d="M 115 117 Q 118 115 117 112" fill="none" stroke="#2d1060" stroke-width="1.5" stroke-linecap="round"/>
+
+          <!-- Jester hat points coming from top of bell -->
+          <!-- Left point -->
+          <path d="M 75 52 Q 50 25 35 15" fill="none" stroke="#5b2d8e" stroke-width="10" stroke-linecap="round"/>
+          <path d="M 75 52 Q 55 30 40 20" fill="none" stroke="#e8673a" stroke-width="6" stroke-linecap="round"/>
+          <circle cx="34" cy="13" r="6" fill="#f0b429"/>
+
+          <!-- Right point -->
+          <path d="M 125 52 Q 150 25 165 15" fill="none" stroke="#5b2d8e" stroke-width="10" stroke-linecap="round"/>
+          <path d="M 125 52 Q 145 30 160 20" fill="none" stroke="#e8673a" stroke-width="6" stroke-linecap="round"/>
+          <circle cx="166" cy="13" r="6" fill="#f0b429"/>
+
+          <!-- Tiny detail lines for personality -->
+          <path d="M 78 95 Q 82 92 86 95" fill="none" stroke="#2d1060" stroke-width="1" opacity="0.4"/>
+        </svg>
+      </div>
+      <div class="card-style">Bell-Jester Hybrid</div>
+      <div class="card-title">Clever & Memorable</div>
+      <div class="card-desc">The body IS a bell with jester hat elements. Double meaning in one iconic silhouette.</div>
+    </div>
+
+  </div>
+
+</body>
+</html>

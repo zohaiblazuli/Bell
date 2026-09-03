@@ -1,0 +1,130 @@
+/* The screen background stack, ported from the Figma compositions.
+ *
+ * Figma builds this from ~50 nodes: two oversized blurred ambient ellipses, then `clouds` —
+ * a `sky` gradient rect plus five base/highlight frame pairs holding 46 blurred lobes — then,
+ * on Day, a `blue_orb` raster at DARKEN, or on Night a `veil` and a `page recess` scrim.
+ *
+ * Reproducing 50 blurred nodes under the glass chrome's backdrop-filter would be the wrong
+ * trade, so `clouds` and the orb ship as WebP exported straight from the file at 2x. They cost
+ * 23 / 35 / 22 KB — diffuse blurred art compresses to almost nothing and upscales invisibly.
+ * The blooms stay CSS so they can be retuned without re-exporting, and the two scrims stay CSS
+ * because the recess has to track the sidebar and topbar, i.e. the layout.
+ *
+ * Night is a BRIGHT stack knocked down by translucent layers, not a dark base. If a change
+ * makes it read near-black, an opacity has been flattened somewhere.
+ */
+
+.bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  /* Contains the orb's DARKEN blend, so it cannot reach past .app into the page. */
+  isolation: isolate;
+}
+
+.bg > * {
+  position: absolute;
+  inset: 0;
+}
+
+/* The two ambient blooms. Geometry is Figma's: ambient-a is 1584x946 centred at (105.6, 34.4),
+   ambient-b 1452x946 centred on the bottom-right corner. In Figma both are opaque and get their
+   translucency from a 160px layer blur compositing over the ground; here the alpha is explicit,
+   which is what --bg-bloom-* are for. */
+.bg-ambient {
+  --bg-bloom-a: 58%;
+  --bg-bloom-b: 46%;
+  background:
+    radial-gradient(
+      60% 55% at 8% 4%,
+      color-mix(in srgb, var(--ambient-a) var(--bg-bloom-a), transparent),
+      transparent 74%
+    ),
+    radial-gradient(
+      55% 55% at 100% 100%,
+      color-mix(in srgb, var(--ambient-b) var(--bg-bloom-b), transparent),
+      transparent 76%
+    );
+}
+
+.app[data-tone='night'] .bg-ambient {
+  --bg-bloom-a: 72%;
+  --bg-bloom-b: 58%;
+}
+
+/* `clouds`, exported per tone. Night's copy carries its own `pattern 1` HARD_LIGHT raster and
+   the dimmer 0.26 highlights; Day's carries the brighter 0.52 ones. Same geometry in both.
+
+   Both layers are always present and their opacities trade, because `background-image` cannot be
+   transitioned and a hard cut on the largest surface on screen is exactly what you notice. Timings
+   come from `Motion — Tone` `171:8` (motion spec §6.3): the incoming ground leads at 0.28s, and the
+   ordering matters more than the numbers — ground and chrome first, content gated behind them, so the
+   grid never floats without a page plane under it. */
+.bg-clouds {
+  background-size: cover;
+  background-position: center;
+  transition: opacity 0.28s ease-out;
+}
+.bg-clouds-day {
+  background-image: url('../assets/bg/bg-clouds-day.webp');
+}
+.bg-clouds-night {
+  background-image: url('../assets/bg/bg-clouds-night.webp');
+  opacity: 0;
+}
+.app[data-tone='night'] .bg-clouds-day {
+  opacity: 0;
+}
+.app[data-tone='night'] .bg-clouds-night {
+  opacity: 1;
+}
+
+/* The blooms scale as well as brighten — `ambient-a` from 1.12 and `ambient-b` from 1.15 in the file.
+   Here there is one layer rather than two stacked screens, so the scale is a settle on the tone that
+   arrives rather than a cross-fade, over the file's own 0.75s. */
+.bg-ambient {
+  transition: opacity 0.5s ease-out, transform 0.75s ease-out;
+}
+
+/* Day's orb fades rather than being dropped: `display: none` cannot transition, and on the way back
+   to Day it would pop in at full strength while everything else was still crossing. */
+.bg-orb,
+.bg-veil {
+  transition: opacity 0.3s ease-out;
+}
+
+/* Day only. Node opacity 0.46 with a DARKEN blend — raising it also takes brightness down,
+   which is what stops Day reading too bright. */
+.bg-orb {
+  background-image: url('../assets/bg/bg-orb-day.webp');
+  background-size: cover;
+  background-position: center;
+  opacity: 0.46;
+  mix-blend-mode: darken;
+}
+
+.app[data-tone='night'] .bg-orb {
+  opacity: 0;
+}
+
+/* Night only: the full-bleed veil. `--ground-veil` is transparent in Day, so the layer is inert
+   there rather than conditionally rendered. */
+.bg-veil {
+  background: var(--ground-veil);
+  opacity: 0.18;
+}
+
+/* `page recess` — the content region's own scrim, one step deeper than the veil. Attached to
+   .main rather than absolutely placed at (238, 56, 1082, 804) as Figma has it, so it follows
+   the sidebar and topbar instead of desyncing from them. */
+.main::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--ground-veil);
+  opacity: 0.24;
+}

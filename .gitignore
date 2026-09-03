@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# generated app-icon source (npm run icon)
+.icon-src.png
+
+# window captures for design comparison
+.shots/

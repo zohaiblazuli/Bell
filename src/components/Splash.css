@@ -1,0 +1,548 @@
+/* Splash — the startup sequence. Composition and timelines: `design/specs/update-and-startup.md`
+   PART B (`startup` `391:3`, 2000 ms; `handoff` `398:3`, 900 ms). Percentages are the spec's own
+   conversions — startup `% = ms / 20`, handoff `% = ms / 9` — so every stop below can be read
+   straight off its table.
+
+   HOLD KEYFRAMES ARE MOST OF THIS FILE. Figma's hold easing snaps rather than interpolates, and the
+   crab is pixel art on an 8px grid, so each one is written as the spec's implementation note
+   prescribes: the old value repeated 0.05% (= 1 ms) earlier, then the new value. A hold that is
+   allowed to interpolate shows up as blur on half-pixel edges.
+
+   NEITHER FRAME LOOPS. Both are `loopMode: loop` in Figma and one-shot in the product (TRAPS 14):
+   `both` fill on every track, no iteration count anywhere.
+
+   Every track runs for `--phase-dur`, its whole phase, and differs only in its percentages. That is
+   what lets the plate's own animation be the clock Splash.tsx reports on, and what makes reduced
+   motion a matter of changing two durations rather than rewriting a timeline. */
+
+.splash {
+  position: absolute;
+  inset: 0;
+  /* Over every layer of the shell: sidebar 3, topbar 5, workspace chrome 6-7, palette scrim 50,
+     Dialog 60. It has to be a child of `.app` — both for this to stack above it and because the
+     tone's vars are declared there, so `--ink` on a sibling would resolve Day in Night. */
+  z-index: 90;
+
+  --splash-dur: 2000ms;
+  --handoff-dur: 900ms;
+  --phase-dur: var(--splash-dur);
+  /* The cross-fade exists only where the travel cannot. */
+  --k-fade: none;
+}
+.splash[data-phase='handoff'] {
+  --phase-dur: var(--handoff-dur);
+}
+
+/* Nothing was measured, so there is nothing honest to travel to and the handoff degrades to the
+   cross-fade. The wordmark keeps its white in that case: the colour resolve exists to hand a
+   TRAVELLING word to a light app, and a word that fades out where it stands never gets there. */
+.splash[data-travel='off'] {
+  --k-fade: splash-art-out;
+}
+
+/* THE GROUND PLATE — the note at the top of Splash.tsx is the whole story. The file has no ground
+   because it assumes a transparent window over something dark; we have no transparent window, and
+   `--plate` is the colour `body` already paints, so the splash and the window's own corners match. */
+.splash-plate {
+  position: absolute;
+  inset: 0;
+  background: var(--plate);
+}
+
+/* The hold. It animates nothing: it *is* the 2.0s, and its `animationend` is the only honest
+   "the hold is over" signal, with the duration where reduced motion can shorten it. The duration is
+   `!important` because app.css closes with a blanket
+   `*, *::before, *::after { animation-duration: 0.01ms !important }` under reduced motion — right
+   for decoration, wrong for a sequence whose length is product behaviour, where it would cut the
+   hold to one flash frame and have the component report the splash over before it was seen. */
+.splash[data-phase='splash'] .splash-plate {
+  animation: splash-hold var(--phase-dur) linear both;
+  animation-duration: var(--phase-dur) !important;
+}
+@keyframes splash-hold {
+  from,
+  to {
+    opacity: 1;
+  }
+}
+
+/* The app rises behind the plate rather than the plate lifting off the app. Spec B4 fades `app`
+   0 -> 1 over 180 -> 500 on an ease-out, and a 1 -> 0 ramp on the same curve is exactly
+   `1 - easeOut` — the same picture, without reaching into an element this component does not own. */
+.splash[data-phase='handoff'] .splash-plate {
+  animation: handoff-reveal var(--phase-dur) linear both;
+  animation-duration: var(--phase-dur) !important;
+}
+@keyframes handoff-reveal {
+  0%, 20% {
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0, 0, 0.58, 1);
+  }
+  55.56%, 100% {
+    opacity: 0;
+  }
+}
+
+/* One wrapper over the three travelling elements, for two reasons: the collapse needs a single
+   element to cross-fade, and reduced motion needs a single subtree to stop. The plate is
+   deliberately its SIBLING, so stopping this subtree leaves the hold and the reveal running. */
+.splash-art {
+  position: absolute;
+  inset: 0;
+  /* Nothing in here is interactive; the root keeps the pointer so a drag still moves the window. */
+  pointer-events: none;
+}
+
+/* Spec B1: 160 x 160 with its centre 1px left and 36px above the frame centre. Written as centre
+   offsets rather than the file's (159, 44) because B3 proves the pose is one centre-anchored layout
+   shared with the handoff — which is also what lets it sit in a 1320-wide window rather than the
+   file's 480 x 320 frame. */
+.splash-crab {
+  position: absolute;
+  left: calc(50% - 81px);
+  top: calc(50% - 116px);
+  width: 160px;
+  height: 160px;
+  /* `filter`, never `box-shadow`: he is ~40 rectangles with a non-rectangular silhouette, so only
+     `drop-shadow` hugs him. The halo is the file's #2c7bff at 24%, i.e. `--bell-cap-mid`. The cast is
+     #05060c at 40%, which has NO token — `--plate` (#0b0c12) is the nearest the system has and is
+     already the ground he is standing on. */
+  filter: drop-shadow(0 0 36px color-mix(in srgb, var(--bell-cap-mid) 24%, transparent))
+    drop-shadow(0 10px 24px color-mix(in srgb, var(--plate) 40%, transparent));
+}
+
+/* The box is the LANDING size and the splash pose is that box scaled up about its own centre, which
+   is how B4 models the travel (1.714 -> 1 = 0.6 / 0.35). `--word-up`, `--word-w` and `--word-h` come
+   from Splash.tsx, measured off the live lockup rather than assumed at 0.35. */
+.splash-word {
+  position: absolute;
+  width: var(--word-w);
+  height: var(--word-h);
+  left: calc(50% - var(--word-w) / 2 + 2.8px);
+  top: calc(50% - var(--word-h) / 2 + 90.4px);
+  transform: scale(var(--word-up));
+  /* THE SHADOW IS PRE-DIVIDED BY THE SCALE, AND THAT IS NOT AN ORNAMENT. `filter` is applied to the
+     element's rendered content BEFORE `transform` maps it, so a literal `0 3px 10px` on a box that
+     is then scaled by `--word-up` (~1.72) reaches the screen as `0 5.2px 17.2px` — for the whole
+     2.0s splash, which is the phase the spec measures. Spec B1 puts `#05060c` @ 45%, offset (0,3),
+     radius 10 on the 117.6 x 52.8 art, so the numbers have to be stated in the space the transform
+     lands in. Dividing them here makes the splash frame exact and lets the cast shrink with the word
+     over the handoff, arriving near the `0 2px 4px` app.css already gives `.brand .logo-word`.
+     `--word-up` is derived from a measured height and can never be 0 (see Splash.tsx). */
+  filter: drop-shadow(
+    0 calc(3px / var(--word-up)) calc(10px / var(--word-up))
+      color-mix(in srgb, var(--plate) 45%, transparent)
+  );
+}
+.splash-word svg {
+  display: block;
+}
+
+/* index.css paints every `svg` `fill: none; stroke: currentColor; stroke-width: 1.75`, which erases
+   the letterforms and then outlines them; this is the same opt-out app.css writes for `.logo-word`.
+   White for the whole splash, because the file's wordmark art is white — the handoff resolves it. */
+.splash-word path {
+  fill: var(--white);
+  stroke: none;
+}
+
+/* The reveal reads ALPHA, so the cells' colour is immaterial — they are filled at all because
+   `svg { fill: none }` would otherwise leave the mask empty and the word permanently hidden.
+   `--white` rather than a literal, and it is mode-invariant, so a luminance reading is safe too. */
+.splash-reveal {
+  mask-type: alpha;
+}
+.splash-cell {
+  fill: var(--white);
+  stroke: none;
+}
+
+/* Placed at the lockup's own mark box and invisible until the handoff asks for it — which is also
+   what keeps it out of the picture when there is no travel for it to fade in during. */
+.splash-mark {
+  position: absolute;
+  left: var(--mark-x);
+  top: var(--mark-y);
+  opacity: 0;
+}
+.splash-mark rect {
+  stroke: none;
+}
+
+/* ── startup · 2000 ms · % = ms / 20 ───────────────────────────────────────────────────────────── */
+
+/* Beat 1 — the drop (`391:4639`). Invisible for 40 ms, then 60px on an ease-out into 230. */
+.splash[data-phase='splash'] .splash-crab {
+  animation: splash-drop var(--phase-dur) linear both;
+}
+@keyframes splash-drop {
+  0%, 1.95% {
+    opacity: 0;
+    transform: translateY(-60px);
+  }
+  2% {
+    opacity: 1;
+    transform: translateY(-60px);
+    animation-timing-function: cubic-bezier(0, 0, 0.58, 1);
+  }
+  11.5%, 100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Beat 1 — the landing squash (`391:4640` body), a hold into 0.9 and an ease-out back.
+
+   TRAPS 3: Figma scales about the body's own centre (y 131), which lifts the shell 6.9 rig units off
+   the legs — they are siblings of `body` and stay planted — so a literal port reads as a bounce at
+   the exact frame it should read as weight. The anchor therefore moves to the shell baseline: the
+   measured body centre x with y 200, which `motion-mr-bell.md` §2 offers for precisely this. It has
+   to be `!important` because MrBell.tsx sets the pivot inline, as measured rig geometry, and an
+   inline declaration outranks any stylesheet. `transform-box: view-box` stays inline with it, which
+   is what makes these px resolve in viewBox units. */
+.splash .bell .body {
+  transform-origin: 132.6051px 200px !important;
+}
+.splash[data-phase='splash'] .bell .body {
+  animation: splash-squash var(--phase-dur) linear both;
+}
+@keyframes splash-squash {
+  0%, 12.95% {
+    transform: scaleY(1);
+  }
+  13% {
+    transform: scaleY(0.9);
+    animation-timing-function: cubic-bezier(0, 0, 0.58, 1);
+  }
+  17.5%, 100% {
+    transform: scaleY(1);
+  }
+}
+
+/* Beat 2 — the 28 spectacle parts, one hold-step of opacity each on a flat 22 ms stagger from 380.
+   MrBell publishes every part's rank in the left-to-right sweep as `--x-order`, which is the order
+   this beat wants, so the whole beat is one delay expression instead of 28 rules. They stay unbound
+   black throughout: there is no colour track anywhere in this beat (TRAPS 9). */
+.splash[data-phase='splash'] .bell .specs-ink,
+.splash[data-phase='splash'] .bell .lens {
+  animation: splash-appear 1ms linear calc(380ms + var(--x-order) * 22ms) both;
+}
+@keyframes splash-appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* …except the two lens vectors, which the spec lands last (n = 26, 27) so the glass only appears over
+   a frame that is already fully drawn. `--x-order` ranks them 7 and 18 by their left edges, so
+   overriding them costs two 44 ms gaps in the middle of the sweep and two coincident slots at the end
+   of it — the honest price of not re-ranking geometry this file does not own. DOM order is lens R
+   then lens L: the assembly's paint order interleaves frame L, lens R, frame R, lens L, which is
+   MrBell.tsx's PAINT_ORDER and the reason the lens fill darkens frame L but not frame R. */
+.splash[data-phase='splash'] .bell .specs > .lens:nth-of-type(1) {
+  animation-delay: 974ms; /* lens R */
+}
+.splash[data-phase='splash'] .bell .specs > .lens:nth-of-type(2) {
+  animation-delay: 952ms; /* lens L */
+}
+
+/* Beat 3 — the specs push-up, the "ready" beat. The claw swings from its shoulder pivot (inline, from
+   BELL_PIVOTS) and the inward slide tucks under the shell, which draws over both claws.
+
+   THESE TRANSLATES ARE RIG UNITS, NOT SCREEN PX. `motion-mr-bell.md` §1 measures the rig in Mr. Bell
+   space and §3.2 reuses this same track verbatim on the 256 master; `-8` / `-16` on `specs` below are
+   one and two whole art pixels on the 8px grid, which only holds in rig units. Inside a viewBox that
+   is what a CSS px resolves to, so the numbers transcribe directly. */
+.splash[data-phase='splash'] .bell .claw-r {
+  animation: splash-flick var(--phase-dur) linear both;
+}
+@keyframes splash-flick {
+  0%, 51% {
+    transform: translate(0, 0) rotate(0deg);
+    animation-timing-function: cubic-bezier(0, 0, 0.58, 1);
+  }
+  60% {
+    transform: translate(-56px, -2px) rotate(-62deg);
+    animation-timing-function: cubic-bezier(0.42, 0, 0.58, 1);
+  }
+  64% {
+    transform: translate(-60px, -2px) rotate(-68deg);
+    animation-timing-function: cubic-bezier(0.42, 0, 0.58, 1);
+  }
+  77.5%, 100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+}
+
+/* Beat 3 — the spectacles jump on the frame the claw lands, two whole pixels, then settle. Every stop
+   is a hold: a pixel-step lift, not a slide. */
+.splash[data-phase='splash'] .bell .specs {
+  animation: splash-lift var(--phase-dur) linear both;
+}
+@keyframes splash-lift {
+  0%, 63.95% {
+    transform: translateY(0);
+  }
+  64%, 67.95% {
+    transform: translateY(-8px);
+  }
+  68%, 77.45% {
+    transform: translateY(-16px);
+  }
+  77.5%, 83.95% {
+    transform: translateY(-8px);
+  }
+  84%, 100% {
+    transform: translateY(0);
+  }
+}
+
+/* Beat 3 — he watches the glasses go up. Both pupils, no offset between them; the ±8 grid inside the
+   socket is what makes this a look rather than a drift. It is applied on the pupils in the blink block
+   below, because the blink is the same two nodes and CSS wants both tracks in one declaration. */
+@keyframes splash-look {
+  0%, 65.95% {
+    transform: translateY(0);
+  }
+  66%, 79.95% {
+    transform: translateY(-8px);
+  }
+  80%, 100% {
+    transform: translateY(0);
+  }
+}
+
+/* Beat 5 — one blink to close, and the eyes are NOT symmetrical: the right lid follows the left by
+   40 ms, as it does everywhere in the rig. TRAPS 2 is applied — `391:4675` / `391:4676` close at 1910
+   with no return keyframe, because Figma loops the frame and hides it, so a one-shot splash would end
+   on a half-shut crab and hand off winking. Both reopen at 1980. The socket squashes about its own
+   centre (MrBell.css already gives it `fill-box` / 50% 50%) while the pupil fades, which is two tracks
+   on purpose: a pupil left visible floats inside a shut eye. */
+.splash[data-phase='splash'] .bell .eye-l .socket {
+  animation: splash-lid-l var(--phase-dur) linear both;
+}
+.splash[data-phase='splash'] .bell .eye-r .socket {
+  animation: splash-lid-r var(--phase-dur) linear both;
+}
+.splash[data-phase='splash'] .bell .eye-l .pupil {
+  animation: splash-look var(--phase-dur) linear both, splash-wink-l var(--phase-dur) linear both;
+}
+.splash[data-phase='splash'] .bell .eye-r .pupil {
+  animation: splash-look var(--phase-dur) linear both, splash-wink-r var(--phase-dur) linear both;
+}
+@keyframes splash-lid-l {
+  0%, 93.45% {
+    transform: scaleY(1);
+  }
+  93.5%, 98.95% {
+    transform: scaleY(0.333);
+  }
+  99%, 100% {
+    transform: scaleY(1);
+  }
+}
+@keyframes splash-lid-r {
+  0%, 95.45% {
+    transform: scaleY(1);
+  }
+  95.5%, 98.95% {
+    transform: scaleY(0.333);
+  }
+  99%, 100% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes splash-wink-l {
+  0%, 93.45% {
+    opacity: 1;
+  }
+  93.5%, 98.95% {
+    opacity: 0;
+  }
+  99%, 100% {
+    opacity: 1;
+  }
+}
+@keyframes splash-wink-r {
+  0%, 95.45% {
+    opacity: 1;
+  }
+  95.5%, 98.95% {
+    opacity: 0;
+  }
+  99%, 100% {
+    opacity: 1;
+  }
+}
+
+/* Beat 4 — the wordmark dissolves in as 32 mask cells firing in eight scattered waves 30 ms apart.
+   One step per cell, at the time Splash.tsx hands it as `--at` off the spec's grid; animating cell
+   opacity is what makes this work on transparency, where a cover-block dissolve could not. */
+.splash[data-phase='splash'] .splash-cell {
+  animation: splash-appear 1ms linear var(--at) both;
+}
+
+/* …then the whole box steps up to its line. TRAPS 13: the caption's "steps up two pixels" is two
+   steps of 8px — the measured track is 16 -> 8 -> 0 — and every stop is a hold. The scale is repeated
+   in each stop because it is the same `transform` property; dropping it would snap the word to its
+   landing size for the last 320 ms of the splash. */
+.splash[data-phase='splash'] .splash-word {
+  animation: splash-lineup var(--phase-dur) linear both;
+}
+@keyframes splash-lineup {
+  0%, 83.95% {
+    transform: translateY(16px) scale(var(--word-up));
+  }
+  84%, 86.95% {
+    transform: translateY(8px) scale(var(--word-up));
+  }
+  87%, 100% {
+    transform: translateY(0) scale(var(--word-up));
+  }
+}
+
+/* ── handoff · 900 ms · % = ms / 9 ─────────────────────────────────────────────────────────────────
+   Everything holds for the first 180 ms — the splash sits still while nothing else exists — and then
+   the plate clears while the pair travels to the slots it permanently occupies. The two share the
+   180 -> 700 window on DIFFERENT easings, deliberately, so they do not move in lockstep. The deltas
+   are set on the root by Splash.tsx from the measured landing rects, which is why every travel rule
+   is gated on `[data-travel='on']`: without them there is nothing to interpolate towards. */
+
+/* A pure translate — he is 160px at both ends and has no scale track at all. */
+.splash[data-travel='on'][data-phase='handoff'] .splash-crab {
+  animation: handoff-crab var(--phase-dur) linear both;
+}
+@keyframes handoff-crab {
+  0%, 20% {
+    transform: translate(0, 0);
+    animation-timing-function: cubic-bezier(0.42, 0, 0.58, 1);
+  }
+  77.78%, 100% {
+    transform: translate(var(--crab-dx), var(--crab-dy));
+  }
+}
+
+/* One transform: the word starts at the splash's 117.6 x 52.8 and lands at the brand row's box with
+   no re-layout, scaling about its own centre. The curve is the file's own, not one of the app's. */
+.splash[data-travel='on'][data-phase='handoff'] .splash-word {
+  animation: handoff-word var(--phase-dur) linear both;
+}
+@keyframes handoff-word {
+  0%, 20% {
+    transform: translate(0, 0) scale(var(--word-up));
+    animation-timing-function: cubic-bezier(0.32, 0, 0.16, 1);
+  }
+  77.78%, 100% {
+    transform: translate(var(--word-dx), var(--word-dy)) scale(1);
+  }
+}
+
+/* THE ONE SANCTIONED COLOUR TRANSITION IN THE APP. CLAUDE.md's motion rule is transform and opacity
+   only, with two documented exceptions from the file, and this is the second of them: the travelling
+   wordmark tweens its fill white -> `--ink` mid-flight. It finishes at 340 ms, a deliberate 160 ms
+   BEFORE the app reaches full opacity at 500, because crossfading two stacked wordmarks — or ramping
+   the colour with the app instead of ahead of it — leaves a white word over a light Day surface for
+   ~80 ms. It rides on `[data-travel='on']` with the rest: a word that fades out where it stands never
+   arrives over the app, so the collapse has nothing for this to solve and drops it.
+   `--ink` is white in Night, which turns the whole thing into white -> white by itself: the token does
+   the thinking, and nothing here needs to know the tone. */
+.splash[data-travel='on'][data-phase='handoff'] .splash-word path {
+  animation: handoff-ink var(--phase-dur) linear both;
+}
+@keyframes handoff-ink {
+  0%, 20% {
+    fill: var(--white);
+    animation-timing-function: cubic-bezier(0.42, 0, 0.58, 1);
+  }
+  37.78%, 100% {
+    fill: var(--ink);
+  }
+}
+
+/* The mark has no splash counterpart, so it fades in mid-travel, arriving with the app rather than
+   with the pair. */
+.splash[data-travel='on'][data-phase='handoff'] .splash-mark {
+  animation: handoff-mark var(--phase-dur) linear both;
+}
+@keyframes handoff-mark {
+  0%, 37.78% {
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0, 0, 0.58, 1);
+  }
+  57.78%, 100% {
+    opacity: 1;
+  }
+}
+
+/* The cross-fade. `--k-fade` is `none` on the full path, so this declaration is inert there; it is the
+   only thing the two collapse cases have to switch on. It keeps the file's own 180 ms hold and is then
+   out by 37.78% — 340 of 900 ms, the exact moment the full path's colour resolve lands, and a 160 ms
+   lead on the plate at 55.56%. The splash art is gone before the app behind it is legible, which is
+   what keeps a white word off a light Day ground without a colour track to do it. */
+.splash[data-phase='handoff'] .splash-art {
+  animation: var(--k-fade) var(--phase-dur) linear both;
+  animation-duration: var(--phase-dur) !important;
+}
+@keyframes splash-art-out {
+  0%, 20% {
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0, 0, 0.58, 1);
+  }
+  37.78%, 100% {
+    opacity: 0;
+  }
+}
+
+/* Spec B3: the app's own logo and Mr. Bell are invisible for the sequence, because the travelling pair
+   BECOMES them — they are only coincident on the last frame, so two of each on screen reads as a
+   double image the whole way in. `:has()` rather than a flag the shell has to set, which means the
+   shell needs to know nothing about this: when there is nothing to travel to, or motion is reduced,
+   its own pair stays visible and IS the other half of the cross-fade. The rule stops matching the
+   moment Splash unmounts at `done`, which is exactly when the swap should happen. */
+@media (prefers-reduced-motion: no-preference) {
+  .app:has(.splash[data-travel='on']:not([data-motion='reduced'])) .brand .logo-word,
+  .app:has(.splash[data-travel='on']:not([data-motion='reduced'])) .mascot {
+    opacity: 0;
+  }
+}
+
+/* ── reduced motion ────────────────────────────────────────────────────────────────────────────────
+   Two sources — the OS preference and Settings' own switch (`settings.reduceMotion`, the product twin)
+   — and either one collapses the sequence to the same thing: no drop, no assemble, no dissolve, no
+   travel. What is left is the pose, a shorter hold and a cross-fade, because a splash that cannot
+   animate should not make anyone wait to watch it not animate. 700 ms is long enough not to read as a
+   flash and short enough not to be a wait.
+
+   Stopping the art is one blanket rule rather than a per-track list: everything that animates lives
+   under `.splash-art`, and nothing in there states a resting pose in a base declaration — every
+   pre-start value comes from `both` fill — so removing the animations leaves each element exactly where
+   the sequence would have ended. The one base state that is deliberate is `.splash-mark { opacity: 0 }`,
+   and it is deliberate for this: with no travel to fade it in during, the mark stays out of the picture
+   and the app's own lockup keeps its own. The plate is a sibling and keeps its clock.
+
+   The two blocks are the same three declarations twice, once per source: a media query cannot be OR'd
+   into a selector list, and the product switch is an attribute. They are nothing but variables and one
+   stop, so there is no timeline here to keep in sync with anything. */
+.splash[data-motion='reduced'] {
+  --splash-dur: 700ms;
+  --handoff-dur: 320ms;
+  --k-fade: splash-art-out;
+}
+.splash[data-motion='reduced'] .splash-art * {
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash {
+    --splash-dur: 700ms;
+    --handoff-dur: 320ms;
+    --k-fade: splash-art-out;
+  }
+  .splash .splash-art * {
+    animation: none !important;
+  }
+}

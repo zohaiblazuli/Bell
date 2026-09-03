@@ -1,0 +1,45 @@
+/* Section Label — `design/specs/screen-dashboard.md` §6, the pattern's four measured instances.
+   Supersedes app.css's `.sec-label` and `.sec-label::after`. */
+
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* 5/0 is the pattern's measured padding: 23 tall without a meta (5+13+5), 24 with one
+     (5+14+5) — both hug results. The Library and Bookmarks year headers measure 6 top / 14
+     bottom instead, but only because their parent `lib` is authored `gap: 0` and pays for all of
+     its vertical rhythm in per-child padding (screen-library-settings TRAP 5). Give that
+     container a real gap rather than adding a variant here. */
+  padding: 5px 0;
+  color: var(--ink-2);
+}
+
+.section-label__text {
+  /* Hug, and free to shrink. If a label ever outgrows its column the rule collapses instead of
+     the row overflowing — which is what Figma does too (see the rule note below). */
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.section-label__meta {
+  flex: none;
+  color: var(--ink-3);
+}
+
+/* The trailing rule. Figma authors it `layoutGrow: 1`, but three of the four dashboard headers
+   HUG their frame, so it freezes at 112 / 106 / 80 px, and `session coverage` overruns its own
+   209 box badly enough that the rule collapses to 1 x 1 px, 15px past the right edge
+   (screen-dashboard §6 and TRAP 9). The Library year headers, which do FILL, run the rule the
+   full 918. The intent is plainly a rule that reaches the edge, so ours always fills — a
+   deliberate improvement over the frozen widths, not a mis-measurement.
+
+   `--hair` is the intended paint, proven by Settings, which binds it in both modes. The Library
+   screens leak three foreign paints onto this very node instead — a raw near-black paint style in
+   Day, and a macOS-kit light grey plus a stray `--paper` binding in Night
+   (screen-library-settings §7). All three resolve to `--hair` here. */
+.section-label__rule {
+  flex: 1 0 0;
+  min-width: 0;
+  height: 1px;
+  background: var(--hair);
+}

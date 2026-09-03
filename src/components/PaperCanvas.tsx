@@ -1,26 +1,66 @@
+/**
+ * The white page and its ink. Spec: `design/specs/screen-reader.md` §6 (`paper` `194:741` — fill
+ * `--paper`, radius 3, clip) and §1 (the `annotations` layer that paints over it).
+ *
+ * Two stacked canvases rather than one: the PDF is re-rendered only when the page or the zoom
+ * changes, while ink is redrawn on every pointer move, and compositing them separately is what
+ * keeps a long stroke from re-rasterising the page under it. Figma models the same split —
+ * `annotations` `200:89` is a sibling frame laid over `doc`, not part of it.
+ *
+ * Its CSS lives in `src/views/WorkspaceView.css` with the rest of the Reader: this component is
+ * only ever mounted by `WorkspaceView`, which imports that sheet.
+ */
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { renderPage } from '../lib/pdf';
-import { drawMarks, markFor, type Mark, type Point, type Tool } from '../lib/annotations';
+import {
+  drawMarks,
+  markFor,
+  type InkSettings,
+  type Mark,
+  type Point,
+  type Tool,
+} from '../lib/annotations';
 
-interface Props {
+export interface Props {
   doc: PDFDocumentProxy | null;
   page: number;
   /** Target width in logical pixels — zoom is applied by the caller. */
   width: number;
   /** null puts the page in read-only mode; the overlay stops taking pointer events. */
   tool: Tool | null;
+  /** Colour, nib and opacity as the tools card has them set. Frozen into each new mark. */
+  ink: InkSettings;
   marks: Mark[];
   onCommit: (mark: Mark) => void;
+  /**
+   * Fired when a page has finished rasterising. The page rail uses it to hold its thumbnails back
+   * until the page you are actually reading is on screen — pdf.js serialises on one worker, so
+   * thumbnails started earlier would queue in front of it.
+   */
+  onRendered?: () => void;
 }
 
-/** The white page — always the brightest, highest-contrast thing on screen — plus its ink. */
-export default function PaperCanvas({ doc, page, width, tool, marks, onCommit }: Props) {
+export default function PaperCanvas({
+  doc,
+  page,
+  width,
+  tool,
+  ink,
+  marks,
+  onCommit,
+  onRendered,
+}: Props) {
   const pageCanvas = useRef<HTMLCanvasElement>(null);
   const inkCanvas = useRef<HTMLCanvasElement>(null);
   const draft = useRef<Mark | null>(null);
   const [size, setSize] = useState({ cssWidth: width, cssHeight: Math.round(width * 1.414) });
   const [rendering, setRendering] = useState(true);
+
+  // Held in a ref so a fresh closure from the parent cannot invalidate the render effect and
+  // re-rasterise the page for nothing.
+  const rendered = useRef(onRendered);
+  rendered.current = onRendered;
 
   useEffect(() => {
     if (!doc) return;
@@ -35,6 +75,7 @@ export default function PaperCanvas({ doc, page, width, tool, marks, onCommit }:
         if (!cancelled) {
           setSize(next);
           setRendering(false);
+          rendered.current?.();
         }
       } catch {
         // A cancelled render (page flipped mid-draw) is normal; nothing to report.
@@ -66,7 +107,9 @@ export default function PaperCanvas({ doc, page, width, tool, marks, onCommit }:
   function start(e: ReactPointerEvent<HTMLCanvasElement>) {
     if (!tool || e.button !== 0) return;
     e.currentTarget.setPointerCapture(e.pointerId);
-    draft.current = markFor(tool, pointAt(e));
+    // The canvas is the tone context: it sits inside `.app`, so the swatch token resolves to the
+    // literal for the tone the stroke is actually being drawn in.
+    draft.current = markFor(tool, pointAt(e), ink, e.currentTarget);
     redraw();
   }
 
@@ -89,20 +132,16 @@ export default function PaperCanvas({ doc, page, width, tool, marks, onCommit }:
 
   return (
     <div
-      className="paper"
+      className="rd-paper"
       style={{ width: size.cssWidth, height: size.cssHeight }}
       data-rendering={rendering ? 'true' : undefined}
     >
-      <canvas ref={pageCanvas} className="paper-page" />
+      <canvas ref={pageCanvas} className="rd-paper-page" />
       <canvas
         ref={inkCanvas}
-        className="paper-ink"
+        className="rd-paper-ink"
+        data-live={tool ? 'true' : undefined}
         aria-label={`Annotation layer for page ${page}`}
-        style={{
-          pointerEvents: tool ? 'auto' : 'none',
-          cursor: tool ? 'crosshair' : 'default',
-          touchAction: 'none',
-        }}
         onPointerDown={start}
         onPointerMove={move}
         onPointerUp={finish}

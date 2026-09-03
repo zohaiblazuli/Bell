@@ -4,6 +4,7 @@
 
 use rusqlite::{Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use tauri::State;
 
 use crate::db::{get_meta, Db};
@@ -85,6 +86,37 @@ pub fn library_stats(db: State<'_, Db>) -> Result<LibraryStats, String> {
         levels,
         doc_types,
     })
+}
+
+/// Question papers the index holds per sitting, keyed `9701/s25`.
+///
+/// The Dashboard's session-coverage matrix needs a denominator: without one a cell can only say
+/// "you have done some of this sitting", never "you have done all of it", so every column reads
+/// partial forever. Counting `qp` rows rather than all docs is the whole point — a sitting with four
+/// question papers also carries four mark schemes, a threshold table and an examiner report, and
+/// only the question papers are things you sit.
+#[tauri::command]
+pub fn sitting_totals(db: State<'_, Db>) -> Result<HashMap<String, i64>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let mut st = conn
+        .prepare(
+            "SELECT s.code || '/' || se.scode, COUNT(*)
+             FROM doc d
+             JOIN session se ON se.id = d.session_id
+             JOIN subject s  ON s.id  = se.subject_id
+             WHERE d.doc_type = 'qp'
+             GROUP BY 1",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = st
+        .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))
+        .map_err(|e| e.to_string())?;
+    let mut out = HashMap::new();
+    for row in rows {
+        let (key, n) = row.map_err(|e| e.to_string())?;
+        out.insert(key, n);
+    }
+    Ok(out)
 }
 
 #[derive(Serialize)]
@@ -219,6 +251,95 @@ pub fn query_papers(
                 })
             },
         )
+        .map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+/// Free-text search over the index for the ⌘K palette.
+///
+/// The query is split on whitespace and every token has to match somewhere in the paper's
+/// searchable text — code, subject, level, session, variant, year — so `9709 s24 12` and
+/// `maths w23` both narrow the way you'd expect. Kept in SQL because the whole library is
+/// ~6k sittings: pulling them into the webview to filter would be the wrong trade.
+#[tauri::command]
+pub fn search_papers(
+    db: State<'_, Db>,
+    query: String,
+    limit: Option<i64>,
+) -> Result<Vec<PaperRow>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    search_indexed_papers(&conn, &query, limit)
+}
+
+pub fn search_indexed_papers(
+    conn: &Connection,
+    query: &str,
+    limit: Option<i64>,
+) -> Result<Vec<PaperRow>, String> {
+    // A blank query is the palette's resting state; it has its own recents list to show.
+    let tokens: Vec<String> = query
+        .split_whitespace()
+        .take(8)
+        .map(|t| format!("%{}%", t.to_lowercase()))
+        .collect();
+    if tokens.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    const HAY: &str = "lower(su.code||' '||su.name||' '||su.level||' '||se.scode||' '\
+                       ||COALESCE(d.variant,'')||' '||se.year||' '||se.season)";
+    let clauses = tokens
+        .iter()
+        .enumerate()
+        .map(|(i, _)| format!("{HAY} LIKE ?{}", i + 1))
+        .collect::<Vec<_>>()
+        .join(" AND ");
+
+    let sql = format!(
+        "SELECT su.id, su.code, su.name, su.level, se.year, se.scode, se.season, d.variant,
+                MAX(CASE WHEN d.doc_type='qp' THEN d.path END),
+                MAX(CASE WHEN d.doc_type='ms' THEN d.path END),
+                MAX(CASE WHEN d.doc_type='er' THEN d.path END),
+                di.score, di.band
+         FROM doc d
+         JOIN session se ON se.id = d.session_id
+         JOIN subject su ON su.id = se.subject_id
+         LEFT JOIN difficulty di
+                ON di.subject_id = su.id AND di.scode = se.scode
+               AND di.component = COALESCE(d.variant,'')
+         WHERE d.doc_type IN ('qp','ms','er') AND {clauses}
+         GROUP BY su.id, se.scode, d.variant
+         HAVING MAX(CASE WHEN d.doc_type='qp' THEN 1 ELSE 0 END) = 1
+         ORDER BY se.year DESC, se.scode DESC, su.name, d.variant
+         LIMIT ?{}",
+        tokens.len() + 1
+    );
+
+    let mut params: Vec<Box<dyn rusqlite::ToSql>> = tokens
+        .iter()
+        .map(|t| Box::new(t.clone()) as Box<dyn rusqlite::ToSql>)
+        .collect();
+    params.push(Box::new(limit.unwrap_or(12)));
+
+    let mut st = conn.prepare(&sql).map_err(|e| e.to_string())?;
+    let rows = st
+        .query_map(rusqlite::params_from_iter(params.iter().map(|p| p.as_ref())), |r| {
+            Ok(PaperRow {
+                subject_id: r.get(0)?,
+                subject_code: r.get(1)?,
+                subject_name: r.get(2)?,
+                level: r.get(3)?,
+                year: r.get(4)?,
+                scode: r.get(5)?,
+                season: r.get(6)?,
+                variant: r.get(7)?,
+                qp_path: r.get(8)?,
+                ms_path: r.get(9)?,
+                er_path: r.get(10)?,
+                difficulty: r.get(11)?,
+                band: r.get(12)?,
+            })
+        })
         .map_err(|e| e.to_string())?;
     rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
 }
@@ -463,7 +584,7 @@ mod tests {
     /// A miniature copy of the real tree's shape, including two directories that must be ignored.
     fn fixture() -> (PathBuf, Connection) {
         let root = std::env::temp_dir().join(format!(
-            "foolscap-test-{}-{}",
+            "bell-test-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -616,6 +737,32 @@ mod tests {
         assert_eq!(after.len(), 3, "no duplicate rows after a second walk");
         assert!(after.iter().all(|p| p.difficulty.is_none()));
         assert!(query_thresholds(&conn, gt.subject_id, None).unwrap().is_empty());
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn searches_papers_by_code_subject_and_session() {
+        let (root, mut conn) = fixture();
+        walk(&root, &mut conn);
+
+        let hits = search_indexed_papers(&conn, "9709 s24", None).unwrap();
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].variant.as_deref(), Some("12"));
+
+        // Subject name, case-insensitively, and every token has to match.
+        assert_eq!(search_indexed_papers(&conn, "mathematics", None).unwrap().len(), 2);
+        assert_eq!(search_indexed_papers(&conn, "MATHEMATICS w23", None).unwrap().len(), 1);
+        assert_eq!(search_indexed_papers(&conn, "biology", None).unwrap().len(), 1);
+        assert_eq!(search_indexed_papers(&conn, "igcse 2024", None).unwrap().len(), 1);
+        assert_eq!(search_indexed_papers(&conn, "mathematics biology", None).unwrap().len(), 0);
+        assert!(search_indexed_papers(&conn, "   ", None).unwrap().is_empty());
+        assert_eq!(search_indexed_papers(&conn, "mathematics", Some(1)).unwrap().len(), 1);
+
+        // A grade-threshold PDF is not a paper, so it can never be a search hit.
+        assert!(search_indexed_papers(&conn, "9709", None)
+            .unwrap()
+            .iter()
+            .all(|p| p.qp_path.is_some()));
         std::fs::remove_dir_all(&root).ok();
     }
 
