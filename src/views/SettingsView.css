@@ -1,0 +1,182 @@
+/* Settings — the screen's own scaffolding. Rationale and node ids live in SettingsView.tsx; the
+   geometry is `design/specs/screen-library-settings.md` §6. Everything a row, a card, a chip, a
+   switch or a button looks like belongs to the component layer and is not restated here.
+
+   Class names are all `set-`-prefixed on purpose. This file is imported from the view, so it lands
+   in the module graph *before* app.css and ui.css (main.tsx imports App ahead of the stylesheets)
+   and would lose any specificity tie against them. A name nobody else uses cannot tie. The rules
+   that must deliberately outrank a component rule — the minutes Field's box and the danger
+   Button's edge — are element- or `.settings`-qualified to win, and say why at each site. */
+
+/* `content` 1020 x 746 at (269, 82) — inset 31 left / 26 top inside the page recess (238, 56), the
+   same frame the Library's `lib` sits in. Capped and centred like `.lib` so a maximised window
+   keeps the measured 1020 instead of stretching the 7/5 split past it. */
+.settings {
+  max-width: 1082px; /* 1020 + 2 x 31 */
+  margin: 0 auto;
+  padding: 26px 31px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* `content` itemSpacing 20 */
+}
+
+/* `header` 1020 x 44 — VERTICAL, gap 6, and 24 + 6 + 14 = 44 falls out of the two type styles. */
+.set-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.set-title {
+  margin: 0; /* an <h1> brings a browser margin that would break the 44 */
+  color: var(--ink);
+}
+.set-sub {
+  margin: 0;
+  color: var(--ink-3);
+}
+
+/* `cols` — HORIZONTAL, gap 24, MIN/MIN. `left` is FIXED 585 and `right` takes the remainder, which
+   is 411 at the measured width; §6 says honour those px, not the 7/5 ratio they nearly are. The two
+   grow factors ARE 585 and 411 against a zero basis, so at the measured 1020 (996 after the gap)
+   they resolve to exactly 585 / 411 and below it both squeeze in proportion — a fixed 585 basis
+   would instead hold the left column at full width and spend the whole shortfall on the right one,
+   which is the column that cannot afford it. `align-items: flex-start` keeps the shorter column from
+   stretching to the taller one's height. */
+.set-cols {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+.set-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px; /* `left` / `right` itemSpacing 16 */
+  min-width: 0;
+}
+.set-col--left {
+  flex: 585 1 0;
+}
+.set-col--right {
+  flex: 411 1 0;
+}
+
+/* A group is its eyebrow and its card with nothing between them: §6.1 pays for that spacing out of
+   the sec-label's own 5px bottom padding, so a gap here would double it. A Notice, when the ingest
+   or the scoring pass has something to report, hangs below the card on its own margin. */
+.set-group {
+  display: flex;
+  flex-direction: column;
+}
+.set-notice {
+  margin-top: 10px;
+}
+
+/* `choice` / `tone choice` — HORIZONTAL, gap 8, of the 32-tall pills (§6.2). No wrap: the control
+   slot hugs, so the group is as wide as its chips and the label stack beside it takes the squeeze —
+   which is what CardRow's own note asks for ("a three-chip row in the 585 column should clip
+   against the card, not squash"). */
+.set-choice {
+  display: flex;
+  gap: 8px;
+}
+
+/* A filesystem path, not prose — `Mono/Small`, per §6.3's Papers folder helper. Long Windows paths
+   break anywhere rather than widening the row past its column. */
+.set-path {
+  overflow-wrap: anywhere;
+}
+
+/* The live index line. The walk reports the file it is on, which is an absolute path, so it
+   ellipsises instead of re-flowing the row's height on every tick. The text column is
+   `flex: 1 1 auto; min-width: 0`, which is what gives the ellipsis something to bite on. */
+.set-now {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* §6.2's plain-text control: `Mono/Meta` on `--ink-2`, no button and no chevron. */
+.set-value {
+  color: var(--ink-2);
+}
+
+/* The unit beside a minutes field. `--ink-3` because it is the field's caption, not its value. */
+.set-unit {
+  color: var(--ink-3);
+}
+
+/* Field is onboarding's input, measured 420 x 48 (Field.css, screen-onboarding §5.1). Neither number
+   survives a settings row: the narrow column is 411 wide in total, and §6.2's tallest control is the
+   34-high Secondary Button, so a 48-tall box would stand a row at 11 + 48 + 11 = 70 where the spec
+   measures 38 without a helper and 53 with one. Both are told at the call site — 88 holds three
+   digits inside the measured 14px padding, 34 is the Button height the row was measured around.
+   Qualified with `.settings` so they outrank `.bell-field`'s own 420 and 48, which load after this
+   file; the component wants a width prop and a compact variant, and until it has them this is the
+   override. */
+.settings .set-minutes {
+  width: 88px;
+}
+.settings .set-minutes .bell-field__input {
+  height: 34px;
+}
+/* The spinner buttons would eat a third of that width, and the arrow keys already step the value —
+   `step` is on the input. `appearance` alone is not enough in this engine. */
+.settings .set-minutes input::-webkit-inner-spin-button,
+.settings .set-minutes input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+/* The confirm step's two buttons. 8 is the action-row itemSpacing the design system uses wherever
+   two buttons sit together; §6.2 measures no two-button settings row, because the file has none. */
+.set-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The destructive action. The design system has no danger button — `--danger` is the app's own
+   token, added precisely because state styling used to hand-convert `--d5` and borrow the
+   difficulty axis for something that is not difficulty (CLAUDE.md) — so this recolours a Secondary
+   rather than inventing a third face. Element-qualified and scoped so it beats
+   `button.bell-btn`, and the resting edge is a 35% mix for the same reason Notice's is: a
+   full-strength red hairline on an idle row reads as an error that has already happened. */
+.settings button.set-danger {
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+  color: var(--danger);
+}
+.settings button.set-danger:not(:disabled, [aria-disabled='true']):hover {
+  border-color: var(--danger);
+}
+
+/* The sync glyph turns while a rebuild runs — the same 1.1s linear the topbar's reindex button uses
+   (IconButton.css), and transform only. Gated on `no-preference` so `reduce` simply holds it still:
+   the button is disabled throughout, so the set-wide 0.55 dim and the changed label carry the state
+   on their own, and there is nothing to replace the motion with. */
+@media (prefers-reduced-motion: no-preference) {
+  .set-spin svg {
+    animation: set-spin 1.1s linear infinite;
+  }
+}
+@keyframes set-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Below the measured content width the split cannot hold — 585 + 24 + 411 needs 1020, and at a
+   1100px window the columns are down to ~460 / ~316, narrow enough for a three-chip row to clip
+   against its card. One column then, in the same order. Layout only, so there is nothing to
+   collapse under `reduce`. */
+@media (max-width: 1100px) {
+  .set-cols {
+    flex-direction: column;
+  }
+  .set-col--left,
+  .set-col--right {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+}
