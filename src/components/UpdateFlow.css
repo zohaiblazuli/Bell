@@ -1,0 +1,119 @@
+/* Update flow — `design/specs/update-and-startup.md` PART A. The rationale is in UpdateFlow.tsx.
+   Everything measured already lives in `@ui/UpdateNotice` (§A2) and `@ui/Dialog` (§A1); what is
+   left here is the pill's entrance and the dialog bodies the file does not draw. */
+
+/* The entrance, from `motion-mr-bell.md` §4: `pill Available` `444:109` runs TRANSLATE_Y 8 → 0 over
+   300ms on Figma easeOut, and its OPACITY is a HOLD that snaps at 80ms. Two animations rather than
+   one keyframe list, because a shared list would split the rise's easing at the opacity step and
+   bend the curve; `steps(1, end)` across 80ms is the HOLD, written the way that spec's
+   implementation notes ask for it. Both keyframes are `from`-only, so the resting state is the
+   element's own and no fill mode is needed.
+
+   It plays whenever the pill's element MOUNTS, and that includes two changes of face: `UpdateNotice`
+   renders a <div> for Downloading and a <button> for the other two, so React must rebuild the node
+   on available → downloading and on downloading → ready, and the entrance replays there. Read that
+   as the product's stand-in for the file's own device — §4 stacks three detached pills at one x,y
+   and crossfades them, where only one state exists at a time here — but it is a replay, not a
+   one-time appearance, and in Figma only `pill Available` carries the rise. It cannot be suppressed
+   from this file: the element type is the primitive's choice, so no `key` keeps the node alive. */
+@media (prefers-reduced-motion: no-preference) {
+  .uflow-pill {
+    animation:
+      uflow-pill-rise 0.3s cubic-bezier(0, 0, 0.58, 1),
+      uflow-pill-appear 0.08s steps(1, end);
+  }
+}
+
+@keyframes uflow-pill-rise {
+  from {
+    transform: translateY(8px);
+  }
+}
+
+@keyframes uflow-pill-appear {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Both dialog buttons measure 181 — `181 + 10 + 181 = 372` — which is what `.dlg-actions > *` in
+   Dialog.css asks for with `flex: 1 0 0`. That does not land on a Button: `button.bell-btn { flex:
+   none }` is element-qualified and outranks a class-plus-universal selector whichever order the two
+   stylesheets load in, so a Button in the row hugs its label instead. Two classes plus the element
+   beats both. The proper home for this is Dialog.css or Button.css — it is in the build report. */
+.dlg-actions > button.uflow-action {
+  flex: 1 0 0;
+  min-width: 0;
+  /* Figma's Button master is `primaryAxisAlignItems: MIN`, which is invisible at its hugging 123
+     and very visible at 181, where the label would sit hard against the 14px inset. §A1's own
+     drawing of the row centres both labels. */
+  justify-content: center;
+}
+
+/* The dialog's specs flick is ~30% quicker than the standalone push-up, and the file warns against
+   sharing one animation across the three pages (motion TRAPS 15). Measured, the difference is purely
+   tempo — the dialog's beats are 0.717x the standalone's on every one — so MrBell.css exposes the
+   duration and this is the whole override. 1.2s x 0.717 = 0.86s, which lands its peaks on
+   0.172 / 0.244 and its return on 0.538 against the file's 0.17 / 0.25 / 0.53. */
+.dlg-panel .bell[data-anim='specs-push-up'] {
+  --bell-flick: 0.86s;
+}
+/* The notice's own tempo: 0.689x, i.e. 0.827s → 0.165 / 0.234 / 0.517 against 0.16 / 0.24 / 0.52. */
+.bell-notice .bell[data-anim='specs-push-up'],
+.uflow-pill .bell[data-anim='specs-push-up'] {
+  --bell-flick: 0.827s;
+}
+
+/* A face with no Primary to offer — checking, downloading — has one button, and one button
+   stretched across 372 reads as a bar. It keeps Button's own hug and the row centres it. */
+.uflow-solo .dlg-actions {
+  justify-content: center;
+}
+
+/* Release notes. `.dlg-body` centres its text, which is right for the file's one-sentence copy and
+   wrong for a list — a centred changelog is unreadable — so this block is the one thing in the
+   panel that left-aligns. `pre-wrap` keeps the line breaks the release author typed, and is the
+   only formatting the payload gets, since it arrives as text. The height cap is not styling: notes
+   come off a server with no length limit and `.dlg-panel` clips, so an uncapped block would simply
+   be cut. 130px is about nine lines of Body/Small at `line-height: normal`, which keeps the panel
+   under ~390 tall — the stack is `20 + 96 + 18 + 20 + 18 + body + 18 + 38 + 24`. */
+.uflow-notes {
+  max-height: 130px;
+  overflow-y: auto;
+  text-align: left;
+  white-space: pre-wrap;
+  /* A bare URL or a commit subject can arrive with no break opportunity in it at all. */
+  overflow-wrap: anywhere;
+}
+
+/* Some builds ship with no notes, and saying so beats a panel with a hole in it. */
+.uflow-empty {
+  color: var(--ink-3);
+}
+
+.uflow-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+/* `--ink-2` and Mono/Small are the pill's own treatment of its `62%` readout (§A2.3, `438:119`).
+   The two describe the same download and should not disagree about how a number looks. */
+.uflow-bytes {
+  color: var(--ink-2);
+}
+
+/* `.meter-bar` is authored `flex: 1` for the dashboard rows it was measured in; in a column that
+   growth resolves against the wrong axis. */
+.uflow-progress .meter-bar {
+  flex: none;
+}
+
+/* Machine text left-aligns for the same reason the notes do: an OS error string with a path in it
+   is read, not admired. The class rides on `Notice` itself rather than on a wrapper — the primitive
+   publishes `className`, and `.bell-notice` is a flex box whose text span takes the alignment by
+   inheritance. `Notice` brings the danger wash, the glyph and `role="alert"` with it. */
+.uflow-error {
+  text-align: left;
+}
