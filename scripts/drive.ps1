@@ -48,6 +48,15 @@ public class BellDrive {
   struct RECT { public int L, T, R, B; }
   const uint LEFTDOWN = 0x0002, LEFTUP = 0x0004;
 
+  // Window area, for picking the real window when more than one dev instance is running. A stale
+  // instance keeps a 16x16 handle, and `Select-Object -First 1` picked between them at random — so
+  // a click meant for a nav row could be dispatched at a bare screen coordinate instead.
+  public static long Area(IntPtr h) {
+    RECT r;
+    if (!GetWindowRect(h, out r)) return 0;
+    return (long)(r.R - r.L) * (r.B - r.T);
+  }
+
   public static void Focus(IntPtr h, int settleMs) {
     if (IsIconic(h)) { ShowWindow(h, 9); System.Threading.Thread.Sleep(settleMs); }
     BringWindowToTop(h);
@@ -73,6 +82,7 @@ public class BellDrive {
 
 $proc = Get-Process $ProcessName -ErrorAction SilentlyContinue |
   Where-Object { $_.MainWindowHandle -ne 0 } |
+  Sort-Object { [BellDrive]::Area($_.MainWindowHandle) } -Descending |
   Select-Object -First 1
 
 if (-not $proc) {

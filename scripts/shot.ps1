@@ -35,6 +35,15 @@ public class BellShot {
   static readonly IntPtr NOTOPMOST = new IntPtr(-2);
   const uint NOMOVE = 0x0002, NOSIZE = 0x0001, SHOWWINDOW = 0x0040;
 
+  // Window area, for picking the real window when more than one dev instance is running. A stale
+  // instance keeps a 16x16 handle, and `Select-Object -First 1` picked between them at random —
+  // which reads as "the capture is empty" or, worse, sends a drive click to a screen coordinate.
+  public static long Area(IntPtr h) {
+    RECT r;
+    if (!GetWindowRect(h, out r)) return 0;
+    return (long)(r.R - r.L) * (r.B - r.T);
+  }
+
   public static string Capture(IntPtr h, string path, int settleMs) {
     if (IsIconic(h)) { ShowWindow(h, 9); System.Threading.Thread.Sleep(settleMs); }
 
@@ -69,6 +78,7 @@ public class BellShot {
 
 $proc = Get-Process $ProcessName -ErrorAction SilentlyContinue |
   Where-Object { $_.MainWindowHandle -ne 0 } |
+  Sort-Object { [BellShot]::Area($_.MainWindowHandle) } -Descending |
   Select-Object -First 1
 
 if (-not $proc) {

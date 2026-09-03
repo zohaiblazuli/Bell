@@ -25,7 +25,12 @@
   border: 1px solid var(--card-brd);
   border-radius: var(--r-card); /* 13 */
   box-shadow: var(--shadow-card); /* Shadow/Card/Day, and /Night on the tone flip */
-  transition: transform 0.2s cubic-bezier(0.2, 0.7, 0.2, 1),
+  /* `--tone-content` first: `--card` and `--card-brd` both flip, and without it the fill of every
+     card in the grid cut in one frame while the chrome behind them crossed over 300ms — the largest
+     single step in the whole tone change. The hover list follows and its own `border-color 0.16s`
+     wins the duplicate, which is the right way round: hover is the frequent case and 60ms of
+     difference on a border during a tone flip is not perceptible. */
+  transition: var(--tone-content), transform 0.2s cubic-bezier(0.2, 0.7, 0.2, 1),
     box-shadow 0.2s cubic-bezier(0.2, 0.7, 0.2, 1), border-color 0.16s;
   /* Deliberately NOT clipped, though the component carries clipsContent. The file had to turn that
      off on 8 grid frames, 18 rows and 10 content regions to stop this shadow being sliced; a clip

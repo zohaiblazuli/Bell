@@ -21,6 +21,9 @@
   text-align: left; /* buttons centre by default; `button.stat` did the same */
   min-width: 0; /* hug in Figma, but a flex/grid child here: the dashboard hands it 195.6 and a
                    `+6 vs last` delta, and it must shrink rather than push the row wide */
+  /* Same tone crossfade as every other `--card` surface — the tiles sit in a row with the hero and
+     would otherwise cut a frame ahead of it. `--tone-content` is chrome.css's token. */
+  transition: var(--tone-content);
 }
 
 /* No height, ever. 63 is a hug result and the component's whole promise (TRAP 11). The dashboard
@@ -29,9 +32,12 @@
 
 /* The Figma component has no Hover variant: the tiles are static in the file. app.css gave the
    clickable ones an accent edge, which is the only affordance an app with `cursor: default`
-   has left, so it stays — and only on the button form. */
+   has left, so it stays — and only on the button form.
+   `button.stat-tile` is (0,1,1) and outranks the `.stat-tile` above, so this list has to carry
+   `--tone-content` too or the clickable tiles cut their fill on a tone change while the static ones
+   beside them crossfade — which is worse than either behaviour applied uniformly. */
 button.stat-tile {
-  transition: border-color 0.16s;
+  transition: var(--tone-content), border-color 0.16s;
 }
 button.stat-tile:hover:not(:disabled) {
   border-color: var(--accent);
