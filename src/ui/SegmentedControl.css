@@ -1,0 +1,83 @@
+/* Segmented Control — `design/specs/components-controls.md` §3, set `42:111`. Supersedes `.seg`,
+   `.seg button`, `.seg button svg` and `.seg button.on` in app.css, every one of which is off-spec:
+   padding 3 not 4, gap 2 not 0, radius `--r-btn` not `--r-pill`, and 30 x 26 r7 segments. */
+
+.bell-seg {
+  display: flex;
+  align-items: center;
+  /* 4 + 30 + 3 + 30 + 4 = 71 and 4 + 28 + 4 = 36; a third segment adds 3 + 30 = 104. */
+  padding: 4px;
+  gap: 0;
+  border-radius: var(--r-pill);
+  background: var(--hair-2);
+  /* Stroke INSIDE (§0), so it must not grow the 71 / 104 the widths above depend on — an inset ring
+     is that, where a `border` would add 2px to each axis. Same reasoning as Switch.css. */
+  box-shadow: inset 0 0 0 1px var(--hair);
+  /* clipsContent is true on the container as well as on each segment (§0), so the selected
+     segment's shadow shows only across the 4px gutter and is cut by the pill. That is the file —
+     do not "release" it to let the shadow bloom. */
+  overflow: hidden;
+  /* the Library / Recent toolbars put this after a FILL spacer, so it must not be squeezed */
+  flex: none;
+}
+
+button.bell-seg-item {
+  /* Element-qualified: index.css's `:focus-visible` sets `border-radius: 6px` and loads after
+     ui.css, so a bare class ties and loses — the segment would square off while focused. */
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  /* 999 is a literal on the inner segment, not `--r-pill` (§10 trap 11). */
+  border-radius: 999px;
+  background-color: transparent;
+  color: var(--ink-3);
+  overflow: hidden;
+  transition: background-color 0.16s, color 0.16s;
+}
+
+button.bell-seg-item svg {
+  width: 16px;
+  height: 16px;
+  /* No stroke-width here on purpose. The spec's 1.16667 is the *exported* width: the sprite is
+     authored 24 / 1.75 and the 24 -> 16 viewBox scale already paints it at 16/24 x 1.75 = 1.16667.
+     Re-stroking at 1.16667 in CSS would land at 0.78px. */
+}
+
+button.bell-seg-item[aria-pressed='true'] {
+  background-color: var(--glass-strong);
+  color: var(--ink);
+  /* DS-B (§9) is the effect style `Shadow/Card/Day`, which is `--shadow-card` layer for layer in
+     Day. Figma applies the Day style in Night too (§10 trap 7) — a #121432 shadow over the Night
+     ground, which reads as nothing at all; letting the token retone is the deliberate deviation. */
+  box-shadow: var(--shadow-card);
+}
+
+/* The set has no `Hover` axis — two axes only, `Segments` and `Selected` — so there is no hover
+   rule here. It is missing from the design, not from the port. */
+
+.bell-seg-sep {
+  flex: none;
+  width: 3px;
+  height: 20px;
+  background: var(--hair);
+}
+
+.bell-seg-sep[data-visible='false'] {
+  /* A separator touching the selection hides with opacity, never `display` or `visible: false`
+     (§10 trap 4): its 3px stays in the layout, which is why the box measures 71 / 104 whichever
+     segment is selected. */
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .bell-seg-sep {
+    transition: opacity 0.16s;
+  }
+  button.bell-seg-item {
+    transition: background-color 0.16s, color 0.16s, box-shadow 0.16s;
+  }
+}
