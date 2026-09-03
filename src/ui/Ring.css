@@ -1,0 +1,37 @@
+/* Ring — rationale and spec citations live in Ring.tsx.
+ *
+ * `.bell-ring`, not `.ring`: `app.css` keeps `.ring` and `.hero-ring` for the two copies this
+ * replaces, and both of those are a wrapper DIV around an svg while this component *is* the svg.
+ * `ui.css` loads after `app.css`, so sharing the name would land this file's rotation on the old
+ * wrapper as well as on the svg inside it — two rotations, and a ring starting at six o'clock. */
+
+.bell-ring {
+  display: block;
+  /* Twelve o'clock start. The circle is centred in its own box, so rotating the <svg> element and
+     rotating the geometry are the same picture; `.ring svg` did it here too. */
+  transform: rotate(-90deg);
+}
+
+.bell-ring__trk,
+.bell-ring__arc {
+  /* index.css paints every <svg> in the app for the icon sprite — `stroke: currentColor;
+     stroke-width: 1.75`. Both circles carry their own stroke and weight as attributes, since the
+     weight is per-instance, so `fill` is the only thing left to say. Neither is ever filled. */
+  fill: none;
+}
+
+.bell-ring__arc {
+  /* The cap both old copies set, and what makes a 3% value read as a mark rather than a hairline. */
+  stroke-linecap: round;
+  /* The one property this app animates on purpose that is neither `transform` nor `opacity`: the
+     arc's own length. 0.9s LINEAR against a 1s tick — the focus timer's value arrives once a
+     second, and easing would make the arc lurch and then stall between ticks. (`.hero-ring` ran
+     cubic-bezier(.2, .7, .2, 1) on the same property; one behaviour now.) */
+  transition: stroke-dashoffset 0.9s linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bell-ring__arc {
+    transition: none;
+  }
+}
