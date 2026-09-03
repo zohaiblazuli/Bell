@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Foolscap",
+  "productName": "Bell",
   "version": "0.1.0",
-  "identifier": "com.foolscap.study",
+  "identifier": "com.bell.study",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Foolscap",
+        "title": "Bell",
         "width": 1320,
         "height": 860,
         "minWidth": 1040,
