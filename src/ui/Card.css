@@ -1,0 +1,49 @@
+/* Card — the content surface. Rationale and spec citations live in Card.tsx. */
+
+.bell-card {
+  /* Figma authors every one of these surfaces as an auto-layout frame, and VERTICAL is the
+     majority: year activity gap 12, session coverage gap 4, subject progress and the Settings
+     grouped list gap 0. No two share a gap, so the gap stays with the call site's own class
+     rather than becoming a prop. The single HORIZONTAL card is the dashboard resume card
+     `185:85` (gap 14), which flips `flex-direction` from its own class. */
+  display: flex;
+  flex-direction: column;
+  /* Cards are FILL inside a flex column or the 7/5 `cols` row, so they must be allowed to shrink
+     below their content — otherwise a long meta string widens the whole column. */
+  min-width: 0;
+  padding: 16px; /* inset `card` — resume card `185:85`, year activity `495:2009` */
+  background: var(--card);
+  border: 1px solid var(--card-brd);
+  border-radius: var(--r-card);
+  /* Deliberate, not a forgotten line: the page recess behind the content region is the elevation
+     (screen-dashboard TRAP 21). Declared instead of merely omitted so that a call site still
+     carrying an old app.css card class — `.card` and `.up` both set `var(--shadow-card)` — drops
+     its shadow while the port is in flight, since ui.css loads after app.css. */
+  box-shadow: none;
+}
+
+/* The other measured insets. `card` is the base rule above. */
+.bell-card[data-inset='none'] {
+  padding: 0;
+}
+.bell-card[data-inset='list'] {
+  /* subject progress `186:95`, due for review `184:97` — 6 vertical against each row's own 8. */
+  padding: 6px 16px;
+}
+.bell-card[data-inset='coverage'] {
+  /* session coverage `187:115` */
+  padding: 10px 16px;
+}
+
+/* Grouped-list mode — screen-library-settings §6.2.
+   `clipsContent TRUE` is load-bearing here rather than cosmetic: the rows and the dividers between
+   them are full-bleed, so without the clip the first and last rows would square off the 13px
+   corners. gap is pinned to 0 in this mode because the divider spacing is the row's own border,
+   and a gap from a call-site class would open a gutter the dividers do not cross.
+   Plain (non-rows) cards get no clip: every inset above keeps content 6px or more off the edge, so
+   Figma's inconsistency there — resume card and subject progress clip, due for review does not —
+   has nothing to bite on. */
+.bell-card[data-rows] {
+  gap: 0;
+  overflow: hidden;
+}
