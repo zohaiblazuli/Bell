@@ -1,0 +1,37 @@
+/* Doc Badge — `design/specs/components-data.md` §6, node `14:14`.
+ *
+ * Keeps the `.doc` class from `src/styles/app.css`, whose block this supersedes: it is the same box
+ * to the pixel, and the container that positions badges — `.docs { display: flex; gap: 5px }` —
+ * belongs to whatever row holds them, not here, so it must keep matching. `ui.css` is imported
+ * after `app.css`, so this block wins for as long as both are live.
+ */
+
+.doc {
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  flex: none;
+  /* 5 l/r, 2 t/b measured. 23 x 17 is the hug result for two glyphs — do not pin it. */
+  padding: 2px 5px;
+  /* 5 raw px, below the smallest radius token (--r-chip 9) — spec TRAP 3. */
+  border-radius: 5px;
+  /* Figma strokes are INSIDE, so the measured 23 x 17 already contains the hairline. A real border
+     would add 2px to a hug box; an inset ring paints inside the radius and costs no layout. The
+     `border: 0` also cancels app.css's border while both files are live. */
+  border: 0;
+  box-shadow: inset 0 0 0 1px var(--hair);
+  /* Off the ramp on purpose: Geist Mono Medium 10 at +3% (= +0.3px) has no named text style in the
+     file (spec TRAP 7), so it is set from the font tokens rather than a `.t-*` class.
+     `line-height` has to be stated because index.css puts 1.5 on the body, which would make this
+     box 19 tall instead of 17. */
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 10px;
+  line-height: normal;
+  letter-spacing: 0.03em;
+  color: var(--ink-3);
+  /* Tailwind's preflight underlines `abbr[title]`; this badge is a box, not a gloss. Both spellings
+     because the prefixed property is the real one on WebKit. */
+  -webkit-text-decoration: none;
+  text-decoration: none;
+}

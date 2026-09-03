@@ -3,7 +3,7 @@
  *
  * Ported from `C:\scambridge\pipeline\threshold-rows.ts`. One deliberate change: the original
  * validated the component against a hand-maintained allowlist of the subjects that app
- * ingested. Foolscap indexes the whole library, so an allowlist would reject valid rows —
+ * ingested. Bell indexes the whole library, so an allowlist would reject valid rows —
  * the structural checks below (two digits, plausible max mark, plausible A%) do the work.
  */
 

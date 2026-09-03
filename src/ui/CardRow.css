@@ -1,0 +1,82 @@
+/* CardRow — one row of the Settings grouped list. Rationale and citations in CardRow.tsx. */
+
+.bell-card-row {
+  display: flex;
+  align-items: center; /* counterAxisAlignItems CENTER */
+  justify-content: space-between; /* SPACE_BETWEEN with itemSpacing 0 — the stack absorbs the slack */
+  /* FILL. Also required by the <button> variant, which would otherwise hug its content. */
+  width: 100%;
+  min-width: 0;
+  padding: 11px 16px;
+  text-align: left; /* a <button> centres its text; every row here is left-set */
+}
+
+/* The divider. Figma draws it as a separate 1px RECT filled `--hair-2`, a sibling of the rows
+   inside the card, so it spans the whole 585 / 411 and is clipped by the card's 13px corners.
+   A border-top on the SECOND row of each pair renders identically — full-bleed, and it adds the
+   same single pixel to the card's height that the RECT does — with no last-row special case.
+   §6.2 rules out border-bottom for precisely that reason. */
+.bell-card-row + .bell-card-row {
+  border-top: 1px solid var(--hair-2);
+}
+
+/* The label stack — VERTICAL, gap 2. Figma authors it HUG in the 585 column and FILL in the 411
+   one, where the helpers have to wrap rather than clip (§6.4). One growing box covers both cases:
+   with SPACE_BETWEEN the control still lands hard right, and the wrap point does not move because
+   the flex basis is the text's own max-content width. Overflow is left to wrap rather than clip —
+   §6.4 says the narrow column's helper is authored to wrap, and nothing is lost either way. */
+.bell-card-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.bell-card-row-label {
+  color: var(--ink);
+}
+.bell-card-row-helper {
+  color: var(--ink-3);
+}
+
+/* The control slot — HUG, right-aligned. gap 6 is the `value` row `536:420` (Mono/Timer `50:00`
+   plus a 16px chevron), the only control the file composes from two loose children; the chip rows
+   (`choice` / `tone choice`, gap 8) are components and bring their own. `flex: none` because Figma
+   hugs it — a three-chip row in the 585 column should clip against the card, not squash. */
+.bell-card-row-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+/* Interactive rows. Figma has no Hover variant for a settings row at all, and the app keeps
+   `cursor: default` everywhere, so a wash is the only affordance a clickable row has — borrowed
+   from the measured Icon Button hover fill (`--hair-2`, components-controls.md). Colour only, so
+   there is no reduced-motion case to honour. `background-clip: padding-box` keeps the wash out
+   from under the divider above it, which is the same token and would otherwise stack into a
+   visibly darker line. */
+button.bell-card-row {
+  background-clip: padding-box;
+  transition: background-color 0.16s;
+}
+button.bell-card-row:hover {
+  background-color: var(--hair-2);
+}
+
+/* The global `:focus-visible` ring is outset 2px, which a full-bleed row inside a clipped card
+   cannot show: its left and right segments fall outside the card and are cut, leaving two stray
+   horizontal lines. Pull the ring inside instead, and let the first and last row round it to the
+   card's own corners so the 13px radius does not nibble it. The outline itself restates the global
+   rule rather than inheriting it, so the row keeps a visible ring if that global is ever scoped. */
+button.bell-card-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: 0;
+}
+button.bell-card-row:first-child:focus-visible {
+  border-radius: var(--r-card) var(--r-card) 0 0;
+}
+button.bell-card-row:last-child:focus-visible {
+  border-radius: 0 0 var(--r-card) var(--r-card);
+}

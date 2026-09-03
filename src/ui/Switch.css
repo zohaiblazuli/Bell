@@ -1,0 +1,68 @@
+/* Switch — `design/specs/components-controls.md` §4, set `532:7`. Supersedes `.tone .sw` and
+   `.tone .sw::after` in app.css, plus the two `.app[data-tone='night'] .tone[data-on='tone']`
+   rules that drove the On state off the app's tone attribute instead of off a prop. */
+
+button.switch {
+  /* Element-qualified deliberately: index.css's global `:focus-visible` sets `border-radius: 6px`
+     and is loaded after ui.css, so a bare `.switch` ties on specificity and loses — the pill
+     would square off while focused. The same applies to every rule below that sets a radius. */
+  position: relative;
+  display: block;
+  flex: none;
+  width: 44px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  /* 12 is a literal in the file, not `--r-pill` (§10 trap 11). It is h/2 so it reads as a pill
+     anyway, but tokenising it would change the file's structure, not just its pixels. */
+  border-radius: 12px;
+  background: var(--hair);
+  /* Figma's stroke is INSIDE, which by §0 does not grow the 44 x 24. An inset ring is exactly
+     that; a `border` would either inflate the box or steal 1px from the knob's 2px origin. Fill
+     and stroke are the same token, so the rim composites to ~21% and the Off track reads as
+     recessed — that is the file, not an accident. */
+  box-shadow: inset 0 0 0 1px var(--hair);
+  /* clipsContent: true — the knob's cast is clipped at the track edge. */
+  overflow: hidden;
+  transition: background-color 0.16s;
+}
+
+button.switch[aria-checked='true'] {
+  /* Paint style `Blue/Primary Button 135` (§7) = `--grad-btn`. There is no interpolation defined
+     between a colour and a gradient, so the track swaps and the knob's travel carries the change.
+     §4 keeps the 1px `--hair` stroke in both states; `screen-library-settings.md` §4.1 reads the
+     topbar instance as losing it when On. The component set wins, so the rim stays. */
+  background: var(--grad-btn);
+}
+
+button.switch:disabled {
+  /* §0: Figma dims the whole node rather than recolouring, so the rim and the knob's cast dim
+     with it. Do not build a disabled palette. */
+  opacity: 0.55;
+}
+
+.switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--white);
+  /* DS-C (§9): 0 1px 3px #000 @ 30 %. There is no black token, and `--plate` (#0b0c12) is the only
+     mode-invariant near-black in the vocabulary — mode-invariance is the property that matters,
+     because the knob stays `--white` in both tones and its cast must stay dark in both. */
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--plate) 30%, transparent);
+}
+
+button.switch[aria-checked='true'] .switch-knob {
+  /* x 2 -> 24 (§4): a 22px travel leaving a symmetric 2px gutter. app.css translated 20px and left
+     4px on the right, so anything eyeballed against the old switch now sits 2px further over. */
+  transform: translateX(22px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .switch-knob {
+    transition: transform 0.16s;
+  }
+}

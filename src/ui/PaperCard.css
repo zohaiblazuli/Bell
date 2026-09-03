@@ -1,0 +1,239 @@
+/* Paper Card — `design/specs/components-data.md` §2 (set `66:359`), with the in-grid facts from
+   `screen-library-settings.md` §5.3-5.4 and `screen-bookmarks-recent.md` §5a.
+
+   Supersedes in `src/styles/app.css`: `.card`, `.card:hover`, `.card-top`, `.card .code`,
+   `.card .pnum`, `.card .bm` (and its `:hover`, ` svg`, `.on`, `[data-mark='bookmarks'].on svg`),
+   `.card-title`, `.card-sub`, `.card-meta` (and its ` svg`, ` .sc`), `.card-foot`, `.card-marks`
+   and `.card-open`. `.meter`/`.meter i`/`.diff-l`/`.diff-s` are DifficultyMeter's; `.docs`/`.doc`
+   are Doc Badge, which §6 says this card no longer uses.
+
+   Where the old rules and the measurement disagree, the measurement wins — five of them, each one
+   visible: gap 12 -> 10, title 15.5 -> 15 (`Title/Card`), code 15/600 -> 12/400 (`Mono/Meta`),
+   meta 12px --ink-2 -> 11px --ink-3 (`Body/Meta`), meta gap 8 -> 6. Three things the file cut
+   outright: the `Paper 1 · Variant 2` subtitle, the `s15` Session Code chip and the clock glyph
+   (all de-duplicated against text already on the card), plus the QP/MS/ER badges. */
+
+.paper-card {
+  position: relative; /* the mark toggles are absolute siblings of the body button */
+  /* No width, ever. The master is FIXED 280 and every grid instance is FILL at 330.667; the track
+     owns both numbers. min-width: 0 so a long subject name cannot blow an `auto` column out. */
+  min-width: 0;
+  background: var(--card);
+  /* Figma's 1px stroke is INSIDE and costs no layout height; a CSS border does, so the hug lands on
+     130 rather than 128 and every inner edge sits 1px inboard. TRAP 17 already takes that trade for
+     the foot hairline, and taking it here keeps one border model across the whole card. */
+  border: 1px solid var(--card-brd);
+  border-radius: var(--r-card); /* 13 */
+  box-shadow: var(--shadow-card); /* Shadow/Card/Day, and /Night on the tone flip */
+  transition: transform 0.2s cubic-bezier(0.2, 0.7, 0.2, 1),
+    box-shadow 0.2s cubic-bezier(0.2, 0.7, 0.2, 1), border-color 0.16s;
+  /* Deliberately NOT clipped, though the component carries clipsContent. The file had to turn that
+     off on 8 grid frames, 18 rows and 10 content regions to stop this shadow being sliced; a clip
+     here would crop the body's focus ring as well. Nothing overflows but the title, and that clips
+     itself with text-overflow. */
+}
+
+/* State=Hover: stroke --card-brd -> --hair, elevation -> Shadow/Card Hover. The 3px lift is an app
+   addition kept from `.card:hover` — Figma has no transform — and it is exactly why this belongs on
+   the shell instead of the old non-interactive wrapper. */
+.paper-card:hover {
+  border-color: var(--hair);
+  box-shadow: var(--shadow-card-h);
+  transform: translateY(-3px);
+}
+
+/* The whole card is one button: VERTICAL, itemSpacing 10, padding 16 on all four sides,
+   counterAxisAlignItems MIN. */
+.pc-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 16px;
+  border-radius: var(--r-card);
+  text-align: left; /* a button centres its content by default */
+  color: inherit;
+}
+
+/* index.css rings :focus-visible in --accent but also sets `border-radius: 6px`, and it loads after
+   ui.css, so a bare `.pc-body` ties on specificity and loses — a 13px card would square off while
+   focused. The ring sits just outside the body, which is another reason nothing above may clip. */
+.pc-body:focus-visible {
+  border-radius: var(--r-card);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* identity `66:232` — VERTICAL, gap 4, FILL. */
+.pc-id {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+/* `subject row` `66:233` and `subject label` `66:234` in one element: the file nests them only so
+   SPACE_BETWEEN can push the bookmark to the far end, and our bookmark is not in this row at all.
+   gap 9 is the label group's own itemSpacing. The gutter the bookmark left is padding: three 24px
+   hit boxes = 72 wide pinned at right: 12, so the cluster's left edge lands 68px inside this row —
+   72 leaves 8px of optical air between the title's ellipsis and the first glyph. */
+.pc-subject {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-width: 0;
+  padding-right: 72px;
+}
+
+/* 18 x 18 `66:235`. The tint is set at the use site (hashed, inline), never here. */
+.pc-icon {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+.pc-icon > svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* `66:241` — FILL, min-width 0, one line, ellipsis. */
+.pc-title {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ink);
+}
+
+/* code `66:244` — HORIZONTAL, gap 2, both halves Mono/Meta 12. */
+.pc-code {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.pc-code-num {
+  color: var(--ink-2);
+}
+.pc-code-var {
+  color: var(--ink-3);
+}
+
+/* meta `66:247` — HORIZONTAL, gap 6, FILL, all three texts Body/Meta 11 in --ink-3. The session
+   keeps its width; the documents string is what gives way when the column is narrow. */
+.pc-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-3);
+}
+.pc-session,
+.pc-sep {
+  flex: none;
+  white-space: nowrap;
+}
+.pc-docs {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* foot `66:251` — a top border only, above the 12px paddingTop. Figma's stroke costs no layout
+   height and a CSS border does, so this is the 1px TRAP 17 sanctions. The nested meter is
+   `width: fill` by default and brings its own `flex: 1 1 auto`, so there is nothing to size here. */
+.pc-foot {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--hair-2);
+}
+
+/* The toggles, absolute so they can sit in the subject row without nesting inside the body button.
+   top/right 12 = the card's 16px padding minus the 4px of air each 24px box holds around its 16px
+   glyph, so the bookmark lands on the file's 16px inset — and, once the border's 1px is counted, on
+   the y 17 that its optical centring in the ~18px title row gives it.
+   24px because that is the smallest comfortable pointer target (WCAG 2.5.8 asks for 24); the file's
+   16px box is the glyph alone. gap 0 keeps the three boxes adjacent, so there is no dead strip
+   between neighbours, and the glyphs still read 8px apart. The old `.card .bm` was 28px at gap 2. */
+.pc-marks {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+}
+
+.pc-mark {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-chip); /* 9 — the old rule used a raw 8 */
+  color: var(--ink-3); /* Bookmarked=No is the outline glyph in --ink-3 */
+  transition: opacity 0.16s, transform 0.16s, color 0.16s, background-color 0.16s;
+}
+.pc-mark > svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* App addition, inherited from `.card .bm:hover`: three adjacent icon buttons have to say which one
+   the pointer is on. The file gives the bookmark no hover state of its own. */
+.pc-mark:hover {
+  background: var(--hair-2);
+  color: var(--ink);
+}
+
+/* Bookmarked=Yes is --accent, not --iris-3: both resolve to #1436c8 in Day, and the Night render's
+   #6AA8FF settles it (`screen-bookmarks-recent.md` note 8). Figma ships the ON glyph as a second,
+   solid asset; the sprite's bookmark is one closed path, so filling it is the same shape. */
+.pc-mark[aria-pressed='true'] {
+  color: var(--accent);
+}
+.pc-mark[data-mark='bookmarked'][aria-pressed='true'] > svg {
+  fill: currentColor;
+}
+
+/* Deviation 1. Done and revision rest hidden, so an untouched card is the file's card, and slide
+   out from under the bookmark on hover or keyboard focus — opacity and transform only. They are
+   never hidden while ON: a mark you can only see by hovering is not a mark. `:focus-within` covers
+   both the body button and the toggles themselves, so the cluster is reachable by keyboard. */
+.pc-mark[data-mark='done'],
+.pc-mark[data-mark='revision'] {
+  opacity: 0;
+  transform: translateX(4px);
+}
+.paper-card:hover .pc-mark,
+.paper-card:focus-within .pc-mark,
+.pc-mark[aria-pressed='true'] {
+  opacity: 1;
+  transform: none;
+}
+
+/* Colour is the only thing left moving. */
+@media (prefers-reduced-motion: reduce) {
+  .paper-card {
+    transition: box-shadow 0.16s linear, border-color 0.16s linear;
+  }
+  .paper-card:hover {
+    transform: none;
+  }
+  .pc-mark {
+    transition: color 0.16s linear, background-color 0.16s linear;
+  }
+  .pc-mark[data-mark='done'],
+  .pc-mark[data-mark='revision'] {
+    transform: none;
+  }
+}

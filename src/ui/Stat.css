@@ -1,0 +1,89 @@
+/* Stat — `design/specs/components-data.md` §1, node `24:5`.
+   Type comes off the ramp: `.t-mono-stat` (Mono/Stat 19 / -0.38px), `.t-mono-small`
+   (Mono/Small 11) and `.t-label-stat` (Label/Stat 10 / +0.6px / UPPER), applied as classes.
+   Three spec-vs-app.css disagreements, spec winning in each: the caption was 10.5px at 0.07em
+   (spec 10 / 0.06em), `.kv`'s figure was 18px (spec 19), and `.kv` had no fill, a `--hair-2`
+   border, 9/13 padding and `min-width: 108px` — it now looks like every other Stat. The
+   chrome-free value+caption pair `.kv` was imitating does exist in the file, as the year-activity
+   rail tile (`495:8065`: gap 1, no padding, no fill), but that is a different node, not a variant
+   of this one. */
+
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* counterAxisAlignItems MIN */
+  gap: 2px; /* itemSpacing 2 */
+  padding: 12px 14px; /* 12 top/bottom, 14 left/right */
+  background: var(--card);
+  border: 1px solid var(--card-brd); /* 1px, INSIDE */
+  border-radius: var(--r-card); /* 13 */
+  overflow: hidden; /* clipsContent true — a clipped row beats a burst tile */
+  text-align: left; /* buttons centre by default; `button.stat` did the same */
+  min-width: 0; /* hug in Figma, but a flex/grid child here: the dashboard hands it 195.6 and a
+                   `+6 vs last` delta, and it must shrink rather than push the row wide */
+}
+
+/* No height, ever. 63 is a hug result and the component's whole promise (TRAP 11). The dashboard
+   row stretches the tile to 92 and leaves the 29px under the caption empty
+   (`primaryAxisAlignItems MIN`, screen-dashboard.md TRAP 5) — so never centre this column. */
+
+/* The Figma component has no Hover variant: the tiles are static in the file. app.css gave the
+   clickable ones an accent edge, which is the only affordance an app with `cursor: default`
+   has left, so it stays — and only on the button form. */
+button.stat-tile {
+  transition: border-color 0.16s;
+}
+button.stat-tile:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+button.stat-tile:disabled,
+.stat-tile[aria-disabled='true'] {
+  opacity: 0.5;
+}
+
+/* The ring itself is index.css's global `:focus-visible`. That rule also sets
+   `border-radius: 6px`, and at equal specificity but later in the cascade it would re-round the
+   13px card for as long as it holds focus — hence this one-line restore. */
+.stat-tile:focus-visible {
+  border-radius: var(--r-card);
+}
+
+.stat-row {
+  display: flex;
+  align-items: baseline; /* counterAxisAlignItems BASELINE on `495:8187` */
+  gap: 8px; /* itemSpacing 8 */
+  min-width: 0;
+}
+
+/* Baseline is the trick, not a detail: the 14-tall delta sits at y 8 inside the 25-tall row, on
+   the big numeral's own writing line. `center` or `end` breaks both the alignment and the 63. */
+
+.stat-value {
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.stat-delta {
+  color: var(--ink-2); /* no success/danger tint — the sign glyph carries direction (TRAP 12) */
+  white-space: nowrap;
+}
+
+/* nowrap on both: a delta that wrapped would add a line to the 25-tall row and take the tile past
+   63. It clips against the tile's own overflow instead. */
+
+.stat-caption {
+  display: flex;
+  align-items: center;
+  gap: 3px; /* app.css's `margin-right: 3px` on the glyph; the spec has no icon slot at all */
+  color: var(--ink-3);
+  min-width: 0;
+}
+
+/* Icons arrive as a ReactNode, so they are sized from here. Both numbers are app.css's
+   (`.stat small svg`), not the spec's: the glyph is deliberately subordinate to the caption. */
+.stat-caption svg {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  opacity: 0.7;
+}

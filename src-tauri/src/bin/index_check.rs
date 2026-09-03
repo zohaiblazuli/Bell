@@ -6,11 +6,11 @@
 
 use std::path::Path;
 
-use foolscap_lib::{db, ingest};
+use bell_lib::{db, ingest};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let root = std::env::args().nth(1).unwrap_or_else(|| ingest::DEFAULT_ROOT.to_string());
-    let out = std::env::temp_dir().join("foolscap-index-check.sqlite3");
+    let out = std::env::temp_dir().join("bell-index-check.sqlite3");
     let _ = std::fs::remove_file(&out);
     let _ = std::fs::remove_file(out.with_extension("sqlite3-wal"));
 

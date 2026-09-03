@@ -1,0 +1,29 @@
+/* Session Code — `design/specs/components-data.md` §7, node `15:8`.
+ *
+ * Supersedes `.card-meta .sc` (Boxed) and `.subj-row .code` (Bare) in `src/styles/app.css`. The
+ * class is `.scode`, not the app's `.sc`: `.card-meta .sc` is a descendant selector, so a bare
+ * `.sc` here would lose to it on specificity and the Bare variant would keep the box it exists to
+ * drop. Both old selectors need deleting when the call sites swap.
+ *
+ * Type comes from `.t-mono-small` in the markup (Geist Mono Regular 11), so it is not restated.
+ */
+
+/* Style=Bare `15:7` — 20 x 14, the raw text box. */
+.scode {
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  flex: none;
+  white-space: nowrap;
+  color: var(--ink-3);
+}
+
+/* Style=Boxed `15:4` — 30 x 16: text 20 + 2 x 5 padding wide, 14 + 2 x 1 tall. */
+.scode--boxed {
+  padding: 1px 5px;
+  /* 5 raw px, below the smallest radius token (--r-chip 9) — spec TRAP 3. */
+  border-radius: 5px;
+  /* Inside stroke, so it costs no layout: with a real border the chip would measure 32 x 18
+     against the spec's 30 x 16. */
+  box-shadow: inset 0 0 0 1px var(--hair);
+}

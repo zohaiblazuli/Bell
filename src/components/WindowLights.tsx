@@ -1,20 +1,40 @@
+import { useEffect, useState } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import Icon from './Icon';
+import Lights from '@ui/WindowLights';
 
-/** macOS-idiom traffic lights, wired to the real window. Glyphs appear on hover. */
+/**
+ * The traffic lights, wired to the real window.
+ *
+ * `@ui/WindowLights` owns the geometry and the three states; this is the thin container that
+ * supplies the callbacks and tracks focus, because the presentational component should not know
+ * that Tauri exists.
+ *
+ * The `inactive` state is not decoration: with `decorations: false` the lights are the only thing
+ * telling you whether the window has focus, so they go grey when it does not — which is exactly
+ * what macOS does and what the Figma set draws as `Window = Inactive`.
+ */
 export default function WindowLights() {
+  const [focused, setFocused] = useState(true);
+
+  useEffect(() => {
+    const win = getCurrentWindow();
+    let cancelled = false;
+    const unlisten = win.onFocusChanged(({ payload }) => {
+      if (!cancelled) setFocused(payload);
+    });
+    return () => {
+      cancelled = true;
+      void unlisten.then((off) => off());
+    };
+  }, []);
+
   const win = getCurrentWindow();
   return (
-    <div className="lights">
-      <button type="button" aria-label="Close" onClick={() => void win.close()}>
-        <Icon name="x" />
-      </button>
-      <button type="button" aria-label="Minimise" onClick={() => void win.minimize()}>
-        <Icon name="min" />
-      </button>
-      <button type="button" aria-label="Maximise" onClick={() => void win.toggleMaximize()}>
-        <Icon name="max" />
-      </button>
-    </div>
+    <Lights
+      inactive={!focused}
+      onClose={() => void win.close()}
+      onMinimize={() => void win.minimize()}
+      onZoom={() => void win.toggleMaximize()}
+    />
   );
 }

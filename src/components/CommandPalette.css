@@ -1,0 +1,312 @@
+/* Command Palette — the ⌘K sheet. Rationale, spec citations and the two protected mechanisms are
+   in `CommandPalette.tsx`; this file carries the numbers.
+
+   SUPERSEDES in `src/styles/app.css` (delete the whole "command palette" block, lines ~1256-1397):
+   `.scrim` · `.pal` · the `@media (prefers-reduced-motion: no-preference) .pal` rule ·
+   `@keyframes pop` · `.pal-in` · `.pal-in svg` · `.pal-in input` · `.pal-in input::placeholder` ·
+   `.pal-list` · `.pal-hint` · `.pres` · `.pres:hover, .pres.sel` · `.pres .ic` · `.pres .ic svg` ·
+   `.pres .code` · `.pres .code.cmd` · `.pres .sub` · `.pres .sess` · `.pal-foot` · `.pal-foot span`.
+   `.scrim` has no other call site in `src/` — `ui/Dialog.css` owns its own `.dlg-scrim`.
+
+   WHY EVERY SELECTOR IS NAMESPACED `cmdk` rather than reusing `.pal*`: `main.tsx` imports `./App`
+   on line 3 and `./styles/app.css` on line 14, so a stylesheet imported from a component lands
+   BEFORE app.css in the bundle — the opposite of `ui/styles.ts`, which is imported last precisely
+   so it can win. Reusing a class name here would lose every specificity tie to the block above
+   until someone deletes it. Fresh names cannot tie. */
+
+.cmdk-scrim {
+  position: fixed;
+  inset: 0;
+  /* `ui/Dialog.css` sits at 60 and must stay above this: a dialog raised from the palette is not
+     to be buried. Anything new that stacks over the app goes above 50, not on it. */
+  z-index: 50;
+  display: grid;
+  /* Top-anchored, not centred: the list grows downward as results arrive, and a centred panel
+     would walk the input up and down the screen while the user types. */
+  place-items: start center;
+  padding-top: 14vh;
+  background: var(--scrim);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.cmdk {
+  /* The hairline is INSIDE in Figma's sense — it must not push the panel to 582. */
+  box-sizing: border-box;
+  width: min(580px, 92vw);
+  border-radius: var(--r-panel); /* 16 */
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-brd);
+  /* CLAUDE.md gives the palette the deep end of the chrome blur range, 30-34 with 170-175%
+     saturation — it sits over content rather than over the ground, so it has more to knock back
+     than the sidebar's blur(26). */
+  -webkit-backdrop-filter: blur(34px) saturate(175%);
+  backdrop-filter: blur(34px) saturate(175%);
+  /* The window shadow, plus the specular top edge every glass surface in the system carries. */
+  box-shadow: var(--shadow-win), inset 0 1px 0 var(--glass-hi);
+  /* clipsContent: the head's hairline and the first/last rows corner-clip against the 16px radius
+     instead of squaring it off. */
+  overflow: hidden;
+}
+
+/* ---------- head: SearchField's field row, continued ---------- */
+
+.cmdk__head {
+  display: flex;
+  align-items: center;
+  /* itemSpacing 9, off `search` `45:41`. */
+  gap: 9px;
+  /* 20 on the sides so the glyph sits on the same x as every row's glyph: the list pays 8 and each
+     row pays 12. 14 top and bottom makes a 44 head against a 13px line box. */
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--hair);
+}
+
+/* 16px glyph painted `--ink-2` — the field spec leaves the icon at the set's documented paint, one
+   step darker than the placeholder beside it (`ui/SearchField.tsx`). */
+.cmdk__glyph {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--ink-2);
+}
+
+.cmdk__input {
+  /* FILL. Nothing follows it in the row, so this is also what keeps a long query from widening the
+     panel instead of scrolling inside it. */
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  /* Figma draws the onboarding field's caret as a 2px `--accent` rect (`495:1516`); a live input
+     draws its own, so the measurement ships as a colour. Same call as `ui/Field.css`. */
+  caret-color: var(--accent);
+  /* No `cursor`: index.css sets the native arrow on <body> and the app is not a web page. */
+}
+
+.cmdk__input::placeholder {
+  color: var(--ink-3);
+}
+
+/* A text input matches `:focus-visible` however it was focused, and the palette focuses this one
+   the moment it opens — so index.css's global ring would draw a permanent 2px accent rectangle
+   around the bare text box, inside a head that already reads as the field. The panel is the focus
+   context here and the caret says where the keys are going; every row below keeps its ring. */
+.cmdk__input:focus-visible {
+  outline: none;
+}
+
+/* ---------- list ---------- */
+
+.cmdk__list {
+  /* 360 is the shipped port's cap, carried over because the Figma file has no palette to measure —
+     so what it buys is worth writing down rather than deriving backwards. Tailwind's preflight makes
+     this border-box, so 360 less the 16 of padding is 344 of content: one 31px eyebrow (SectionLabel
+     pays 23, this file's `cmdk__eyebrow` the other 8) and six of the seven rows `PAPER_LIMIT`
+     allows, the seventh showing about half — which is also the only cue that there is a command
+     group under the recents. The vh floor is for a short window: the panel is top-anchored at 14vh
+     and must not run off the bottom. */
+  max-height: min(360px, 48vh);
+  overflow-y: auto;
+  /* A wheel that reaches the end of the list must not start scrolling whatever is behind the
+     modal — the reader's paper is one wheel-tick away otherwise. */
+  overscroll-behavior: contain;
+  padding: 8px;
+}
+
+/* Hidden when it holds no options, so an empty listbox does not leave a 16px strip of padding under
+   the head. `:empty` is exact here: the empty states are rendered as siblings of this element, never
+   inside it, because a listbox may only contain options and groups. */
+.cmdk__list:empty {
+  display: none;
+}
+
+/* The group eyebrow. `SectionLabel` pays its own 5px top and bottom and would draw a rule out to
+   the panel edge; a rule belongs to a content section, not to a run of rows inside a sheet, so it is
+   switched off at the call site. 12 on the left puts the eyebrow on the rows' text gutter. */
+.cmdk__eyebrow {
+  padding: 6px 12px 2px;
+}
+
+/* Honest empty state — "nothing here" said once, never a placeholder row. A sibling of the list, so
+   its side padding is the head's 20 rather than the list's 8 plus a row's 12. */
+.cmdk__empty {
+  margin: 0;
+  padding: 14px 20px;
+  color: var(--ink-3);
+}
+
+/* ---------- rows: the Recent list's measured row (screen-bookmarks-recent.md §6) ---------- */
+
+.cmdk-row {
+  /* The padding is inside the 100% — a content-box row would overhang the list by 24. */
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  /* gap 14 and 14 top/bottom are the file's; the sides are 12 rather than 16 because the list
+     already pays 8, which puts the glyph 20 from the panel edge — where the head's is too. */
+  gap: 14px;
+  width: 100%;
+  padding: 14px 12px;
+  border-radius: var(--r-btn); /* 10, as every other selectable row in the app */
+  text-align: left;
+  color: var(--ink);
+  /* Deliberately no transition on the selection paint: arrowing quickly through a list smears a
+     140ms cross-fade across three rows, and the cursor has to read as instant. */
+}
+
+/* The cursor. `--accent-soft` with no border is the system's selected-row paint — Nav Item Active
+   (§3.1) and Chip Filled/Neutral both use exactly it, and it is the only sanctioned wash, behind
+   one element at a time. Hover is not a second state here: the pointer moves the cursor, so
+   whatever the mouse is over IS the row ⏎ will open, and one highlight tells the whole truth. */
+.cmdk-row--on {
+  background: var(--accent-soft);
+}
+
+/* No `:focus-visible` rule for a row on purpose: rows are `tabIndex={-1}` and the cursor is reported
+   through `aria-activedescendant`, so the global ring never lands on one. The reason is in the TSX. */
+
+.cmdk-row__glyph {
+  /* flex, not inline: an inline <svg> sits on the text baseline and adds a descender gap. */
+  display: flex;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  /* `--ink-2`, and NOT the sidebar's hashed iris tint — the Recent row spec is explicit that the
+     same subject glyph is stroked `--ink-2` there, and `ui/SubjectRow.tsx` retired the tint for the
+     same reason: four brand stops spent as category fills is the accent used as a wash. */
+  color: var(--ink-2);
+}
+
+/* `Icon` renders a bare <svg> with no intrinsic size. `SubjectIcon` sets its own inline width and
+   height, which outranks this, so both glyph kinds land at 20. */
+.cmdk-row__glyph svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Accent on the live row only, and on a stroke — a line, never a fill. */
+.cmdk-row--on .cmdk-row__glyph {
+  color: var(--accent);
+}
+
+/* DEVIATION, written down because §6 TRAP 13 asks for it: that row pins its text slots (subject 124,
+   code 76, session 112) so the columns line up all the way down the list, and none of those widths
+   are carried over here. The three classes below dress the command rows as well, whose labels and
+   prose hints would be ellipsised inside a 124 box, so this row hugs and lets the right cluster
+   float instead. The cost is a ragged code column; the design's own cost was a name that overflows
+   its slot, since Figma truncates nothing. */
+.cmdk-row__name {
+  /* Hug, free to shrink: a long subject name ellipsises rather than pushing the code and the
+     session out of the row. */
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* `9706 /12` — Mono/Meta `--ink-2` in the file. Never shrinks: the code is what the query matched. */
+.cmdk-row__code {
+  flex: none;
+  color: var(--ink-2);
+}
+
+/* The session, Mono/Small `--ink-3`. Spelled out (`May/June 2024`), which is what the Recent row
+   prints — the raw `s24` is for the `SessionCode` chip on a card, not for a row that has the width. */
+.cmdk-row__session {
+  flex: none;
+  color: var(--ink-3);
+}
+
+/* A command's one-line explanation. It takes the slack the paper rows give to the session, so both
+   row kinds end at the same place. */
+.cmdk-row__hint {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ink-3);
+}
+
+/* The right cluster — a shortcut cap, then the return glyph. `margin-left: auto` is the Recent
+   row's FILL spacer between the session and its right-hand slots. */
+.cmdk-row__end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+/* "⏎ opens this one". The slot is reserved on every row and revealed on the selected one, so the
+   cursor moving never reflows a row — and opacity is the whole animation, which is why there is
+   nothing here for reduced motion to collapse. */
+.cmdk-row__enter {
+  display: flex;
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+  opacity: 0;
+}
+
+.cmdk-row__enter svg {
+  width: 16px;
+  height: 16px;
+}
+
+.cmdk-row--on .cmdk-row__enter {
+  opacity: 1;
+}
+
+/* ---------- foot: the key legend ---------- */
+
+.cmdk__foot {
+  display: flex;
+  gap: 16px;
+  /* Sides match the head, so the legend, the search glyph and every row glyph share one gutter. */
+  padding: 10px 20px;
+  border-top: 1px solid var(--hair);
+  color: var(--ink-3);
+}
+
+.cmdk__legend {
+  display: flex;
+  align-items: center;
+  /* 6 between the cap and its word. The literal space in the markup collapses away inside a flex
+     container, so this gap is the whole distance. */
+  gap: 6px;
+}
+
+/* ---------- motion ---------- */
+/* Opacity and transform only. Declared inside `no-preference` rather than being unwound in a
+   `reduce` block, so a reduced-motion user never has an animation to collapse in the first place —
+   the pattern `ui/Dialog.css` uses. */
+
+@media (prefers-reduced-motion: no-preference) {
+  .cmdk-scrim {
+    animation: cmdk-fade 0.16s ease-out;
+  }
+
+  /* `cubic-bezier(.2,.8,.2,1)` is the easing CLAUDE.md names for exactly this: the palette pop. */
+  .cmdk {
+    animation: cmdk-pop 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+
+@keyframes cmdk-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* A 10px drop, against the update dialog's 6: this panel is top-anchored and tall, so it needs the
+   extra travel to read as arriving rather than blinking. */
+@keyframes cmdk-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+}

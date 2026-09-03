@@ -1,0 +1,66 @@
+/* Subject Row — `design/specs/screen-library-settings.md` §3.2. Supersedes app.css's `.subj-row`,
+   `.subj-row:hover`, `.subj-row.active`, `.subj-row .dot`, `.subj-row .nm` and `.subj-row .code`.
+   The scrolling `.subj` column around them is not this component's and stays as it is. */
+
+.subject-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%; /* 214 is the sidebar's inner width (238 - 2x12), not a master to pin */
+  padding: 7px 10px; /* 30 tall = 7 + the 16px icon slot + 7, a hug result */
+  border-radius: var(--r-btn);
+  text-align: left;
+  color: var(--ink-2);
+  transition: background-color 0.16s, color 0.16s;
+}
+
+.subject-row__icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+.subject-row__icon > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.subject-row__name {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.subject-row__code {
+  flex: none;
+  color: var(--ink-3);
+}
+
+/* Figma draws no hover for these rows — they are ten plain frames, not a component set — so this
+   is Nav Item's measured hover fill borrowed for consistency. No ink moves, which keeps the
+   hovered row from reading stronger than the selected one. */
+.subject-row:not([aria-pressed='true']):hover {
+  background-color: var(--hair-2);
+}
+
+/* Selected. The file changes only the fill (`--accent-soft` on row 1, the sole lit row) and holds
+   the name at --ink-2 and the code at --ink-3, so they stay put here too — app.css took the whole
+   row to `color: var(--accent)`, which also dragged the code span with it. The accent on the
+   glyph is ours: it is the identity job the deleted colour dot was doing, spent on a 16px line
+   rather than as a category fill. */
+.subject-row[aria-pressed='true'] {
+  background-color: var(--accent-soft);
+}
+.subject-row[aria-pressed='true'] .subject-row__icon {
+  color: var(--accent);
+}
+
+/* As Nav Item: index.css's global :focus-visible would reset this 10px row to a 6px radius, and
+   an outset ring can be clipped by the scrolling `.subj` column. Inset, at the row's own radius. */
+.subject-row:focus-visible {
+  border-radius: var(--r-btn);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}

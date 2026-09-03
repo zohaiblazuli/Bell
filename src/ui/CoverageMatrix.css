@@ -1,0 +1,107 @@
+/* CoverageMatrix — `design/specs/screen-dashboard.md` §8b.
+ *
+ * The module is a Card in the composed screen, so the surface, radius and border live there; this
+ * file owns only the shared column track and the three cell states.
+ *
+ * Height arithmetic, for anyone changing a gap: 10 + 14 + 4 + (5·16 + 4·4) + 10 = 134.
+ */
+
+.cov {
+  display: flex;
+  flex-direction: column;
+  /* No separators between rows — the file spaces them with the gap alone. */
+  gap: 4px;
+}
+
+.cov-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 16px;
+  /* Rows clip, so a long subject name is cut rather than pushing the session columns out of
+     alignment with the header. The name's own FIXED 76 does the real work. */
+  overflow: hidden;
+}
+
+.cov-head {
+  height: 14px;
+}
+
+/* An empty 96x1 pad, so the header's session labels start on the same column as the cells. */
+.cov-pad {
+  flex: none;
+  width: 96px;
+  height: 1px;
+}
+
+.cov-label {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 96px;
+  height: 14px;
+  overflow: hidden;
+}
+
+/* 14 + 6 + 76 = 96. FIXED, not hugging: every row's cells must start at the same x. */
+.cov-name {
+  width: 76px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* Dimmer than the other two lists, which use --ink. Measured, and it reads as a row label
+     rather than a heading. */
+  color: var(--ink-2);
+}
+
+.cov-sess,
+.cov-count {
+  flex: none;
+  color: var(--ink-3);
+}
+
+.cov-sess {
+  width: 20px;
+  text-align: center;
+}
+
+.cov-count {
+  width: 30px;
+  text-align: right;
+}
+
+/* The row's own tally is a shade stronger than the header's `sat`, because it is data. */
+.cov-count-value {
+  color: var(--ink-2);
+}
+
+/* The strut is how the count pins right without space-between, which would also spread the
+   session columns. */
+.cov-strut {
+  flex: 1 1 auto;
+  min-width: 13px;
+}
+
+.cov-cell {
+  flex: none;
+  width: 20px;
+  height: 16px;
+  border-radius: 3px;
+  /* 0.5px INSIDE stroke — an inset shadow rather than a border, so it does not eat the 20x16. */
+  box-shadow: inset 0 0 0 0.5px var(--hair-2);
+}
+
+.cov-none {
+  background: var(--hair);
+}
+
+/* 38% — measured. Partial has to read as "started" at a glance without being mistaken for done,
+   and at this size a hue change would not survive; a single opacity step does. */
+.cov-partial {
+  background: color-mix(in srgb, var(--accent) 38%, transparent);
+}
+
+.cov-done {
+  background: var(--accent);
+}
