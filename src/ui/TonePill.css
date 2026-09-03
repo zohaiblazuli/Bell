@@ -1,0 +1,39 @@
+/* Tone Pill — `45:53` / `46:499`. Supersedes the `.tone` block in `src/styles/app.css` (the
+   `.tone .sw` rules under it belong to Switch.css). Numbers are
+   `design/specs/screen-library-settings.md` §4. */
+
+.tonepill {
+  /* Figma's stroke is INSIDE, so the hairline must not grow the 34: border-box, not content-box.
+     Tailwind's preflight already sets this globally; stated here because the height depends on it. */
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  height: 34px;
+  padding: 0 6px 0 12px; /* l12 r6 — asymmetric, because the switch needs less air than the icon */
+  border: 1px solid var(--hair);
+  border-radius: var(--r-pill);
+  background: var(--glass-strong);
+  color: var(--ink-2); /* the icon (currentColor) and the label share one paint */
+  /* clipsContent: true. Nothing overflows, and the Switch's focus ring still clears: the 24px
+     switch leaves 5px above and below and 6px to its right, against a 2px ring at 2px offset. */
+  overflow: hidden;
+}
+
+.tp-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.tp-label {
+  /* Spec reads "SF Pro Regular 12", which is `Body/Small` on the ramp — same family, weight, size
+     and zero tracking. No colour of its own: it inherits `--ink-2` from the pill. */
+  white-space: nowrap;
+}
+
+.tp-sw {
+  display: flex;
+  flex: none;
+}
