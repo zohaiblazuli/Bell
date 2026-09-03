@@ -1,0 +1,107 @@
+/* Update Notice — `design/specs/update-and-startup.md` §A2 (set `440:115`).
+   214 x 30 glass pill in three states; in Downloading the pill's own fill is the bar. */
+
+.upd {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Figma primaryAxisAlignItems: SPACE_BETWEEN */
+  box-sizing: border-box;
+  width: 214px; /* the sidebar's content column: 238 − 2 x 12 */
+  /* Spec TRAP 7: 214 x 30 with the measured `padding: 8px 10px` does not add up — 12px SF Pro at
+     line-height:normal is ~14.3px, so 8 + 14.3 + 8 + 2 borders = 32.3, not 30. Pin the height and
+     let the vertical padding go; the horizontal 10 is real and stays. */
+  height: 30px;
+  padding-inline: 10px;
+  border-radius: var(--r-chip);
+  background: var(--glass-strong);
+  /* The hairline is an INSET RING, not a border, for two measured reasons.
+     1. Figma's INSIDE stroke does not consume layout. A real 1px border would eat 2px of the 214.
+     2. `overflow: clip` clips children at the PADDING box, so a border would survive *underneath*
+        the progress fill as exactly the 1px light seam TRAP 6 warns about. An inset ring paints
+        above the background but below descendants, which is the Figma layer order: the fill covers
+        the left, top and bottom hairline edge to edge, and nothing is inset.
+     The measured local shadow is `0 3 10 0 rgba(18,20,51,.14)` — the Day shadow ink at 14%, i.e.
+     Shadow/Card drawn by hand on a Day board. The token is used instead so Night deepens with the
+     rest of the elevation family (Figma effect styles cannot be mode-aware; the app's are). */
+  box-shadow: inset 0 0 0 1px var(--glass-brd), var(--shadow-card);
+  overflow: clip; /* load-bearing: it is what rounds the progress fill's left corners */
+  color: var(--ink);
+  transition: box-shadow 0.16s, color 0.16s;
+}
+
+/* `440:115` has no Hover variant — State is the axis — so the affordance is borrowed from the
+   system's own glass control instead of invented: Button/Secondary Hover keeps `--glass-strong`
+   and moves the hairline to `--accent` (`components-controls.md`). Scoped to `button.upd` so the
+   Downloading readout, which is a <div>, never lights up. */
+button.upd:hover {
+  box-shadow: inset 0 0 0 1px var(--accent), var(--shadow-card);
+}
+
+/* index.css's global :focus-visible rule also sets `border-radius: 6px`, and it wins on equal
+   specificity by source order — restate the chip radius so the ring keeps the pill's corners. */
+.upd:focus-visible {
+  border-radius: var(--r-chip);
+}
+
+/* label group `438:109` */
+.upd-label {
+  position: relative;
+  z-index: 1; /* above the fill: an absolutely positioned sibling is a positioned descendant and
+                 would otherwise paint over in-flow content. Figma has `progress` bottom-most. */
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* `438:110` is a flattened 6 x 6 SVG whose paint the MCP could not resolve; the spec says treat it
+   as `--accent`. A div and not an <svg>, because the global `svg { fill:none; stroke:currentColor }`
+   rule would render a filled dot as an invisible ring. */
+.upd-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+}
+
+.upd-text {
+  white-space: nowrap; /* the text node hugs in all three variants */
+}
+
+.upd-pct {
+  position: relative;
+  z-index: 1;
+  color: var(--ink-2);
+}
+
+.upd-icon {
+  flex: none;
+  color: var(--ink-2); /* the icon set's default paint */
+  transition: color 0.16s;
+}
+
+/* Icon Button `20:11` Hover, the system's one measured icon-hover delta. */
+button.upd:hover .upd-icon {
+  color: var(--ink);
+}
+
+/* The bar, `438:120`. Figma pins it at (−1, −1) at 30 tall so it paints over the pill's outer box;
+   with the inset-ring hairline above, `inset: 0` IS that box. No radius of its own: the left
+   corners come from the parent's clip, and the right edge stays a hard vertical line — no cap,
+   no gradient, nothing inset. */
+.upd-fill {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  transform-origin: left center;
+  background: var(--accent-soft);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Download callbacks arrive in lumps; .16s smooths the step without lagging the readout. */
+  .upd-fill {
+    transition: transform 0.16s linear;
+  }
+}
