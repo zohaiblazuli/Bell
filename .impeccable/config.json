@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "geist mono",
+        "createdAt": "2026-09-02T18:38:25.899Z",
+        "reason": "The Bell Figma design system specifies Geist Mono as the data typeface (paper codes, session codes, marks, timer, difficulty scores); confirmed by Zohaib this session. CLAUDE.md's own blocklist bans Geist Sans and sanctions Geist Mono."
+      }
+    ]
+  }
+}
