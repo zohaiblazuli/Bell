@@ -226,17 +226,69 @@ explicit instruction. Noted once, not re-litigated.
 
 ## The background stack
 Every screen sits on the same stack, and it applies to **every** screen — there is no longer an
-aurora toggle. Bottom to top: two ambient blooms (CSS radial gradients at Figma's exact geometry),
-the exported cloud field, Day's darkening orb, Night's veil, then `page recess` on `.main`.
+aurora toggle. The order is the file's own, bottom to top: `ambient-a`, `ambient-b`, one raster
+field, and on Night a full-bleed `veil`. **Day and Night no longer share a single layer.** The two
+compositions differ in bloom geometry, bloom fills and blend modes, and Night has a scrim Day does
+not, so each tone's stack is mounted in full and the pair trade opacities. Every number is a node
+property read off `Library — Day` (`40:1080`) and `Library — Night` (`46:417`), not a tuned one.
 
-`clouds` and the orb are **WebP exported from the file** rather than rebuilt from 46 blurred DOM
-nodes; they cost 24/35/22 KB and upscale invisibly, and reproducing them as elements under the
-glass chrome's `backdrop-filter` would be the wrong trade. The blooms stay CSS so they can be
-retuned without re-exporting.
+Day: `ambient-a` is 1621x930 at (-686.4, -438.6), a raw unbound `#d595fa` orchid at **0.34 DARKEN**
+— it subtracts light from the top-left rather than adding it, which is what casts the chrome lilac;
+`ambient-b` is 1452x946 at (594, 387), still bound to `ambient/b`, at **0.34** normal; and
+`bkg_image_day` is 1636x924 at (-47, -24) at **1.0 DARKEN**. Night: `ambient-a` is 1584x946 at the
+same origin, `#0836ce` at **0.40** normal; `ambient-b` is 1495x806 at (551, 527), `#67c5ff` at
+**0.60 DIFFERENCE**; `bkg_image_night` is 1550.79x1017.4 turned **-175.139°** at **0.76 HARD-LIGHT**;
+then `veil`, full-bleed, `ground/veil` at **0.18 DARKEN**.
 
-**Night is a bright stack knocked down by translucent layers, not a dark base.** The measured
-composite of the Night sidebar is ≈`#4E5876`. If a change makes it read near-black, an opacity has
-been flattened somewhere.
+`clouds` (46 nodes), Day's `blue_orb 1` and Night's `page recess` were all **deleted from the file**
+in that pass. One raster per tone does the work of the first two and `veil` alone does the work of
+the third — so nothing in the background tracks the sidebar and top bar any more, and the
+`.main::before` scrim is gone with them.
+
+**The blend modes are load-bearing, which is why `.bg` paints `ground/base` itself.** `isolation:
+isolate` makes `.bg` the blend group's root, and against a transparent backdrop DARKEN, DIFFERENCE
+and HARD-LIGHT all degrade to normal — Day would render as a plain photograph. In the file these
+layers blend against the frame's own solid fill; here that fill has to sit on the group's root.
+
+The two rasters are the artist's own uploads, taken from `download_assets`' `rawImages` and
+re-encoded as WebP q94 (98 KB + 104 KB). Both are opaque RGB, so the alpha recovery `clouds` needed
+does not apply — but the trap behind it still does: Figma's MCP exporter renders a node *in context*,
+so exporting the layer instead of taking the raw upload bakes the ground and both blooms into the
+asset, which is how a flattened field once cost Day 26 luminance and 13 saturation points against
+the file. Take `rawImages`, never a node export.
+
+The blooms are real blurred ellipses, not radial-gradient approximations. Blooms and rasters alike
+are placed in Figma's own coordinates, measured from the frame's centre and multiplied by
+**`--bg-scale`** — one declaration on `.bg`, and the only place the stack's scale is set. The Night
+raster's turn is Figma's `absoluteTransform` read back as `rotate(175.139deg)` about the rect's
+top-left. They stay CSS so they can be retuned without re-exporting.
+
+**The stack is frozen, not `cover`-scaled.** `--bg-scale` is `max(1px, 0.074349vw, 0.114155vh)`, so
+it is exactly 1 — Figma 1:1 — for every window from the 1040x680 minimum up to **1345x876**, and
+resizing inside that range crops and reveals the art rather than rescaling it. Past that it has to
+grow: both rasters only just cover the design frame — the smallest gap-free scale at 1320x860 is
+0.977, a 2% margin — and bare `--ground` at the edge is not subtle, the art's edge composites up to
+146/255 away from it. The two terms above the floor are the exact coverage requirement for both
+layers with a 1px margin, the rotated Night quad's corners included, reduced to the tightest safe
+pair. **To freeze it at every size, replace the `max()` with one constant** — but `1px` gaps past
+1345 wide, and `1.88px` covers a maximised window on a 2560x1440 display at the cost of rendering
+the design 88% zoomed at 1320x860. The real fix is more art: overhang the rasters twice as far in
+Figma and a constant `1px` covers everything.
+
+**Night is a bright stack knocked down by translucent layers, not a dark base.** The target is the
+file's own render: the Night sidebar composites to `#46526d` (lum 81) and Day's to `#efeafa`
+(lum 236), both measured off `.shots/figma/library-*.png` by `scripts/figma-probe.py` — which is
+where those numbers come from. `scripts/tone-verify.py <shot.png> day|night` checks a capture
+against them. If a change makes Night read near-black, an opacity or a blend mode has been
+flattened somewhere.
+
+**A perfect match is not reachable, by construction.** The chrome's `backdrop-filter: blur(26px)
+saturate(165%)` has no Figma equivalent (foundations.md T5), so production reads ~11 saturation
+points richer than the file at the same luminance. Do not tune the stack to cancel that out — that
+is how the blooms once ended up above the old cloud field on `screen`, trading the hue away to
+recover luminance. Current parity: Day within **2.1** luminance across the three sampled regions,
+Night within **0.6**.
+
 
 ## Mr. Bell
 The mascot: a pixel-art crab in spectacles, and the app's only mascot. He lives at the foot of
@@ -297,11 +349,14 @@ Recent, Settings.
   style in the file specifies it.)
 - A full-bleed holographic wallpaper *competing with* content; glass cards floating on a rainbow
   blur. The tuned background stack is not this: it is always behind the content plane, dialled down
-  by `veil` and `page recess`, and never bright enough for the white PDF to stop being the
-  brightest thing on screen.
+  by `veil` in Night and by a DARKEN raster in Day, and never bright enough for the white PDF to stop
+  being the brightest thing on screen.
 - **Violet.** The file is audited purple-free; the accent is blue and the old indigo/violet pair is
-  retired. One straggler survives on purpose — the Resume button's `#6f76f2` glow, which effects
-  could not carry a bound variable's alpha for; ship it as the brand blue at 90%.
+  retired. Two stragglers survive on purpose. The Resume button's `#6f76f2` glow, which effects could
+  not carry a bound variable's alpha for — ship it as the brand blue at 90%. And Day's `ambient-a`
+  bloom, an unbound `#d595fa` orchid as of the background rework: not an accent but a 0.34 DARKEN
+  wash behind everything, and the reason Day's chrome reads lilac rather than blue. Do not
+  "correct" either back to blue; both are what the file has.
 - The accent used as a fill or a wash instead of a line — **except** the Primary button.
 - Emoji as section headings or bullets.
 - `rounded-2xl` on everything; everything centered; drop shadows on flat cards for no reason.

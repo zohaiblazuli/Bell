@@ -42,7 +42,7 @@ const GROUPS = [
     },
   },
   {
-    title: 'Ground — a picked cool periwinkle-grey in Day, never flat grey. Night is a BRIGHT\n     stack knocked down by translucent scrims, not a dark base: the composite of the Night\n     sidebar measures ~#4e5876. If a rebuild looks near-black, an alpha was flattened.',
+    title: 'Ground — a picked cool periwinkle-grey in Day, never flat grey. Night is a BRIGHT\n     stack knocked down by translucent scrims, not a dark base: the Night sidebar composites to\n     #46526d (lum 81) in the file’s own render of `Library — Night`, and Day’s to #efeafa (lum\n     236). If a rebuild looks near-black, an alpha was flattened — see scripts/tone-verify.py.',
     tokens: {
       '--ground': { day: '#e7e9f2', night: '#111219' },
       '--ground-2': { day: '#dcdfeb', night: '#0b0c12' },
