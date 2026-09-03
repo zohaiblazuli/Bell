@@ -1,46 +1,8 @@
+/* Tailwind's entry, and the one file its plugin has to see: `@theme` only registers when it is
+   part of this chain. Every other stylesheet is imported from main.tsx instead, so each lives in
+   Vite's module graph and actually invalidates when it changes — a plain `@import` here does not. */
 @import 'tailwindcss';
-@import './fonts.css';
-@import './tokens.css';
-@import './app.css';
-
-/* Expose the locked tokens to Tailwind so utilities stay on-system.
-   Values point at the runtime vars, so Day/Night switching flows through them. */
-@theme {
-  --font-sans: var(--font-ui);
-  --font-display: var(--font-disp);
-  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Code', monospace;
-  --font-ink: 'Caveat', ui-rounded, cursive;
-
-  --color-ground: var(--ground);
-  --color-ground-2: var(--ground-2);
-  --color-paper: var(--paper);
-  --color-ink: var(--ink);
-  --color-ink-2: var(--ink-2);
-  --color-ink-3: var(--ink-3);
-  --color-card: var(--card);
-  --color-card-brd: var(--card-brd);
-  --color-hair: var(--hair);
-  --color-hair-2: var(--hair-2);
-  --color-glass: var(--glass);
-  --color-glass-strong: var(--glass-strong);
-  --color-accent: var(--accent);
-  --color-accent-soft: var(--accent-soft);
-  --color-d1: var(--d1);
-  --color-d2: var(--d2);
-  --color-d3: var(--d3);
-  --color-d4: var(--d4);
-  --color-d5: var(--d5);
-
-  --radius-panel: var(--r-panel);
-  --radius-card: var(--r-card);
-  --radius-btn: var(--r-btn);
-  --radius-chip: var(--r-chip);
-  --radius-pill: var(--r-pill);
-
-  --shadow-card: var(--shadow-card);
-  --shadow-card-h: var(--shadow-card-h);
-  --shadow-pop: var(--shadow-pop);
-}
+@import './theme.css';
 
 html,
 body,
@@ -49,7 +11,9 @@ body,
 }
 
 body {
-  background: var(--ground);
+  /* NOT var(--ground): the tone vars are defined on .app, so anything here resolves Day in
+     both modes. This is only seen at the window's rounded corners and behind the splash. */
+  background: var(--plate);
   color: var(--ink);
   font-family: var(--font-ui);
   font-size: 14px;
@@ -74,6 +38,19 @@ input,
 textarea {
   user-select: text;
 }
+
+/* Icons are cloned out of the sprite through <use>, and a cloned symbol inherits paint from the
+   use site — not from the <g fill="none" stroke="currentColor"> it was authored inside. Without
+   this every icon renders as a filled black blob at stroke-width 1. Anything that wants a fill
+   (the bookmark's on state) or its own weight (the timer and dashboard rings) overrides it. */
+svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 
 :focus-visible {
   outline: 2px solid var(--accent);
