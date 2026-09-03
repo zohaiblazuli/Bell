@@ -1,0 +1,110 @@
+/* Nav Item — `design/specs/components-data.md` §4 (`25:24`). Supersedes app.css's `.nav`,
+   `.nav svg`, `.nav:hover`, `.nav.active`, `.nav.active::before`, `.nav .count` and
+   `.nav:disabled` / `.nav:disabled:hover`. */
+
+.nav-item {
+  position: relative; /* the active indicator hangs off this box */
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%; /* 220 master, 214 as instanced — TRAP 8: never pin a resized master */
+  padding: 8px 10px;
+  border-radius: var(--r-btn);
+  text-align: left;
+  color: var(--ink-2);
+  /* `clipsContent: false` in Figma, and TRAP 6 is explicit: any overflow clip on the row erases
+     the indicator, which lives outside the box. Stated rather than left to the UA default. */
+  overflow: visible;
+  /* 34 tall is a hug result — 8 + the 18px icon slot + 8. Nothing pins it. */
+  transition: background-color 0.16s, color 0.16s;
+}
+
+.nav-item__icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  /* No colour of its own: the sprite strokes `currentColor`, which is how the glyph follows the
+     label through all three states, exactly as the spec describes. */
+}
+.nav-item__icon > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.nav-item__label {
+  /* FILL with min-width 0. Because the label fills, the count is pushed hard right by the layout
+     itself — app.css needed `margin-left: auto` for the same result. */
+  flex: 1 1 0;
+  min-width: 0;
+  /* Figma would clip a long label; we ellipsise, which also keeps the row single-line and so
+     keeps the 34 hug (and the indicator's authored top of 9) honest. */
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.nav-item__count {
+  flex: none;
+  color: var(--ink-3);
+  /* Off-ramp on purpose: SF Pro Medium 11 with ZERO tracking. Not Body/Meta (Regular 11), not
+     Label/Difficulty (Semibold 11), so no `.t-*` class fits — TRAP 7. Note the old call sites
+     also tagged the count `.mono`; the count is set in the UI face, not in Geist Mono. */
+  font-family: var(--font-ui);
+  font-weight: 500;
+  font-size: 11px;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+/* State = Hover. Excluded on the active row: there is no Active+Hover variant in the file, and
+   the row must not drop back to --hair-2 under the pointer. */
+.nav-item:not(:disabled):not([aria-current='page']):hover {
+  background-color: var(--hair-2);
+  color: var(--ink);
+}
+/* The count deliberately does NOT follow the label to --ink on hover — it is measured --ink-3 on
+   both the Default and the Hover variant. */
+
+/* State = Active. The row gets the soft wash only; the gradient is spent on the 3px line below. */
+.nav-item[aria-current='page'] {
+  background-color: var(--accent-soft);
+  color: var(--accent);
+}
+.nav-item[aria-current='page'] .nav-item__count {
+  color: var(--accent);
+}
+
+/* The active indicator `25:22`. 3 x 17, absolute at left -12 / top 9, so it takes no layout space
+   and the sidebar keeps its measured 12px padding untouched: at that padding the sliver lands
+   flush with the sidebar's own left edge (absolute x 0…3) with a 9px air gap before the row.
+   Right corners only, because it emerges from the gutter.
+   top 9 is authored, not centred — 9 above, 8 below in a 34-tall row, half a pixel high on
+   purpose. app.css centred it instead (translateY(-50%) = 8.5), so this moves by 0.5px. */
+.nav-item[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 9px;
+  width: 3px;
+  height: 17px;
+  border-radius: 0 3px 3px 0;
+  /* Figma's `Blue/Line 90`. Measured stops are 0/34/67/100 against the token's 0/33.3/66.7/100 —
+     0.02px apart on a 3px-wide box, so the token wins and the two stay in step. */
+  background: var(--grad-line);
+}
+
+/* Figma has no Disabled variant; 0.42 is carried over from app.css `.nav:disabled`. The hover
+   rule already excludes it, so no reset is needed. */
+.nav-item:disabled {
+  opacity: 0.42;
+}
+
+/* index.css already rings :focus-visible in --accent, but it also sets `border-radius: 6px`,
+   which would square this 10px row off while focused. Restate the radius and pull the ring
+   inside the box: the sidebar column can scroll, and an inset ring cannot be clipped by it. */
+.nav-item:focus-visible {
+  border-radius: var(--r-btn);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
