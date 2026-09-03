@@ -1,0 +1,51 @@
+/* Meter — `design/specs/screen-dashboard.md` §2a / §7a / §7b.
+   Supersedes `.bar` and `.bar i` in `src/styles/app.css`, with two deliberate changes: the fill is
+   flat `--accent`, where `.bar i` painted `var(--iris)` (the 4-stop gradient — foundations rule 2
+   lists progress bars among the gradient's homes, but all three measured instances are flat, and
+   the spec wins; `fill="var(--grad-line)"` brings it back per call site); and radius is 999
+   instead of 3, which at 4px tall clamps to 2 and so only shows on the caps.
+   Note the names: app.css's `.meter` is the difficulty pip row, an unrelated component, and its
+   `.meter i` would win on specificity over anything here — hence `.meter-bar`. */
+
+.meter-bar {
+  display: flex;
+  flex: 1; /* every measured instance is FILL / grow 1 inside its row */
+  min-width: 0;
+  height: 4px; /* 306.2 x 4 · 386 x 4 · 265 x 4 — 4 in all three */
+  border-radius: var(--r-pill); /* the file carries a literal 999; the app has the token */
+  background: var(--hair); /* the track token: `--hair`, never `--hair-2` (dashboard TRAP 12) */
+  overflow: hidden; /* clip — it is what rounds the fill's caps */
+}
+
+/* `flex-basis: 0` is what makes `flex-grow` alone the ratio, so the pair splits the track exactly
+   as `grow 57` / `grow 43` does in Figma. `.meter-rest` paints nothing: `fills []`. */
+.meter-fill,
+.meter-rest {
+  flex-basis: 0;
+  min-width: 0;
+}
+
+.meter-fill {
+  background: var(--accent);
+  border-radius: var(--r-pill);
+  transform-origin: left; /* motion grows out of the track's left cap; a centred scale would
+                             detach the fill from it */
+}
+
+/* The fill grows in from nothing on first paint. Transform only: animating the ratio would mean
+   animating `flex-grow`, i.e. layout, and animating `width` is the thing this component exists to
+   stop. Value *changes* snap by design — they are a relayout, not a transition. */
+@media (prefers-reduced-motion: no-preference) {
+  .meter-fill {
+    animation: meter-fill-in 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+}
+
+@keyframes meter-fill-in {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
