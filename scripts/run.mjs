@@ -20,7 +20,7 @@ if (!entry) {
 }
 
 // Inside the project, so the externalised node_modules still resolve.
-const dir = join(import.meta.dirname, '..', 'node_modules', '.cache', 'foolscap-verify');
+const dir = join(import.meta.dirname, '..', 'node_modules', '.cache', 'bell-verify');
 mkdirSync(dir, { recursive: true });
 const out = join(dir, `${entry.replace(/\W+/g, '-')}.mjs`);
 await build({
