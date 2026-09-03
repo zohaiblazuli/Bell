@@ -1,0 +1,69 @@
+/* Icon Button — `design/specs/components-controls.md` §5, set `20:12`. Supersedes `.icobtn`,
+   `.icobtn:hover`, `.icobtn svg` and `.icobtn.spin svg` in app.css (the shared `@keyframes spin`
+   there stays until its last non-component user is gone). Element-qualified with `button` for the
+   same reason as Button.css: index.css's global `:focus-visible` sets `border-radius: 6px` and
+   loads after ui.css, so a bare `.icobtn` would square off while focused. */
+
+button.icobtn {
+  display: inline-flex;
+  align-items: center; /* counter CENTER */
+  justify-content: center; /* primary CENTER — padding 0, itemSpacing 0, one centred child */
+  box-sizing: border-box;
+  /* 34 x 34 FIXED on **both** axes. This one is square and does not hug; a wider glyph does not
+     widen it. */
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  /* No stroke in either state. app.css carried a transparent 1px so that adding a hover border
+     would not shift the glyph — there is no hover border in the file to make room for. */
+  border: 0;
+  border-radius: var(--r-btn);
+  background: transparent; /* Fill = none on Default; the topbar instance's `fills: []` is this */
+  color: var(--ink-2);
+  flex: none;
+  overflow: hidden; /* clipsContent = true (§0) */
+}
+
+/* Hover is the set's only other variant. `--on` is that same paint made sticky: Figma has no
+   active/selected axis here, so rather than invent a third look, a control that stays lit while
+   its panel is open reuses Hover exactly. */
+button.icobtn:not(:disabled, [aria-disabled='true']):hover,
+button.icobtn--on {
+  background: var(--hair-2);
+  color: var(--ink);
+}
+
+/* Also an app addition: the Icon Button set has no Disabled variant, but §0's set-wide convention
+   is node opacity 0.55, and app.css left a disabled icon button looking identical to a live one —
+   the topbar reindex button is disabled for the whole rebuild. */
+button.icobtn:disabled,
+button.icobtn[aria-disabled='true'] {
+  opacity: 0.55;
+}
+
+/* 18 x 18 (§5). Do NOT set stroke-width: the sprite symbols are authored in a 24-unit viewBox at
+   1.75, so an 18px render already lands on the spec's 1.3125 device stroke (1.75 × 18/24). */
+.icobtn svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  button.icobtn {
+    transition: background-color 0.16s, color 0.16s;
+  }
+  /* The reindex button while the index rebuilds. No motion for this exists in Figma; the 1.1s is
+     inherited from app.css. Under `reduce` the glyph simply holds still — a replacement pulse is
+     pointless, because app.css's global reduce rule flattens every animation with `!important`,
+     and the button is `disabled` throughout the rebuild, so the 0.55 dim carries the signal. */
+  .icobtn--spin svg {
+    animation: icobtn-spin 1.1s linear infinite;
+  }
+}
+
+@keyframes icobtn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
