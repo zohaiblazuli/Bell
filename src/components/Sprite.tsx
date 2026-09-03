@@ -1,16 +1,20 @@
 /**
- * One icon set, inlined once as an SVG sprite — and the `iris` gradient every live
- * element strokes itself with. Ported from the approved demo.
+ * One icon set, inlined once as an SVG sprite — and the brand-line gradient every live
+ * element strokes itself with.
  */
 export default function Sprite() {
   return (
     <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
       <defs>
+        {/* The brand line — Figma's `Blue/Line 90`. Stops read the tokens rather than
+            repeating hex, so this stays in step with --grad-line and inverts nothing.
+            The id is still `iris`: the name is inherited and now lies (every stop is blue),
+            but Figma's variables are still called iris/*, so the two stay greppable. */}
         <linearGradient id="iris" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#6aa8ff" />
-          <stop offset=".38" stopColor="#6f76f2" />
-          <stop offset=".72" stopColor="#9d7bf0" />
-          <stop offset="1" stopColor="#f3b7c6" />
+          <stop offset="0" stopColor="var(--bell-cap-hi)" />
+          <stop offset=".33" stopColor="var(--bell-cap-mid)" />
+          <stop offset=".67" stopColor="var(--bell-cap-lo)" />
+          <stop offset="1" stopColor="var(--bell-cap-deep)" />
         </linearGradient>
       </defs>
 
