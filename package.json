@@ -1,5 +1,5 @@
 {
-  "name": "foolscap",
+  "name": "bell",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -9,10 +9,17 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "fonts": "powershell -ExecutionPolicy Bypass -NoProfile -File scripts/fetch-fonts.ps1",
+    "tokens": "node scripts/tokens.mjs",
+    "ui:css": "node scripts/ui-css.mjs",
+    "shot": "powershell -ExecutionPolicy Bypass -NoProfile -File scripts/shot.ps1",
     "verify:index": "cargo run --manifest-path src-tauri/Cargo.toml --bin index_check",
     "verify:thresholds": "node scripts/run.mjs verify-thresholds.ts",
     "verify:difficulty": "node scripts/run.mjs verify-difficulty.ts",
-    "verify:papers": "node scripts/run.mjs verify-papers.ts"
+    "verify:papers": "node scripts/run.mjs verify-papers.ts",
+    "icon": "node scripts/make-icon.mjs .icon-src.png && tauri icon .icon-src.png",
+    "drive": "powershell -ExecutionPolicy Bypass -File scripts/drive.ps1",
+    "audit": "node scripts/audit.mjs",
+    "dead:css": "node scripts/dead-css.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
