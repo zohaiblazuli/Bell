@@ -1,0 +1,68 @@
+/* Window Lights — `41:46`. Supersedes the `.lights` block in `src/styles/app.css`.
+   Every number here is `design/specs/components-data.md` §8. */
+
+.wlights {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 1px;
+  /* Figma has `clipsContent: true` on the frame, deliberately not reproduced: the discs fit the
+     box exactly so it clips nothing, and `overflow: hidden` here would crop a disc's focus ring. */
+}
+
+.wl {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 7px; /* = h/2, a true circle. A raw literal in the file — do not tokenise. */
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--traffic-glyph);
+}
+
+/* The one place in the system where paint does not move between Day and Night. */
+.wl-close {
+  background: var(--traffic-close);
+}
+.wl-minimize {
+  background: var(--traffic-minimize);
+}
+.wl-zoom {
+  background: var(--traffic-zoom);
+}
+.wlights[data-inactive] .wl {
+  background: var(--traffic-inactive);
+}
+
+/* The global `:focus-visible` rule sets `border-radius: 6px` on whatever has focus, which would
+   square off a 14px disc. Same specificity, later in the cascade — so reassert the circle. */
+.wl:focus-visible {
+  border-radius: 7px;
+}
+
+.wl svg {
+  width: 7px;
+  height: 7px;
+  /* 1.1 in a 7-unit box ~ macOS's glyph weight. The global sprite weight of 1.75 is measured
+     against a 24 box and would render 0.51px here. */
+  stroke-width: 1.1;
+  opacity: 0;
+  transition: opacity 0.16s;
+}
+
+/* Hover is on the *container*, so all three glyphs appear together — and `:not([data-inactive])`
+   is TRAP 15: an unfocused window shows grey discs and no glyphs, hovered or not. Keyboard focus
+   reveals them too, because a keyboard user needs the same hint about which disc does what. */
+.wlights:not([data-inactive]):hover .wl svg,
+.wlights:not([data-inactive]):has(:focus-visible) .wl svg {
+  opacity: 1;
+}
+
+/* app.css's global reduced-motion rule covers this today; keeping it local so the component still
+   honours the preference once app.css is dismantled. */
+@media (prefers-reduced-motion: reduce) {
+  .wl svg {
+    transition: none;
+  }
+}
