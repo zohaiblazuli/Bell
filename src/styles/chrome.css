@@ -1,0 +1,359 @@
+/* The window shell — everything that is the app rather than a screen inside it.
+ *
+ * Split out of `app.css` at the end of the Phase 5 port. `app.css` had grown to 1,656 lines and was
+ * the de-facto design system; it is not any more — tokens, the type ramp and ~30 primitives own that
+ * now — so what was left divided cleanly in two. This half is the frame: the window grid, the tone
+ * crossfade, the glass sidebar and top bar, the view container, focus mode, and one dead breakpoint
+ * that is kept only so its comment can say why not to port it.
+ *
+ * Glass lives only here. A content surface stays calm and mostly opaque so it never competes with the
+ * exam paper — that rule is in CLAUDE.md, and this file is where it is enforced.
+ */
+
+/* ---------- app window ---------- */
+/* The OS window IS the app, so there is no floating "stage" as in the demo. */
+.app {
+  position: relative;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 238px 1fr;
+  /* `minmax(0, 1fr)`, NOT `1fr`. A bare `1fr` is `minmax(auto, 1fr)`, and that `auto` floor is the
+     row's max-content contribution — so the sidebar's 34-subject list grew the row to ~1600px,
+     `.sidebar { height: 100% }` resolved against that, and everything below the fold was clipped by
+     the `overflow: hidden` here. Zero-floored, the row is the window and the column can scroll. */
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+  background: var(--ground);
+  /* The tone's vars are defined on this element, so the text colour has to resolve HERE. Left on
+     body it resolves against :root — i.e. the Day ink — and everything that merely inherits
+     (titles, the mono numbers, card headings) stays dark on the Night ground. */
+  color: var(--ink);
+}
+
+/* Onboarding is the one surface with no sidebar: the flow *is* the first run, not a screen inside the
+   app, so it draws its own window lights and owns the whole window. Collapsing the column here rather
+   than rendering a different grid keeps one `.app` to reason about. */
+.app-bare {
+  grid-template-columns: 1fr;
+}
+
+/* ---------- tone crossfade ----------
+   A tone change swaps ~36 mode-paired tokens at once, and without this every one of them cuts. The
+   Figma file crosses tones by stacking two whole detached screens and fading one over the other
+   (`Motion — Tone` `171:8`); one live screen cannot do that, so the equivalent is to transition the
+   properties those tokens feed, in the order the file reveals them.
+
+   That ORDER is the part worth preserving, and the file was rebuilt once to get it right: ground and
+   chrome first (0.28–0.32s), content gated behind them (0.22s), so the grid never floats without a
+   page plane under it. An earlier cut dropped the outgoing content before the incoming ground had
+   arrived and dipped through a near-empty shell around t ≈ 0.2.
+
+   `color` on `.app` is the one that matters most: every label, figure and heading inherits from here,
+   so this single declaration is what stops the whole type layer snapping. It is also the sanctioned
+   exception to transform/opacity-only motion — a paint change on one node with no layout cost, the
+   same licence the startup handoff's wordmark takes. */
+.app {
+  transition: background-color 0.28s ease-out, color 0.3s ease-out;
+}
+.sidebar,
+.topbar {
+  transition: background-color 0.3s ease-out, border-color 0.3s ease-out,
+    box-shadow 0.3s ease-out;
+}
+/* The page recess is a scrim over a token that flips; it leads the content it sits under. */
+.main::before {
+  transition: background-color 0.32s ease-out;
+}
+/* Content last, and quickest — by the time it crosses, the plane behind it has already arrived. */
+.view {
+  transition: color 0.22s ease-out;
+}
+
+/* Everything above is a tone crossfade, not an entrance. Under reduced motion a token swap should
+   simply be instant: there is nothing to understand from watching a colour travel. */
+@media (prefers-reduced-motion: reduce) {
+  .app,
+  .sidebar,
+  .topbar,
+  .main::before,
+  .view {
+    transition: none;
+  }
+}
+[data-motion='off'],
+[data-motion='off'] .sidebar,
+[data-motion='off'] .topbar,
+[data-motion='off'] .main::before,
+[data-motion='off'] .view {
+  transition: none;
+}
+
+/* ambient ground so glass has something to refract — a hint, never a wash */
+
+/* ---------- sidebar ---------- */
+.sidebar {
+  position: relative;
+  z-index: 3;
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 12px;
+  /* A definite height, not just `min-height: 0`. Without it the column is auto-sized by content,
+     so `.subj`'s `flex: 1 1 0` has nothing to resolve against and the subject list pushes the
+     mascot slot and the dev footer below the fold. */
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(26px) saturate(165%);
+  backdrop-filter: blur(26px) saturate(165%);
+  border-right: 1px solid var(--hair);
+  box-shadow: inset 0 1px 0 var(--glass-hi);
+  transition: opacity 0.34s ease, transform 0.4s cubic-bezier(0.4, 0, 0.1, 1);
+}
+
+
+
+.lights button:nth-child(1) {
+  background: var(--traffic-close);
+}
+.lights button:nth-child(2) {
+  background: var(--traffic-minimize);
+}
+.lights button:nth-child(3) {
+  background: var(--traffic-zoom);
+}
+
+.lights:hover svg {
+  opacity: 1;
+}
+.app[data-tone='night'] .lights button {
+  opacity: 0.92;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 14px;
+}
+/* The wordmark is geometry, not text, so the global `svg { fill: none; stroke: currentColor }`
+   rule would erase it — it sets its own fills and must opt out. Zohaib's shadow from the Figma
+   sidebar comes with it. */
+.logo-word {
+  flex: none;
+}
+.logo-word path,
+.logo-word rect {
+  stroke: none;
+}
+.brand .logo-word {
+  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.25));
+}
+
+/* ---------- sidebar structure ----------
+   The rows themselves are components now — @ui/NavItem and @ui/SubjectRow own their own geometry.
+   What is left here is the sidebar's own scaffolding: the two group eyebrows, the scrolling subject
+   list, the mascot slot and the dev footer.
+   Geometry from design/specs/screen-library-settings.md §3. */
+
+/* `nav-label Study` / `nav-label Subjects` — a 30-tall frame with its text inset 10 from the left
+   and 12 from the top, which is why the padding is asymmetric rather than a tidy pair. */
+.nav-label {
+  color: var(--ink-3);
+  padding: 12px 10px 5px;
+}
+
+/* Figma fixes `subj` at 311 and gives `mascot` layoutGrow 1, because the file draws exactly ten
+   subjects. The real index carries 34, so the grow assignment has to invert: the list takes the
+   leftover height and scrolls, and the mascot keeps a fixed slot. Same result for ten subjects,
+   and the footer stays on the bottom for thirty-four. */
+.subj {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  /* Rows are 30 tall on a 31px pitch. */
+  gap: 1px;
+  margin-top: 2px;
+  overflow-y: auto;
+}
+.subj-empty {
+  color: var(--ink-3);
+  padding: 7px 10px;
+}
+
+/* `mascot` — layoutGrow 1 in Figma, so it eats whatever the rows leave and keeps the footer on the
+   bottom. Mr. Bell is pinned CENTER/MAX inside it, which is what lets a fifth nav row shrink the
+   slot from 191 to 153 without moving him. It clips, and that is safe: the rig's top ~45px is
+   empty above the spectacles. */
+/* He is 160 tall and bottom-pinned. The slot is fixed rather than growing (see `.subj`), and 160
+   rather than the 191 Figma reports, because that 191 is what four nav rows happen to leave —
+   with five it is 153, and the file notes the rig's top ~45px is empty anyway. */
+.mascot {
+  flex: none;
+  height: 160px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  /* Deliberately NOT `overflow: hidden`: the rig's claws reach 6px left and 10px right of its box
+     and MrBell.css asks callers not to clip them. At 160 wide inside a 214 slot the overhang has
+     room, so there is nothing to clip anyway. */
+}
+
+/* `dev` — the build stamp and the credit line. */
+.dev {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 0 0 0;
+  color: var(--ink-3);
+}
+.dev-version {
+  color: var(--ink-3);
+}
+.credit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ink-3);
+}
+/* The heart is the one warm mark in the chrome. It borrows difficulty/5 because that is the only
+   mode-paired warm token in the system — a documented borrow, not the heat scale leaking. */
+.credit-heart {
+  color: var(--d5);
+}
+.credit-name {
+  color: var(--ink-2);
+}
+.credit-mark {
+  flex: none;
+}
+
+/* ---------- main ---------- */
+.main {
+  position: relative;
+  z-index: 2;
+  grid-column: 2;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  transition: background 0.4s;
+}
+.app[data-view='workspace'] .main {
+  background: var(--ground-2);
+}
+
+/* ---------- topbar ---------- */
+.topbar {
+  position: relative;
+  z-index: 5;
+  height: 56px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(26px) saturate(165%);
+  backdrop-filter: blur(26px) saturate(165%);
+  border-bottom: 1px solid var(--hair);
+  box-shadow: inset 0 1px 0 var(--glass-hi);
+}
+.tb {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Type comes from `.t-title-toolbar`; all this adds is the no-wrap the bar needs. */
+.title {
+  white-space: nowrap;
+  flex: none;
+}
+.spacer {
+  flex: 1;
+}
+
+/* ---------- views ---------- */
+.view {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  position: relative;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .view {
+    animation: rise 0.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------- focus mode: chrome recedes (transform + opacity only) ---------- */
+.app[data-focus='on'] .sidebar {
+  opacity: 0;
+  transform: translateX(-100%);
+  pointer-events: none;
+}
+.app[data-focus='on'] .tb-ws .tools,
+.app[data-focus='on'] .tb-ws .seg,
+.app[data-focus='on'] .tb-ws .ws-name,
+.app[data-focus='on'] .tb-ws .ws-sess,
+.app[data-focus='on'] .tb-ws .msbtn {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.app[data-focus='on'] .topbar {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.app[data-focus='on'] .main {
+  background: var(--ground-2);
+}
+.app[data-focus='on'] .ws-body {
+  transform: translateX(-119px);
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 900px) {
+  .app {
+    grid-template-columns: 0 1fr;
+  }
+  .sidebar {
+    position: absolute;
+    z-index: 20;
+    height: 100%;
+    width: 238px;
+    transform: translateX(-100%);
+  }
+  .search {
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
