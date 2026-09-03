@@ -7,8 +7,17 @@ sidebar glass and of the right-hand background margin. Medians rather than point
 regions carry text and card edges, and the two images are different sizes with different filter state
 — a normalised point sample lands on a card in one and on the ground in the other.
 
-The number that matters: `design/specs/foundations.md` measures the Night sidebar composite at ~#4E5876
-and warns that a rebuild reading near-black means a paint-level opacity was flattened somewhere.
+PREFER `scripts/tone-verify.py`, which does the same job against the renders already checked in at
+`.shots/figma/library-{day,night}.png`, covers both tones and three regions, and reports saturation
+as well as luminance. This script survives because its sidebar-edge detection works on an image whose
+window size you do not know.
+
+The number that matters: the Night sidebar composite measures **#46526d (70, 82, 109), lum 81.4** in
+the file's own render of `Library — Night` (`46:417`), and Day's **#efeafa (239, 234, 250), lum 236.2**.
+Both moved when Library's background was reworked — the old pair, #4d5b77 and #c5dafb, was measured
+against the retired `clouds` stack. (Revisions before that cited ~#4e5876 and attributed it to
+`design/specs/foundations.md`, which never contained it: the value was close, the provenance invented.)
+If a rebuild reads near-black, a paint-level opacity has been flattened somewhere.
 """
 
 import os
@@ -63,4 +72,4 @@ for label, path in zip(("app", "figma"), sys.argv[1:3]):
         f"  right margin={hexs(margin)} {margin} lum {lum(margin)}"
     )
 
-print("\nspec: the Night sidebar composite measures ~#4e5876 (78, 88, 118), lum 90.3")
+print("\nspec: the Night sidebar composite measures #46526d (70, 82, 109), lum 81.4 in the file's own render")

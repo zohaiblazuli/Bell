@@ -20,6 +20,10 @@
      carrying an old app.css card class — `.card` and `.up` both set `var(--shadow-card)` — drops
      its shadow while the port is in flight, since ui.css loads after app.css. */
   box-shadow: none;
+  /* `--card` and `--card-brd` both flip, and this surface had no `transition` at all, so every card
+     on the Dashboard and in Settings cut in a single frame while the chrome crossed over 300ms. The
+     list is chrome.css's `--tone-content` token; see the tone-crossfade block there. */
+  transition: var(--tone-content);
 }
 
 /* The other measured insets. `card` is the base rule above. */

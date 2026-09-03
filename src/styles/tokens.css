@@ -14,8 +14,9 @@
   --font-mono: 'Geist Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
 
   /* Ground — a picked cool periwinkle-grey in Day, never flat grey. Night is a BRIGHT
-     stack knocked down by translucent scrims, not a dark base: the composite of the Night
-     sidebar measures ~#4e5876. If a rebuild looks near-black, an alpha was flattened. */
+     stack knocked down by translucent scrims, not a dark base: the Night sidebar composites to
+     #46526d (lum 81) in the file’s own render of `Library — Night`, and Day’s to #efeafa (lum
+     236). If a rebuild looks near-black, an alpha was flattened — see scripts/tone-verify.py. */
   --ground: #e7e9f2;
   --ground-2: #dcdfeb;
   --ground-veil: rgba(255, 255, 255, 0);

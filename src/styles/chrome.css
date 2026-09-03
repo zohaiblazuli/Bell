@@ -17,6 +17,8 @@
   height: 100%;
   display: grid;
   grid-template-columns: 238px 1fr;
+  /* The top bar's height, as a var so the grid and `.topbar` cannot drift apart at two literals. */
+  --topbar-h: 56px;
   /* `minmax(0, 1fr)`, NOT `1fr`. A bare `1fr` is `minmax(auto, 1fr)`, and that `auto` floor is the
      row's max-content contribution — so the sidebar's 34-subject list grew the row to ~1600px,
      `.sidebar { height: 100% }` resolved against that, and everything below the fold was clipped by
@@ -52,18 +54,26 @@
    `color` on `.app` is the one that matters most: every label, figure and heading inherits from here,
    so this single declaration is what stops the whole type layer snapping. It is also the sanctioned
    exception to transform/opacity-only motion — a paint change on one node with no layout cost, the
-   same licence the startup handoff's wordmark takes. */
+   same licence the startup handoff's wordmark takes.
+
+   THE LISTS ARE TOKENS, AND THAT IS THE POINT. `transition` is one property: a later declaration at
+   equal specificity replaces the earlier one wholesale rather than adding to it. `.sidebar` lost its
+   tone crossfade exactly that way — it appears in the pair below, then re-declares `transition` 50
+   lines further down for focus mode, and the second one won. The 238px column snapped in a single
+   frame while the top bar beside it crossed over 300ms, which is the kind of thing that reads as
+   "the toggle is janky" without pointing at a cause. So the lists live here as custom properties and
+   every rule that has its own `transition` composes one in. If you give a tone-crossing element a
+   `transition`, put the matching `var(--tone-*)` first in the list. */
 .app {
+  --tone-ground: background-color 0.32s ease-out;
+  --tone-chrome: background-color 0.3s ease-out, border-color 0.3s ease-out, box-shadow 0.3s ease-out;
+  --tone-content: background-color 0.22s ease-out, border-color 0.22s ease-out;
+
   transition: background-color 0.28s ease-out, color 0.3s ease-out;
 }
 .sidebar,
 .topbar {
-  transition: background-color 0.3s ease-out, border-color 0.3s ease-out,
-    box-shadow 0.3s ease-out;
-}
-/* The page recess is a scrim over a token that flips; it leads the content it sits under. */
-.main::before {
-  transition: background-color 0.32s ease-out;
+  transition: var(--tone-chrome);
 }
 /* Content last, and quickest — by the time it crosses, the plane behind it has already arrived. */
 .view {
@@ -71,12 +81,22 @@
 }
 
 /* Everything above is a tone crossfade, not an entrance. Under reduced motion a token swap should
-   simply be instant: there is nothing to understand from watching a colour travel. */
+   simply be instant: there is nothing to understand from watching a colour travel.
+   The two background stacks, the veil and the three content surfaces are here for the same reason
+   the chrome is — the
+   `*` sweep at the foot of this file covers the media query, but the Settings switch does not
+   cascade, so anything given a tone transition has to be named in the `[data-motion='off']` list
+   below as well. */
 @media (prefers-reduced-motion: reduce) {
   .app,
   .sidebar,
   .topbar,
-  .main::before,
+  .bg-bloom,
+  .bg-art,
+  .bg-veil,
+  .bell-card,
+  .paper-card,
+  .stat-tile,
   .view {
     transition: none;
   }
@@ -84,7 +104,12 @@
 [data-motion='off'],
 [data-motion='off'] .sidebar,
 [data-motion='off'] .topbar,
-[data-motion='off'] .main::before,
+[data-motion='off'] .bg-bloom,
+[data-motion='off'] .bg-art,
+[data-motion='off'] .bg-veil,
+[data-motion='off'] .bell-card,
+[data-motion='off'] .paper-card,
+[data-motion='off'] .stat-tile,
 [data-motion='off'] .view {
   transition: none;
 }
@@ -111,7 +136,11 @@
   backdrop-filter: blur(26px) saturate(165%);
   border-right: 1px solid var(--hair);
   box-shadow: inset 0 1px 0 var(--glass-hi);
-  transition: opacity 0.34s ease, transform 0.4s cubic-bezier(0.4, 0, 0.1, 1);
+  /* `var(--tone-chrome)` FIRST, and it is not optional — see the tone-crossfade block above. This
+     declaration is what used to discard the sidebar's tone crossfade outright. Focus mode's recede
+     follows it. */
+  transition: var(--tone-chrome), opacity 0.34s ease,
+    transform 0.4s cubic-bezier(0.4, 0, 0.1, 1);
 }
 
 
@@ -252,7 +281,7 @@
 .topbar {
   position: relative;
   z-index: 5;
-  height: 56px;
+  height: var(--topbar-h);
   flex: none;
   display: flex;
   align-items: center;
