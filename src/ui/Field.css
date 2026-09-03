@@ -1,0 +1,63 @@
+/* Field — rationale and spec citations live in Field.tsx. */
+
+.bell-field {
+  /* 420 FIXED (§5.1). `max-width` because the panel is 1040 wide in the design and nothing
+     guarantees the app's is: shrink rather than overflow. */
+  width: 420px;
+  max-width: 100%;
+}
+
+.bell-field__input {
+  /* The 1px -> 2px border swap on focus must not move the 420 x 48 box. */
+  box-sizing: border-box;
+  width: 100%;
+  height: 48px;
+  /* pad-x 14. The value centres vertically on its own, which is Figma's counterAxisAlignItems
+     CENTER, so no line-height is pinned to fake it. */
+  padding: 0 14px;
+  border: 1px solid var(--hair); /* §4, resting */
+  border-radius: var(--r-btn); /* 10 */
+  background: var(--ground);
+  color: var(--ink);
+  /* Figma draws the caret as a 2x18 rect filled `--accent` (`495:1516`) because a mock has to; a
+     live input draws its own, so the measurement ships as its colour. */
+  caret-color: var(--accent);
+  /* No transition, on purpose: what changes on focus is border WIDTH, and animating that walks the
+     text a pixel. The swap is instant. And no `cursor`, so the app keeps its native arrow
+     everywhere — index.css sets that on <body> and the palette's input does the same. */
+}
+
+.bell-field__input::placeholder {
+  color: var(--ink-3); /* 03's search placeholder is Body/Default `--ink-3` */
+}
+
+.bell-field__input:focus {
+  /* Replaces the resting hairline rather than sitting outside it — §4. */
+  border: 2px solid var(--accent);
+  /* 14 - 1, so the value does not jog a pixel as the border thickens. §4 says not to compensate on
+     the selectable CARDS, whose content is centred and cannot show it; left-aligned input text is
+     the case where you must. */
+  padding: 0 13px;
+}
+
+.bell-field__input:focus-visible {
+  /* index.css's global focus ring is `2px --accent` at a 2px offset *plus* `border-radius: 6px`.
+     Both have to go: the border above is this control's focus ring, and that global radius would
+     re-round the 10px field for as long as it held focus. */
+  outline: none;
+  border-radius: var(--r-btn);
+}
+
+.bell-field__hint {
+  display: flex;
+  align-items: center; /* `hint` counterAxisAlignItems CENTER */
+  gap: 8px; /* itemSpacing 8 — "Press" / Kbd / "to continue" */
+  /* `body` itemSpacing 24 (§5.1). It lives here because this component owns both rows; a call site
+     that drops Field into its own gap-24 column still gets the design's spacing, since that gap
+     falls between the heading and the field rather than inside it. */
+  margin-top: 24px;
+  /* `body` counterAxisAlignItems CENTER puts the hint on the field's own centre line, not its left
+     edge. */
+  justify-content: center;
+  color: var(--ink-3);
+}
