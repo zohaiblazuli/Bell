@@ -1,11 +1,11 @@
 [package]
-name = "foolscap"
+name = "bell"
 version = "0.1.0"
 description = "Focused, offline studying of Cambridge exam papers"
 authors = ["Zohaib"]
 edition = "2021"
 # `src/bin/index_check.rs` is a verification tool; the app is the default binary.
-default-run = "foolscap"
+default-run = "bell"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -13,7 +13,7 @@ default-run = "foolscap"
 # The `_lib` suffix may seem redundant but it is necessary
 # to make the lib name unique and wouldn't conflict with the bin name.
 # This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
-name = "foolscap_lib"
+name = "bell_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
