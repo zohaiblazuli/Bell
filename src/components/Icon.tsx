@@ -27,7 +27,23 @@ export type IconName =
   | 'min'
   | 'max'
   | 'play'
-  | 'pause';
+  | 'pause'
+  | 'sun'
+  | 'moon'
+  | 'pencil'
+  | 'lasso'
+  | 'shapes'
+  | 'text'
+  | 'image'
+  | 'clip'
+  | 'sticky'
+  | 'ruler'
+  | 'pan'
+  | 'plus'
+  | 'trash'
+  | 'dots'
+  | 'redo'
+  | 'right';
 
 export default function Icon({
   name,
