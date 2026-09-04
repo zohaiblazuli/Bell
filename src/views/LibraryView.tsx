@@ -56,7 +56,7 @@ const LEVEL_PALETTE: Record<(typeof LEVELS)[number], ChipPalette> = {
 const SEASONS = [
   { key: 's', label: 'May/June', palette: 'may-june' },
   { key: 'w', label: 'Oct/Nov', palette: 'oct-nov' },
-  { key: 'm', label: 'Feb/March', palette: 'feb-march' },
+  { key: 'm', label: 'Feb/Mar', palette: 'feb-march' },
 ] as const;
 
 /** Wording for the escape-hatch chip that stands in for a marked list's filter row. */
@@ -130,15 +130,18 @@ const focusLabel = (minutes: number) => {
 };
 
 /**
- * The card's `documents` string — `mark scheme · report`. Only the EXTRAS are listed: the question
- * paper is what the card opens, which is why no card in either spec ever says "question paper" and
- * why §5.4 records the QP/MS/ER badges as cut.
+ * The card's `documents` string. Only the EXTRAS are listed: the question paper is what the card
+ * opens, which is why no card in either spec ever says "question paper" and why §5.4 records the
+ * QP/MS/ER badges as cut.
+ *
+ * Now that the catalogue lists papers that are not on this machine, this line also has to
+ * distinguish three states that used to be one. `hasMs` comes from the catalogue and means a mark
+ * scheme *exists*; `msPath` means it has been fetched.
  */
 function documentsOf(paper: PaperRow): string | undefined {
-  const extras: string[] = [];
-  if (paper.msPath) extras.push('mark scheme');
-  if (paper.erPath) extras.push('report');
-  return extras.length ? extras.join(' · ') : undefined;
+  if (!paper.qpPath) return 'not downloaded';
+  if (paper.msPath) return 'mark scheme';
+  return paper.hasMs ? 'mark scheme available' : undefined;
 }
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -187,9 +190,9 @@ function emptyCopy(state: {
 }): { head: string; detail: string } {
   if (state.indexEmpty)
     return {
-      head: 'Nothing is indexed yet',
+      head: 'No catalogue yet',
       detail:
-        'No papers were found under the library root. Rebuild the index from the top bar to walk the folder again.',
+        'The catalogue has not arrived yet. Sync it from the top bar — it needs the network once, then works offline.',
     };
   // Nothing arrived at all, so the set behind the screen is empty — the filters are not to blame.
   if (state.arrived === 0) {
@@ -211,7 +214,7 @@ function emptyCopy(state: {
   }
   return {
     head: 'No papers match these filters',
-    detail: 'Clear a level, a session or the subject to widen the search.',
+    detail: 'Clear a level, a session, the subject or the Downloaded chip to widen the search.',
   };
 }
 
@@ -242,6 +245,9 @@ export interface Props {
   onSeason: (s: string | null) => void;
   subjectId: number | null;
   onSubject: (id: number | null) => void;
+  /** Narrow to papers already on this machine. */
+  downloadedOnly: boolean;
+  onDownloadedOnly: (v: boolean) => void;
   marks: Record<SetName, Set<string>>;
   /** `key` is `paperKey(...)`; `paper` is passed so the store can snapshot the row it marked. */
   onMark: (name: SetName, key: string, paper: PaperRow) => void;
@@ -262,6 +268,8 @@ export default function LibraryView({
   onSeason,
   subjectId,
   onSubject,
+  downloadedOnly,
+  onDownloadedOnly,
   marks,
   onMark,
   markFilter,
@@ -313,7 +321,7 @@ export default function LibraryView({
     if (mode === 'recent') {
       const buckets: PaperRow[][] = BUCKETS.map(() => []);
       for (const p of rows) {
-        const opened = at.get(paperKey(p.subjectCode, p.scode, p.variant));
+        const opened = at.get(paperKey(p.subjectCode, p.scode, p.component));
         // A snapshot can outlive the entry that dated it; undated rows fall to the last bucket
         // rather than disappearing out of a list the user can see the count of.
         const days = opened == null ? Number.POSITIVE_INFINITY : daysAgo(opened);
@@ -371,7 +379,11 @@ export default function LibraryView({
 
   /** Is anything on this screen currently narrowing the list? The empty state hangs on the answer. */
   const narrowed =
-    filterable && (level !== null || season !== null || (mode === 'library' && subjectId !== null));
+    filterable &&
+    (level !== null ||
+      season !== null ||
+      downloadedOnly ||
+      (mode === 'library' && subjectId !== null));
 
   /**
    * Nothing arrived and nothing was asked to narrow it, so the index is empty rather than the filters
@@ -390,13 +402,13 @@ export default function LibraryView({
   const showChips = filterable && (papers.length > 0 || narrowed);
 
   const cardFor = (paper: PaperRow) => {
-    const key = paperKey(paper.subjectCode, paper.scode, paper.variant);
+    const key = paperKey(paper.subjectCode, paper.scode, paper.component);
     return (
       <PaperCard
         key={`${key}/${paper.level}`}
         subject={paper.subjectName}
         subjectCode={paper.subjectCode}
-        variant={paper.variant}
+        variant={paper.component}
         session={sessionLabel(paper.scode)}
         documents={documentsOf(paper)}
         band={bandFor(paper.difficulty)}
@@ -414,11 +426,12 @@ export default function LibraryView({
   };
 
   /**
-   * A Recent row (§6): eight fixed slots, no card, no meter pips and no bookmark — "difficulty is
-   * the word alone". The whole row is the button; the chevron is decoration on it.
+   * A Recent row (§6): eight fixed slots, no card and no bookmark — "difficulty is the word
+   * alone", which the badge now says literally. The whole row is the button; the chevron is
+   * decoration on it.
    */
   const rowFor = (paper: PaperRow) => {
-    const key = paperKey(paper.subjectCode, paper.scode, paper.variant);
+    const key = paperKey(paper.subjectCode, paper.scode, paper.component);
     const band = bandFor(paper.difficulty);
     const at = openedAt.get(key);
     return (
@@ -426,7 +439,7 @@ export default function LibraryView({
         type="button"
         key={`${key}/${paper.level}`}
         className="lv-row"
-        title={`Open ${paper.subjectName} ${paper.subjectCode}${paper.variant ? `/${paper.variant}` : ''}`}
+        title={`Open ${paper.subjectName} ${paper.subjectCode}/${paper.component}`}
         onClick={() => onOpen(paper)}
       >
         <span className="lv-row-glyph">
@@ -436,7 +449,7 @@ export default function LibraryView({
         {/* One string, as the file writes it: `9706 /12`. */}
         <span className="lv-row-code t-mono-meta">
           {paper.subjectCode}
-          {paper.variant ? ` /${paper.variant}` : ''}
+          {` /${paper.component}`}
         </span>
         <span className="lv-row-session t-mono-small">{sessionLabel(paper.scode)}</span>
         <span className="lv-row-strut" aria-hidden="true" />
@@ -511,6 +524,19 @@ export default function LibraryView({
                   code={activeSubject.code}
                   filled
                   onClose={() => onSubject(null)}
+                />
+              )}
+
+              {/* The catalogue lists every paper Cambridge has published for these subjects,
+                  most of which are not on this machine. This chip is how you get back to the
+                  much smaller set you actually have — the nearest thing to what the whole
+                  library used to be before it came from the network. */}
+              {mode === 'library' && (
+                <Chip
+                  label="Downloaded"
+                  icon={<Icon name="folder" />}
+                  filled={downloadedOnly}
+                  onClick={() => onDownloadedOnly(!downloadedOnly)}
                 />
               )}
 
