@@ -28,8 +28,11 @@ import FocusTimer from '../components/FocusTimer';
 import Icon, { type IconName } from '../components/Icon';
 import MarkSchemeSheet from '../components/MarkSchemeSheet';
 import PaperCanvas from '../components/PaperCanvas';
+import ClipPicker from '../components/ClipPicker';
 import TopBar from '../components/TopBar';
 import { readDocument } from '../lib/api';
+import { placeImage } from '../lib/clip';
+import { pageLabel, type NbEntry } from '../lib/notebooks';
 import {
   DEFAULT_OPACITY,
   DEFAULT_STROKE,
@@ -42,6 +45,7 @@ import {
   type Tool,
 } from '../lib/annotations';
 import { sessionLabel } from '../lib/difficulty';
+import type { DocKind } from '../lib/types';
 import { openPdf, renderPage } from '../lib/pdf';
 import { loadInk, loadPref, paperKey, saveInk, savePref } from '../lib/store';
 import type { PaperRow } from '../lib/types';
@@ -91,16 +95,32 @@ export interface Props {
   /* The shared top bar's own props, passed straight through — see the header note. */
   tone: Tone;
   onTone: () => void;
-  /** The library index is rebuilding: the bar's reindex button spins and is disabled. */
+  /** The catalogue is syncing: the bar's sync button spins and is disabled. */
   busy: boolean;
   onReindex: () => void;
   onSearch: () => void;
+  /**
+   * Fetch a document to this machine and resolve to where it landed, or null if it
+   * failed. The reader calls this itself rather than refusing to open an undownloaded
+   * paper: the catalogue lists everything Cambridge published, so "not here yet" is the
+   * common case and asking the user to go and fetch it first would be a dead end.
+   */
+  onDownload: (paperId: number, kind: DocKind) => Promise<string | null>;
   /**
    * Rows for the QUESTIONS card. Nothing derives question boundaries from a PDF yet, so the app
    * passes nothing and the card renders its empty state; a parser landing later fills this in and
    * the card lights up unchanged.
    */
   questions?: ReaderQuestion[] | null;
+  /**
+   * The student's notebooks, for "Clip to notebook". `null` means the list has not been read yet,
+   * which is a different thing from having none and the picker says so.
+   */
+  notebooks?: NbEntry[] | null;
+  /** No notebooks yet — take them to the shelf, where the New Notebook dialog lives. */
+  onNewNotebook?: () => void;
+  /** Open a notebook at a disk page index. The "Go there" action on the clip confirmation. */
+  onOpenNotebook?: (id: string, page: number) => void;
 }
 
 /** One entry in §5's rail: a `--paper` sheet, the real page drawn into it, and its number. */
@@ -172,10 +192,14 @@ export default function WorkspaceView({
   busy,
   onReindex,
   onSearch,
+  onDownload,
   questions,
+  notebooks,
+  onNewNotebook,
+  onOpenNotebook,
 }: Props) {
-  const id = paperKey(paper.subjectCode, paper.scode, paper.variant);
-  const code = `${paper.subjectCode}${paper.variant ? ` /${paper.variant}` : ''}`;
+  const id = paperKey(paper.subjectCode, paper.scode, paper.component);
+  const code = `${paper.subjectCode} /${paper.component}`;
   const session = sessionLabel(paper.scode);
 
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
@@ -188,6 +212,10 @@ export default function WorkspaceView({
    */
   const [zoom, setZoom] = useState(1);
   const [msOpen, setMsOpen] = useState(false);
+  /** Set while this reader is fetching its own question paper. */
+  const [fetching, setFetching] = useState(false);
+  /** Resolved mark-scheme path: the row's, or wherever a download just put it. */
+  const [msPath, setMsPath] = useState<string | null>(null);
   /** Held back until the page being read has rasterised — see `THUMB_REACH`. */
   const [thumbsLive, setThumbsLive] = useState(false);
 
@@ -214,9 +242,41 @@ export default function WorkspaceView({
   /** Marks lifted by undo, per page, so redo has something to put back. Never written to disk. */
   const [undone, setUndone] = useState<PageInk>({});
 
+  /* --- clip to notebook ----------------------------------------------------
+   *
+   * Two pieces of state, not one: `picking` is the destination popover and `clipTo` is the armed
+   * destination. Keeping them apart is what lets the marquee stay armed for several clips in a row —
+   * a student pulling three parts of one question out of a paper should not have to choose the same
+   * notebook three times. */
+  const [picking, setPicking] = useState(false);
+  const [clipTo, setClipTo] = useState<NbEntry | null>(null);
+  const [clipped, setClipped] = useState<{ id: string; name: string; page: number } | null>(null);
+  const [clipError, setClipError] = useState<string | null>(null);
+
+  const takeClip = useCallback(
+    (png: Blob) => {
+      const target = clipTo;
+      if (!target) return;
+      setClipError(null);
+      // The clip goes to the end of the notebook, which is where new working goes. `placeImage`
+      // decides the exact page: it lands under whatever is already there, or on the next page if
+      // there is no room — and the next page always exists, by construction.
+      void placeImage(target.id, Math.max(0, target.pages - 1), png)
+        .then(({ page: landed }) => setClipped({ id: target.id, name: target.name, page: landed }))
+        .catch((e) => setClipError(String(e)));
+    },
+    [clipTo],
+  );
+
   const well = useRef<HTMLDivElement>(null);
 
   // --- the paper ------------------------------------------------------------
+  //
+  // The catalogue lists papers that are not on this machine, so opening one may mean
+  // fetching it first. That happens here rather than being refused: the row's own
+  // `qpPath` is used when it is already downloaded, and the path the download resolves
+  // to is used directly otherwise — never waiting on the list query to refresh, which
+  // would leave the reader staring at a stale null.
   useEffect(() => {
     let cancelled = false;
     let closer: (() => Promise<void>) | null = null;
@@ -226,14 +286,22 @@ export default function WorkspaceView({
     setThumbsLive(false);
     setInk(loadInk<PageInk>(id, {}));
     setUndone({});
+    setMsPath(paper.msPath);
 
     void (async () => {
-      if (!paper.qpPath) {
-        setError('This sitting has no question paper in the library.');
-        return;
+      let path = paper.qpPath;
+      if (!path) {
+        setFetching(true);
+        path = await onDownload(paper.id, 'qp');
+        if (!cancelled) setFetching(false);
+        if (cancelled) return;
+        if (!path) {
+          setError('That paper could not be downloaded. Check your connection and try again.');
+          return;
+        }
       }
       try {
-        const opened = await openPdf(new Uint8Array(await readDocument(paper.qpPath)));
+        const opened = await openPdf(new Uint8Array(await readDocument(path)));
         if (cancelled) {
           await opened.close();
           return;
@@ -249,7 +317,26 @@ export default function WorkspaceView({
       cancelled = true;
       if (closer) void closer();
     };
-  }, [paper.qpPath, id]);
+  }, [paper.id, paper.qpPath, paper.msPath, id, onDownload]);
+
+  /** Open the mark scheme, fetching it first if the catalogue says one exists. */
+  const openMarkScheme = useCallback(async () => {
+    if (msOpen) {
+      setMsOpen(false);
+      return;
+    }
+    if (msPath) {
+      setMsOpen(true);
+      return;
+    }
+    if (!paper.hasMs) return;
+    setFetching(true);
+    const path = await onDownload(paper.id, 'ms');
+    setFetching(false);
+    if (!path) return;
+    setMsPath(path);
+    setMsOpen(true);
+  }, [msOpen, msPath, paper.hasMs, paper.id, onDownload]);
 
   const pageCount = doc?.numPages ?? 1;
   const marks = useMemo(() => ink[page] ?? [], [ink, page]);
@@ -357,13 +444,18 @@ export default function WorkspaceView({
         e.preventDefault();
         go(-1);
       } else if (e.key === 'Escape') {
-        if (msOpen) setMsOpen(false);
+        // Most transient first: the marquee is a mode you entered a second ago, the sheet is one you
+        // opened deliberately, and focus mode is one you may have been in for an hour.
+        if (clipTo) {
+          setClipTo(null);
+          setClipped(null);
+        } else if (msOpen) setMsOpen(false);
         else if (focus) onToggleFocus();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [undo, redo, go, msOpen, focus, onToggleFocus]);
+  }, [undo, redo, go, msOpen, focus, onToggleFocus, clipTo]);
 
   const width = Math.round(BASE_WIDTH * ZOOMS[zoom]);
   const rows = questions ?? [];
@@ -406,17 +498,18 @@ export default function WorkspaceView({
                 type="button"
                 className="rd-badge t-body-meta"
                 aria-pressed={msOpen}
-                disabled={!paper.msPath}
-                title={paper.msPath ? 'Open the mark scheme' : 'No mark scheme for this sitting'}
-                onClick={() => setMsOpen((open) => !open)}
+                disabled={!msPath && !paper.hasMs}
+                title={
+                  msPath
+                    ? 'Open the mark scheme'
+                    : paper.hasMs
+                      ? 'Download the mark scheme'
+                      : 'No mark scheme for this sitting'
+                }
+                onClick={() => void openMarkScheme()}
               >
                 mark scheme
               </button>
-              {paper.erPath && (
-                <span className="rd-badge t-body-meta" title="An examiner report is in the library">
-                  report
-                </span>
-              )}
             </span>
 
             <FocusTimer paper={id} />
@@ -444,6 +537,43 @@ export default function WorkspaceView({
               title="Focus mode — everything but the paper recedes"
               onClick={onToggleFocus}
             />
+
+            {/* §5d's `clipping` frame is drawn on the notebook page; this is the end of the app that
+                produces it. The button both opens the picker and, once a destination is armed,
+                disarms it — so the same control that turns the mode on turns it off. */}
+            <span className="rd-clipwrap">
+              <IconButton
+                icon="clip"
+                label={clipTo ? `Stop clipping to ${clipTo.name}` : 'Clip a region to a notebook'}
+                active={clipTo != null}
+                title={
+                  clipTo
+                    ? `Drag a box on the page to keep it in ${clipTo.name}`
+                    : 'Clip part of this paper into a notebook'
+                }
+                onClick={() => {
+                  if (clipTo) {
+                    setClipTo(null);
+                    setClipped(null);
+                  } else setPicking((p) => !p);
+                }}
+              />
+              <ClipPicker
+                open={picking}
+                notebooks={notebooks ?? []}
+                loading={notebooks == null}
+                onClose={() => setPicking(false)}
+                onNew={() => {
+                  setPicking(false);
+                  onNewNotebook?.();
+                }}
+                onPick={(entry) => {
+                  setPicking(false);
+                  setClipped(null);
+                  setClipTo(entry);
+                }}
+              />
+            </span>
           </div>
         }
       />
@@ -470,7 +600,9 @@ export default function WorkspaceView({
               ))}
             </ol>
           ) : (
-            <p className="rd-rail-empty t-body-meta">{error ? 'No pages.' : 'Opening…'}</p>
+            <p className="rd-rail-empty t-body-meta">
+              {error ? 'No pages.' : fetching ? 'Downloading…' : 'Opening…'}
+            </p>
           )}
         </nav>
 
@@ -480,6 +612,10 @@ export default function WorkspaceView({
           <div className="rd-stage">
             {error ? (
               <Notice className="rd-error">{error}</Notice>
+            ) : fetching && !doc ? (
+              /* First open of a paper that is not on this machine yet. Said plainly, because
+                 the alternative — a blank sheet with no explanation — reads as a fault. */
+              <Notice className="rd-error">Downloading this paper…</Notice>
             ) : (
               <PaperCanvas
                 doc={doc}
@@ -490,10 +626,45 @@ export default function WorkspaceView({
                 marks={marks}
                 onCommit={commit}
                 onRendered={() => setThumbsLive(true)}
+                clipping={clipTo != null}
+                onClip={takeClip}
               />
             )}
           </div>
         </div>
+
+        {/* The armed-mode hint, and then what happened. One slot, because they are two states of the
+            same conversation and stacking them would push the paper down. A sibling of the well
+            rather than a child, so it cannot scroll away from under the pointer mid-drag. */}
+        {clipTo && (
+          <div className="rd-cliphint" role="status">
+            <div className="rd-cliphint-pill">
+              {clipError ? (
+                <span className="rd-cliphint-bad t-body-small">{clipError}</span>
+              ) : clipped ? (
+                <>
+                  <span className="t-body-small">
+                    Kept in <strong>{clipped.name}</strong>, page {pageLabel(clipped.page)}
+                  </span>
+                  {onOpenNotebook && (
+                    <button
+                      type="button"
+                      className="rd-cliphint-go t-body-small"
+                      onClick={() => onOpenNotebook(clipped.id, clipped.page)}
+                    >
+                      Go there
+                    </button>
+                  )}
+                </>
+              ) : (
+                <span className="t-body-small">
+                  Drag a box around what you want to keep in <strong>{clipTo.name}</strong>
+                  <span className="rd-cliphint-esc t-body-meta">Esc to stop</span>
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* §8 `tool bar` `201:30` — one floating pill carrying three groups. The old `.pagepill`
             is absorbed into its third group, which is where the file puts page navigation. The
@@ -681,7 +852,7 @@ export default function WorkspaceView({
         </aside>
 
         <MarkSchemeSheet
-          path={paper.msPath}
+          path={msPath}
           label={`${code} · ${paper.scode}`}
           open={msOpen}
           onClose={() => setMsOpen(false)}
