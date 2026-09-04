@@ -119,3 +119,23 @@
     transform: scale(0.94);
   }
 }
+
+/* The destructive action. The design system has no danger button — `--danger` is the app's own
+   token, added precisely so state styling stops hand-converting `--d5` and borrowing the
+   difficulty axis for something that is not difficulty (CLAUDE.md) — so this recolours a Primary
+   rather than inventing a third face. Only ever the second button in the row: Cancel comes first
+   in DOM order so Tab and the panel's initial focus reach the safe choice first.
+
+   `background-image: none` is load-bearing: Button's Primary face is a gradient, and setting only
+   `background-color` under it would leave the gradient painting over the red. */
+.dlg-panel .dlg-danger {
+  background-image: none;
+  background-color: var(--danger);
+  border-color: var(--danger);
+}
+.dlg-panel .dlg-danger:not(:disabled, [aria-disabled='true']):hover {
+  /* Darker in Day, lighter in Night — `color-mix` toward the page ink does both, where a second
+     hand-picked hex would only be right in one mode. */
+  background-color: color-mix(in srgb, var(--danger) 88%, var(--ink));
+  border-color: color-mix(in srgb, var(--danger) 88%, var(--ink));
+}
