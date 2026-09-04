@@ -22,30 +22,11 @@
  */
 
 import { useRef } from 'react';
+import Icon from '../components/Icon';
 import Switch from './Switch';
 
 /** The product-level tone. Not `prefers-color-scheme` — the toggle is ours. */
 export type Tone = 'day' | 'night';
-
-/**
- * The two 16px glyphs, verbatim from `design/specs/icons-paths.md` (`163:2` sun, `163:5` moon).
- * Inlined rather than cloned from the sprite because `sun` and `moon` are not in the app's
- * `IconName` union yet — they arrive with the re-exported set beside `ui/icons/Sprite.tsx`, at
- * which point these two constants become `<Icon name="sun" />`. The sun's rays carry the spec's
- * `butt` caps against the global rule's round.
- */
-const SUN = (
-  <>
-    <circle cx="12" cy="12" r="3.125" />
-    <path
-      d="M18.2 12H21.4M16.384 16.384L18.647 18.647M12 18.2V21.4M7.616 16.384L5.353 18.647M5.8 12H2.6M7.616 7.616L5.353 5.353M12 5.8V2.6M16.384 7.616L18.647 5.353"
-      strokeLinecap="butt"
-    />
-  </>
-);
-const MOON = (
-  <path d="M20.983 12.77C20.566 17.516 16.517 21.118 11.755 20.979C6.993 20.84 3.161 17.009 3.021 12.247C2.881 7.485 6.484 3.434 11.23 3.017C9.191 5.797 9.485 9.639 11.923 12.077C14.361 14.515 18.199 14.809 20.981 12.772L20.983 12.77Z" />
-);
 
 export interface TonePillProps {
   tone: Tone;
@@ -68,9 +49,9 @@ export default function TonePill({ tone, onToggle, className }: TonePillProps) {
         if (!sw.current?.contains(e.target as Node)) onToggle();
       }}
     >
-      <svg className="tp-icon" viewBox="0 0 24 24" aria-hidden="true">
-        {night ? MOON : SUN}
-      </svg>
+      {/* Reports the *current* tone, not the action — `sun` `163:2` / `moon` `163:5`, cloned from
+          the sprite now that both are in `IconName`. The rays' `butt` cap lives in the symbol. */}
+      <Icon name={night ? 'moon' : 'sun'} className="tp-icon" />
       <span className="tp-label t-body-small">{night ? 'Night' : 'Day'}</span>
       <span className="tp-sw" ref={sw}>
         <Switch checked={night} onChange={() => onToggle()} label="Night tone" />
