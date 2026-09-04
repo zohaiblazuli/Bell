@@ -2,8 +2,13 @@
 
 Source: Figma `GnDdYtn8SaQjgmA4SQRCn7` "Foolscap — Design System". Read-only extraction.
 Covers **Button** `22:47`, **Chip** `21:20`, **Segmented Control** `42:111`, **Switch** `532:7`,
-**Icon Button** `20:12`, **Kbd** `13:4`. Everything below is measured, not inferred, except the four
-lines explicitly marked *(inferred)*.
+**Icon Button** `20:12`, **Kbd** `13:4`, and the three controls added for Notebooks — **Panel Tabs**
+`618:24`, **Slider** `613:3`, **Text Field** `619:11`. Everything below is measured, not inferred,
+except the four lines explicitly marked *(inferred)*.
+
+All three master sets live on their own pages and carry **no Colour-mode pin**, so they resolve in
+**Day**. The Day hexes are what a read of the master returns; the Night column is the same token
+resolved in mode `3:2`.
 
 ## 0. Global conventions
 
@@ -209,9 +214,10 @@ Off                              On
 
 ---
 
-## 5. Icon Button — set `20:12` (2 variants)
+## 5. Icon Button — set `20:12` (3 variants)
 
-**Axis** — `State` (default `Default`) = `Default | Hover`. `20:6` Default, `20:11` Hover.
+**Axis** — `State` (default `Default`) = `Default | Hover | Active`. `20:6` Default, `20:11` Hover,
+**`601:29` Active** (added for the Notebooks tool dock).
 **Property** — `Icon#20:2` INSTANCE_SWAP, default `17:23` (`Icon / Icon=search`), preferred set `Icon`. No TEXT or BOOLEAN props. Swap the glyph; never add a variant per glyph.
 
 | Field | Value |
@@ -222,9 +228,16 @@ Off                              On
 | Radius | `--r-btn` (10) |
 | Fill — Default | **none** |
 | Fill — Hover | `--hair-2` |
-| Stroke | none in both states |
-| Effect | none in both states |
-| `icon` INSTANCE | **18 × 18**, stroke-width 1.3125; Default `--ink-2` `#4C5165`, Hover `--ink` `#1B1D27` |
+| Fill — **Active** | `--accent-soft` |
+| Stroke | none on Default and Hover; **Active: 1 px `--accent`, INSIDE** |
+| Effect | none in all three states |
+| `icon` INSTANCE | **18 × 18**, stroke-width 1.3125; Default `--ink-2` `#4C5165`, Hover `--ink` `#1B1D27`, **Active `--ink-2`** |
+
+**Why Active exists.** The Reader hand-fills its live tool button with `--accent-soft` and no line,
+which at 34 px is very faint. `Active` adds the 1 px `--accent` inside stroke — the design system's
+own "accent as a line on live elements" rule — and one variant now serves the Notebooks tool dock,
+the nib tiles and a Reader retrofit. The icon deliberately stays `--ink-2`: an accent fill *and* an
+accent glyph *and* an accent line is three signals for one state.
 
 ---
 
@@ -246,6 +259,77 @@ Off                              On
 | Text | **Mono/Small** (Geist Mono Regular 11, tracking 0), `--ink-3` |
 
 Width = `12 + textWidth` (`"K"` = 7 px). Height = `4 + 14` and grows with the text box, not with the key count — multi-key caps ("Ctrl") widen only.
+
+---
+
+## 6a. Panel Tabs — set `618:24` (3 variants)
+
+**Why it exists.** `Segmented Control` `42:111` bakes its grid / list / dash glyphs into its variants
+and exposes **no** text property, so it cannot carry the words "Tool / Pages / Notebook". Onboarding
+step 04 hit the same wall and fell back to Chips. Panel Tabs is the labelled equivalent.
+
+**Axis** — `Selected` = `1 | 2 | 3`. `618:3` / `618:10` / `618:17`.
+**Properties** — `Tab 1#618:0` TEXT (`"Tool"`), `Tab 2#618:4` TEXT (`"Pages"`), `Tab 3#618:8` TEXT (`"Notebook"`).
+
+| Field | Value |
+|---|---|
+| Intrinsic size | **232 × 30**, FIXED / FIXED |
+| Direction / align | HORIZONTAL, primary MIN, counter MIN, both axes FIXED |
+| Padding / itemSpacing | **3** all round / 0 |
+| Radius | `--r-pill` |
+| Track fill | `--glass-strong` |
+| Track stroke | 1 px `--hair`, INSIDE |
+| Segment | 3 children, each **FILL / FILL** → **75.333** wide (232 − 6 = 226 / 3), radius `--r-pill`, align CENTER / CENTER, pad 0 |
+| Selected segment | fill `--card`, effect style **`Shadow/Card/Day`**, label `--ink` |
+| Idle segment | **no fill**, no stroke, label `--ink-3` |
+| Label | **Body/Nav** — SF Pro Medium 13, tracking **-0.4%** |
+
+Segment widths are equal and do **not** hug their labels, so the pill never reflows when the words
+change length. `Shadow/Card/Day` is baked in for both tones: a 1 px lift on a 24 px pill, and it
+reads correctly in Night — do not treat the style name as a mode bug.
+
+## 6b. Slider — COMPONENT `613:3`, page `613:2` (no variants, no set)
+
+**Why it exists.** The design system had no slider. The Reader fakes one with `Meter`, which is a
+display bar and cannot be dragged. No properties — the value is structural.
+
+| Field | Value |
+|---|---|
+| Intrinsic size | **232 × 20**, HORIZONTAL, counter **CENTER**, pad 0, gap 0 |
+| `track` | **FILL × 4**, radius 999, fill `--hair`, `layoutGrow: 1` |
+| `done` | child of `track`, `layoutGrow` **60**, align STRETCH, radius 999, fill `--accent` |
+| `rest` | child of `track`, `layoutGrow` **40**, align STRETCH, no fill |
+| `knob` | **14 × 14** ellipse, `layoutPositioning: ABSOLUTE` inside `done`, pinned MAX / CENTER — measured @(132.2, −5) at 60% |
+| knob fill / shadow | `--white`; `DROP_SHADOW #000000 @30%, (0,1), r3` — the Switch knob's own shadow |
+
+The value lives as `layoutGrow` on `done` / `rest`, which is **the file's existing meter idiom**
+(`Meter`, the exam timer, the tools opacity bar all do it). It survives any width change, and the
+knob follows the fill automatically because it is pinned to `done`'s max edge. In code the same
+thing is one `--value` custom property driving a `width: %`.
+
+## 6c. Text Field — set `619:11` (2 variants)
+
+**Why it exists.** There was no input component at all. Code already ships `@ui/Field`, so this closes
+a Figma-side gap rather than inventing anything.
+
+**Axis** — `State` (default `Default`) = `Default | Focus`. `619:3` / `619:7`.
+**Property** — `Text#619:0` TEXT (`"Mechanics"`). That is the whole API.
+
+| Field | Default | Focus |
+|---|---|---|
+| Intrinsic size | **232 × 34**, FIXED / FIXED | same |
+| Direction / align | HORIZONTAL, primary MIN, counter CENTER | same |
+| Padding / itemSpacing | **0 / 12 / 0 / 12**, gap **2** | same |
+| Radius | `--r-pill` | same |
+| Fill | `--glass-strong` | `--glass-strong` |
+| Stroke | 1 px `--hair`, INSIDE | **1 px `--accent`** |
+| `text` | **Body/Default**, `--ink-3` (placeholder) | **Body/Default**, `--ink` (entered value) |
+| `caret` | 1.5 × 16, r1, `--accent` — **`visible: false`** | **visible**, immediately after the text at gap 2 |
+| `spacer` | FILL h1, absorbs the rest | same |
+
+The recipe is deliberately the topbar `search` pill, minus the icon and the `Kbd`: same radius, same
+glass, same hairline, same padding. **The placeholder and the value are the same node** — only its
+paint changes — so a port must not build two text layers.
 
 ---
 
@@ -295,6 +379,19 @@ CSS order (outermost first) for DS-B: `0 4px 10px -2px rgba(18,20,50,.10), 0 1px
 Chip, Icon Button and Kbd carry **no effects in any state**.
 
 ## 10. TRAPS
+
+### Added with the Notebooks controls
+
+- **`Icon Button` now has three variants, and old code assumes two.** Anything that enumerates the
+  `State` axis, or that hand-fills a button to fake an active state, should switch to `State=Active`.
+- **`Panel Tabs` segments are FILL, not HUG.** Overriding a tab label to something much longer does
+  not widen the pill; it truncates. Three short words is the design budget.
+- **`Text Field`'s caret is a hidden node in `State=Default`, not a separate variant part.** Toggling
+  the variant is what shows it. Do not add a `Show Caret#` boolean; there is deliberately no such prop.
+- **`Slider` carries no properties at all.** Its value is `layoutGrow` on `done` / `rest`, so an
+  instance is changed by editing those two numbers, not by setting a prop. That is the same idiom
+  `Meter` uses, and it is why the two components look similar but are not interchangeable — `Meter`
+  has no knob and no drag affordance.
 
 1. **Chip `Default` ignores `Palette`.** All seven Default variants are pixel-identical (`--glass-strong` + `--hair` + `--ink-2`). Build 1 default + 6 hover + 7 filled, not 21 cases.
 2. **IGCSE and O Level Filled are fully opaque, not washes.** Their Wash stops are bound to `bell/cap-mid|hi|lo` at **α 1.0**, so those two chips are saturated blue gradients carrying an `--ink` `#1B1D27` label. Confirmed on the rendered set — O Level Filled is near-illegible (dark navy text on `#1436C8`). The other four washes sit at 0.28–0.40 alpha and read fine. This is a real defect in the source, not a conversion artifact: decide explicitly whether to ship it, switch those two to `--white` labels, or add alpha.
