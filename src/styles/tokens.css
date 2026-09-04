@@ -33,6 +33,28 @@
   --page-ink-2: #5b6072;
   --page-line: rgba(26, 28, 36, .141);
 
+  /* Cover — the eight notebook covers, plus the three paints that sit on one. Mode-invariant
+     for exactly the reason --paper and --page-ink are: a cover is an OBJECT, not chrome, and a
+     physical notebook does not change colour when you turn the lights on. All eight are picked so
+     --cover-label (white) clears 4.5:1 — the design file records 8.9 / 6.4 / 6.6 / 5.93 / 8.2 /
+     9.6 / 17.0 / 8.0; scripts/audit.mjs recomputes 8.78 / 6.30 / 6.52 / 5.93 / 8.08 / 9.71 /
+     17.00 / 7.92 from these hexes, so trust the audit for the last decimal. --cover-label-2 is 84%
+     and NOT 74%: at 74% covers 2, 3 and 4 fall to 4.26 / 4.40 / 4.05, below AA; at 84% the worst
+     case is 4.71 on cover 4. --cover-shade is the spine, --cover-wire the ring coils; both carry
+     alpha, so they ride any of the eight. No purple anywhere. */
+  --cover-1: #1436c8;
+  --cover-2: #0f6b6b;
+  --cover-3: #1f6b3a;
+  --cover-4: #8a5a00;
+  --cover-5: #9e1239;
+  --cover-6: #3d4457;
+  --cover-7: #1a1c24;
+  --cover-8: #8f3312;
+  --cover-shade: rgba(0, 0, 0, .161);
+  --cover-label: #ffffff;
+  --cover-label-2: rgba(255, 255, 255, .839);
+  --cover-wire: rgba(255, 255, 255, .58);
+
   /* Plain white, for text and glyphs sitting ON the accent gradient. Figma binds these to
      its `white` primitive rather than to `paper/base`, because the roles are unrelated. */
   --white: #ffffff;
@@ -42,8 +64,11 @@
      the tone vars live on .app, so anything on <body> would resolve Day in both modes. */
   --plate: #0b0c12;
 
-  /* Scrim behind modals — the ⌘K palette and the update dialog. */
-  --scrim: rgba(16, 18, 40, .278);
+  /* Scrim behind modals — the ⌘K palette and the update dialog. Was an app addition with a
+     guessed value (#10122847 / #00000080); Figma has since adopted it as `Color/ground/scrim`
+     (alpha/scrim-day #181A34 @28%, alpha/scrim-night #05060C @55%) and the file wins, so these are
+     the harvested numbers, not ours. */
+  --scrim: rgba(24, 26, 52, .278);
 
   /* Ink — UI text. Day got darker than the first-generation palette (--ink-2 was #565b6f,
      --ink-3 was #8a8fa4), which is a real contrast improvement. */
@@ -154,11 +179,14 @@
   --traffic-inactive: rgba(0, 0, 0, .149);
   --traffic-glyph: rgba(0, 0, 0, .549);
 
-  /* Danger — an APP ADDITION, not in Figma. The design system has no success/danger/warning
-     token, and error styling was borrowing --d5 by hand, which mixes the difficulty axis into
-     something that is not difficulty. Seeded from the same hue, declared separately. */
-  --danger: #a5103a;
-  --danger-soft: rgba(165, 16, 58, .102);
+  /* Danger — began as an APP ADDITION, because the design system had no success/danger/warning
+     token and error styling was borrowing --d5 by hand, which mixes the difficulty axis into
+     something that is not difficulty. Figma has since adopted it: `Color/state/danger` and
+     `Color/state/danger-soft` now exist (danger/day #B3261E, danger/night #FF6B6B; the soft wash is
+     the same hue at 12% Day / 16% Night), so the values below are harvested, not seeded — they
+     replace the #a5103a / #ff4d6a pair we guessed off --d5. Still never --d5 for state. */
+  --danger: #b3261e;
+  --danger-soft: rgba(179, 38, 30, .122);
 
   /* Elevation — from the Figma effect styles. Window and Card are measured;
      TODO card-hover / paper / popover still to be read off Foundations — Elevation & Glass. */
@@ -184,7 +212,7 @@
   --ground-veil: #0b0c12;
   --ambient-a: #7fb6ff;
   --ambient-b: #6ed4ff;
-  --scrim: rgba(0, 0, 0, .502);
+  --scrim: rgba(5, 6, 12, .549);
   --ink: #ffffff;
   --ink-2: #dfe3ef;
   --ink-3: #b9bece;
@@ -208,8 +236,8 @@
   --activity-2: #2d6bad;
   --activity-3: #2892f7;
   --activity-4: #a6c8f2;
-  --danger: #ff4d6a;
-  --danger-soft: rgba(255, 77, 106, .141);
+  --danger: #ff6b6b;
+  --danger-soft: rgba(255, 107, 107, .161);
   --shadow-win: 0 30px 70px -30px rgba(0, 0, 0, .7), 0 8px 20px -12px rgba(0, 0, 0, .5);
   --shadow-card: 0 1px 2px rgba(0, 0, 0, .35), 0 4px 12px -2px rgba(0, 0, 0, .45);
   --shadow-card-h: 0 16px 34px -16px rgba(0, 0, 0, .6);
