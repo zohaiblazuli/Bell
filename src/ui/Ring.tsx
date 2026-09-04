@@ -10,7 +10,7 @@
  *
  * So the geometry here is app convention and only the paints are measured. `--hair` is the token
  * every meter track in the file uses (screen-dashboard.md §9), and the arc strokes `Blue/Line 90`
- * through the `#iris` gradient that `icons/Sprite` defines once for the whole app. Figma calls the
+ * through the `#iris` gradient that `components/Sprite` defines once for the whole app. Figma calls the
  * lit part of a meter `fill` and its groove `track` (`497:506` / `497:507`), which is where the two
  * paint props get their names — `stroke` is then free to mean the weight, as it does in Figma's own
  * inspector.
@@ -37,7 +37,7 @@ export interface RingProps {
   stroke?: number;
   /** Groove paint. Every measured meter track in the file is `--hair`. */
   track?: string;
-  /** Arc paint. The brand line, via the gradient `icons/Sprite` mounts once. */
+  /** Arc paint. The brand line, via the gradient `components/Sprite` mounts once. */
   fill?: string;
   className?: string;
 }
