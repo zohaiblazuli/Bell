@@ -1,14 +1,14 @@
 # Bell — icon system (measured spec)
 
 Source: Figma `GnDdYtn8SaQjgmA4SQRCn7` "Foolscap — Design System", read-only.
-**All vector geometry lives in the companion `icons-paths.md`** — 52 paste-ready `<symbol>` blocks
+**All vector geometry lives in the companion `icons-paths.md`** — 66 paste-ready `<symbol>` blocks
 in local `0 0 24 24` space. This file is the contract around them.
 
 ## The four sets
 
 | Set | Node | Page | Variant prop | Glyphs | Sheet | Paint |
 |---|---|---|---|---|---|---|
-| Icon | `17:119` | `17:2` Icon | `Icon` | 31 | 430x210 | `--ink-2` |
+| Icon | `17:119` | `17:2` Icon | `Icon` | **45** | **430x302** | `--ink-2` |
 | Subject Icon | `47:81` | — | `Subject` | 17 | 352x176 | `--ink-2` |
 | Season Icon | `102:15` | — | `Season` | 3 | 176x76 | none (raw gradients) |
 | Brand Mark / GitHub | `427:4` | `17:2` Icon | (single component) | 1 | 24x24 | `--ink-3` |
@@ -22,12 +22,15 @@ src/components/Sprite.tsx. 24x24 box, 1.75 stroke, round caps. Colour defaults t
 per instance the way currentColor does in the app. Use this set as the INSTANCE_SWAP target wherever
 a component takes an icon."*
 
+That description is now stale on the count — the set holds **45** glyphs. The 14 added for Notebooks
+(`screen-notebooks.md` section 10) are listed at the bottom of the Icon table.
+
 ## Geometry contract
 
 | Property | Value |
 |---|---|
 | Box | 24 x 24, `viewBox="0 0 24 24"` |
-| Bleed | none — **every** coordinate in all 52 glyphs lies inside 0..24 (verified numerically) |
+| Bleed | none — **every** coordinate in all 66 glyphs lies inside 0..24 (verified numerically) |
 | Stroke weight | 1.75 (exceptions: `min` 2.6, `max` 2.4, Season marks 1.6 / 1.5) |
 | Caps / joins | `round` / `round` (one exception: `sun` rays, see TRAPS) |
 | Fill | `none` (10 exceptions, all listed in the tables below) |
@@ -52,12 +55,14 @@ All three sheets are plain frames with variants placed absolutely. Nothing here 
 rebuild; it is only the map for finding a glyph by eye.
 
 ```
-Icon  17:119  430x210   cells 24px, pitch 46 x 46, origin (24,24)
+Icon  17:119  430x302   cells 24px, pitch 46 x 46, origin (24,24)
         x=24    70     116   162     208      254     300    346
  y= 24  lib     dash   bm    clock   search   sliders grid   list
  y= 70  left    chev   pen   hl      eraser   zin     zout   check
  y=116  checkc  x      focus book    ret      doc     folder sync
- y=162  warn    min    max   play    pause    sun     moon    -
+ y=162  warn    min    max   play    pause    sun     moon   pencil
+ y=208  lasso   shapes text  image   clip     sticky  ruler  pan
+ y=254  plus    trash  dots  redo    right     -       -      -
 
 Subject  47:81  352x176   cells 24px, pitch 50 x 50, origin (26,26)
         x=26        76            126        176      226        276
@@ -70,7 +75,10 @@ Season  102:15  176x76   cells 24px, pitch 50, origin (26,26)
  y= 26  may-june    oct-nov   feb-march
 ```
 
-## Icon — 31 glyphs, set `17:119`
+Icon rows 5 and 6 are the Notebooks additions. The frame grew 430x210 to **430x302** to hold them;
+pitch, origin and cell size did not change, and `pencil` filled the one empty cell in row 4.
+
+## Icon — 45 glyphs, set `17:119`
 
 `els` = number of drawn elements in the symbol. Everything not marked in **deviation** is a bare
 stroked path inheriting 1.75 / round / round / `fill:none`.
@@ -108,6 +116,29 @@ stroked path inheriting 1.75 / round / round / `fill:none`.
 | pause | `17:118` | 2 | two bars 3.4x13 r 1 | `fill` **and** 1.75 stroke |
 | sun | `163:2` | 2 | circle r 3.125 + 8 rays | rays cap is **butt**, not round |
 | moon | `163:5` | 1 | crescent, one closed path | — |
+
+### The 14 added for Notebooks
+
+| Glyph | Node | els | Shape | Deviation from the default |
+|---|---|---|---|---|
+| pencil | `595:5` | 3 | body quad + tip seam + ferrule seam | — |
+| lasso | `595:10` | 3 | flat ellipse + tail curve + bead r 1.4 | — |
+| shapes | `595:14` | 2 | square 11x11 r 1.6 + circle r 5.1, overlapping | — |
+| text | `595:19` | 3 | cap rule + stem + foot rule | — |
+| image | `596:6` | 3 | frame 17.6x14.8 r 2.2 + sun r 1.7 + two-peak ridge | — |
+| clip | `596:10` | 2 | two interlocking crop corners | — |
+| sticky | `596:16` | 4 | square + folded corner + two text rules | — |
+| ruler | `596:20` | 2 | rotated bar + 4 tick marks (one path) | — |
+| pan | `597:5` | 2 | crosshair (one path) + 4 arrowheads (one path) | — |
+| plus | `597:8` | 1 | plus — **one path, two subpaths** | — |
+| trash | `597:14` | 4 | lid rule + handle + can + 2 slots (one path) | — |
+| dots | `597:19` | 3 | three discs r 1.5 at x 5.6 / 12 / 18.4 | all three `fill` only, **no stroke** |
+| redo | `598:2` | 2 | arrow head + hooked shaft, mirrored from `ret` | — |
+| right | `598:5` | 1 | arrow-right — **one path, two subpaths** | — |
+
+`undo` reuses the existing `ret` `17:89`. `redo` is a **mirrored** `ret`, not a 180-degree rotation —
+rotating it would put the hook above the shaft instead of below it. Paper styles need no glyphs at
+all: they are drawn as 32 x 40 mini pages.
 
 ## Subject Icon — 17 glyphs, set `47:81`
 
@@ -166,10 +197,13 @@ the 0.297 top gap is the real GitHub mark's own metric.
 
 `src/components/Sprite.tsx` defines **29** symbols (`i-lib` … `i-max` in a stroked `<g>`, then
 `i-play` / `i-pause` in a bare `<g>`). `src/components/Icon.tsx` types the same 29 names.
+Figma is now 16 ahead.
 
 | Gap | Detail |
 |---|---|
 | `sun` `163:2`, `moon` `163:5` | in Figma, **not** in the sprite — added to the design system after the port |
+| the 14 Notebooks glyphs | in Figma, **not** in the sprite — port them together with the two above and the whole gap closes in one pass |
+| `src/ui/icons/Sprite.tsx` | a second, unreferenced sprite holding 31 glyphs **including `sun` and `moon`**. Nothing imports it, which is why `TonePill.tsx:33` and `SettingsView.tsx:52` each inline their own copy of the sun/moon paths. Wiring it up retires that duplication |
 | Subject Icon (17) | no code counterpart at all; nothing in `src/` references a subject slug |
 | Season Icon (3) | no code counterpart at all |
 | Brand Mark / GitHub | no code counterpart at all |
@@ -194,10 +228,14 @@ note the code wins, so treat these as Figma bugs unless told otherwise:
   instance recolours per layer and the file's consumers override only the first child — the shaft
   stays ink/2 while the head takes the new colour. In code the global `svg{}` rule covers both, so the
   app is unaffected. Any port must colour the whole `<symbol>` / `<svg>`, never "the path".
-- **9 elements are fill-only and will render as stroked blobs** unless they carry
+- **12 elements are fill-only and will render as stroked blobs** unless they carry
   `fill="currentColor" stroke="none"`: sliders knobs (2), list bullets (3), warn dot (1), physics
-  nucleus (1), may-june disc (1), the GitHub mark (1). `play` / `pause` are different — they keep an
-  inherited stroke in Figma on purpose.
+  nucleus (1), may-june disc (1), the GitHub mark (1), **`dots` discs (3)**. `play` / `pause` are
+  different — they keep an inherited stroke in Figma on purpose.
+- **`plus`, `right`, `pan`, `ruler` and `trash` each pack several subpaths into one `<path d>`.** The
+  `els` count in the tables is the number of `<path>` elements, not the number of strokes you see. Do
+  not split them for clarity — the multi-subpath form is what Figma exported and what the 3 dp numbers
+  in `icons-paths.md` were verified against.
 - **`min` is 2.6 and `max` is 2.4.** The window-control glyphs are deliberately heavier than the
   1.75 body weight. Do not normalise them.
 - **Season Icon binds no variables.** `get_variable_defs` on `102:15` is empty — the badges are raw
