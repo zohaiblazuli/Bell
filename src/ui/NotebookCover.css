@@ -1,0 +1,210 @@
+/* Notebook Cover — `design/specs/components-data.md` §9 (set `606:50`) and `screen-notebooks.md`
+   §4e. Rationale, the fluid-width argument and every derived number live in NotebookCover.tsx.
+
+   Nothing here transforms and nothing animates: §9's Hover swaps one effect style and changes
+   nothing else, so the only transition in the file is a shadow crossfade — colour, not motion, the
+   same call PaperCard.css makes at the end of its own sheet. There is nothing to gate behind
+   `prefers-reduced-motion`. */
+
+/* The tile. No width, ever: the master is 237 and the shelf's columns are FILL. `min-width: 0` so a
+   long name cannot blow a grid track out, and `position: relative` because the overflow slot is an
+   absolute sibling of the press target. */
+.notebook-cover {
+  position: relative;
+  min-width: 0;
+}
+
+/* The tile's own auto-layout: VERTICAL, gap 8, `w: FILL`, `h: HUG`. The hug is the point — see the
+   "why 321 is never written down" note in the .tsx. */
+.nbc-open {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  text-align: left; /* a button centres its content by default */
+  color: inherit;
+}
+
+/* index.css rings :focus-visible in --accent but also sets `border-radius: 6px`, and it loads after
+   ui.css — so a bare `.nbc-open` would square the tile off while focused. The ring sits 2px outside
+   the 321-tall box, which is one more reason the shelf grid may not clip (TRAP 12). */
+.nbc-open:focus-visible {
+  border-radius: var(--r-card);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* `book` 237 x 300 — FILL / FIXED, so the height is a literal and the width is not. Radius
+   `--r-card` (13), `clipsContent: true`, fill `--cover-N` (inline, at the use site), effect style
+   `Shadow/Card/*`. The token retones, which is components-data TRAP 9 answered for free. */
+.nbc-book {
+  position: relative;
+  display: block;
+  height: 300px;
+  border-radius: var(--r-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  /* The fill is mode-invariant by design (§8), so only the shadow crosses on a tone flip; 0.2s is
+     the Paper Card's own elevation timing rather than the chrome's 0.3s. */
+  transition: box-shadow 0.2s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* §9's Hover, entire: `Shadow/Card` → `Shadow/Card Hover`. Not a lift, not a fill change, not a
+   label move. `:focus-within` joins it so a keyboard user gets the same feedback the pointer does. */
+.notebook-cover:hover .nbc-book,
+.notebook-cover:focus-within .nbc-book {
+  box-shadow: var(--shadow-card-h);
+}
+
+/* `spine` 14 x 300 @(0,0), radius **mixed 13 / 0 / 0 / 13** — left corners only. */
+.nbc-spine {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 14px;
+  border-radius: var(--r-card) 0 0 var(--r-card);
+  background: var(--cover-shade);
+}
+
+/* `rings` — 7 coil ellipses 8 x 8 at x 3, stroke 1.5 `--cover-wire`. `left: 0` and the box's own
+   14px width put the coils on the spine's centre line; `top` is set inline from the same arithmetic
+   that sizes the box.
+
+   `overflow: visible` because a 1.5px CENTRE-aligned stroke on an 8px circle reaches 0.75px past
+   the 14 x 212 box, exactly as it does in Figma — the book's own clip is what bounds it.
+   `stroke`/`stroke-width` are restated here because index.css paints every `svg` in `currentColor`
+   at 1.75, and a class beats an element selector. */
+.nbc-rings {
+  position: absolute;
+  left: 0;
+  overflow: visible;
+  fill: none;
+  stroke: var(--cover-wire);
+  stroke-width: 1.5;
+}
+
+/* `page edges` 6 x 268 @(231,16) — three 2 x 268 rects at x 0 / 2 / 4 in `--paper`, node opacity
+   1 / 0.70 / 0.45. Flush to the book's right edge (231 + 6 = 237) with 16px clear top and bottom,
+   so the offsets are stated as insets and the 231 never appears. */
+.nbc-edges {
+  position: absolute;
+  top: 16px;
+  right: 0;
+  bottom: 16px;
+  display: flex;
+  width: 6px;
+}
+.nbc-edges i {
+  width: 2px;
+  background: var(--paper);
+}
+.nbc-edges i:nth-child(2) {
+  opacity: 0.7;
+}
+.nbc-edges i:nth-child(3) {
+  opacity: 0.45;
+}
+
+/* `front` 185 x 108 @(26,34), VERTICAL gap 16. 26 + 185 + 26 = 237, so the inset is symmetric and
+   the label widens with the tile instead of freezing at 185. `right: 26` also keeps it clear of the
+   page edges, which live inside that inset. */
+.nbc-front {
+  position: absolute;
+  top: 34px;
+  right: 26px;
+  left: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* `sticker` 56 x 56, radius **14**, fill `--paper`, `Shadow/Card/Day`, holding a 28 x 28 glyph.
+   14 is a measured raw radius between `--r-card` (13) and `--r-win` (15) — the same allowance
+   components-data TRAP 3 makes for the meter pip's 2 and the Doc Badge's 5; do not tokenise it.
+
+   The glyph's paint is `--page-ink`, which §4e does not state. It has to be a mode-invariant dark:
+   the plate is `--paper`, and the Subject Icon set's own `--ink-2` default flips to a light grey in
+   Night and would vanish on white. `--paper` / `--page-ink` are the pair the whole app uses for ink
+   printed on paper, and neither ever inverts. */
+.nbc-sticker {
+  display: grid;
+  place-items: center;
+  flex: none;
+  align-self: flex-start;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: var(--shadow-card);
+  color: var(--page-ink);
+}
+.nbc-sticker > svg {
+  width: 28px;
+  height: 28px;
+}
+
+/* Mr. Bell is one of the two glyphs this slot can hold, and index.css gives every `svg` a
+   `currentColor` stroke that inherits into his 15 rects — which grids the shell into squares and
+   turns each claw into a ladder (mr-bell TRAPS 12). `.bell rect` resets it for the 256 rig and
+   `.splash-mark rect` for the splash; the mark needs the same opt-out wherever else it lands.
+   Scoped to `rect` on purpose: a Subject Icon in this same slot is stroked line art and needs its
+   stroke kept. */
+.nbc-sticker rect {
+  stroke: none;
+}
+
+/* `photo` 185 x 120, radius 8, `--cover-shade` on a 1px `--cover-wire`. `visible: false` in all 16
+   variants, so its box is measured and its behaviour is not: it renders where §9 lists it, and
+   stretches with `front` rather than freezing at 185. */
+.nbc-photo {
+  height: 120px;
+  border: 1px solid var(--cover-wire);
+  border-radius: 8px;
+  background: var(--cover-shade);
+}
+
+/* `label` 185 x 36 — FILL / HUG, VERTICAL gap 4: 18 + 4 + 14. Both lines are one line: the box is
+   authored for exactly two, and a wrapped title would grow `front` down over the coils. A name too
+   long for the tile ellipsises, as Paper Card's subject does. */
+.nbc-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.nbc-title,
+.nbc-meta {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.nbc-title {
+  color: var(--cover-label);
+}
+/* 84%, not 74%: at 74% white measures 4.26 / 4.40 / 4.05 against covers 2, 3 and 4 — below AA.
+   §4e is explicit that this is why the token exists at all. */
+.nbc-meta {
+  color: var(--cover-label-2);
+}
+
+/* `edited` 136 x 13 @(0,308) — HUG, Body/Meta `--ink-3`. The 8px above it is the tile's own gap and
+   the 13 is this line's own metrics; nothing here states either. */
+.nbc-edited {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ink-3);
+}
+
+/* The app-only overflow slot. Top-right of the book at an 8px inset, which is the one corner where
+   a control can sit: the glyph clears the `page edges` (6px wide) by 12px, and `--cover-label` is
+   the cover's own text token, so it reads on all eight fills. Painting is the call site's — this
+   rule only places the slot and hands it a colour to inherit. */
+.nbc-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: var(--cover-label);
+}
