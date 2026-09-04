@@ -14,6 +14,8 @@ export type View =
   | 'recent'
   | 'dashboard'
   | 'reader'
+  | 'notebooks'
+  | 'notebook'
   | 'settings'
   | 'onboarding';
 
@@ -22,22 +24,31 @@ export type View =
  * every row is 214; window lights at (12,14), the logo at (12,34), then the two nav groups, the
  * subject list, the mascot slot and the dev footer.
  *
- * Five nav rows under STUDY. Figma draws four and gives its own Settings screen no way in, which is
- * a gap in the file rather than a decision — the `Motion — Tone` frames already run five rows and
- * the mascot is bottom-pinned, so the slot absorbs the difference without moving him.
- *
- * The fifth row is labelled Settings and currently opens the index-and-difficulty screen, which is
- * what Settings' own Library card will absorb. When that screen lands, this points at it instead.
+ * SIX nav rows under STUDY. Figma's Notebooks screen (`620:507`) draws five — it inserts Notebooks as
+ * the second row and has no Settings row at all, which is a gap in the file rather than a decision.
+ * The app carries Settings, so it lands on six. `screen-notebooks.md` TRAP 16 asks explicitly whether
+ * that cuts Mr. Bell: it does not. The column is flexbox with the `mascot` slot as the flex spacer and
+ * he is bottom-pinned inside it, so a sixth 38px row shrinks the slot rather than moving him, and the
+ * rig's top ~45px is empty above his spectacles. Verified by screenshot at the 680px minimum window
+ * height, which is the case that would break first.
  */
 interface Props {
   view: View;
   onView: (v: View) => void;
+  /**
+   * The subjects the student sits, not the whole catalogue — `App` narrows this to their
+   * chosen syllabus codes. The catalogue holds every subject Cambridge publishes, so an
+   * unfiltered rail would be a wall of thirty rows nobody asked for.
+   */
   subjects: Subject[];
   activeSubject: number | null;
   onSubject: (id: number | null) => void;
   paperCount: number | null;
   bookmarkCount: number;
   recentCount: number;
+  /** How many notebooks exist. `null` while the shelf is still being read, so the row shows no count
+   *  rather than a momentary zero. */
+  notebookCount: number | null;
   /**
    * The update pill, when there is something to say. Rendered between the subject list and the
    * mascot, which is where `Screen — Library` puts it — and it stays a slot rather than a prop pair
@@ -70,6 +81,7 @@ export default function Sidebar({
   paperCount,
   bookmarkCount,
   recentCount,
+  notebookCount,
   update,
   mascot = 'idle',
   onPokeMascot,
@@ -94,6 +106,18 @@ export default function Sidebar({
         count={paperCount?.toLocaleString()}
         active={view === 'library'}
         onClick={() => onView('library')}
+      />
+      {/* §4a inserts Notebooks as the SECOND row, above Dashboard — the shelf is a place you keep
+          things, so it belongs beside the library rather than among the read-outs. `book` already
+          existed in the sprite; the row is `State=Active` on both notebook routes, because the open
+          spread has no sidebar of its own and returning from it must land somewhere lit. */}
+      <NavItem
+        icon={<Icon name="book" />}
+        label="Notebooks"
+        count={notebookCount ?? undefined}
+        showCount={notebookCount != null}
+        active={view === 'notebooks' || view === 'notebook'}
+        onClick={() => onView('notebooks')}
       />
       <NavItem
         icon={<Icon name="dash" />}
@@ -131,7 +155,9 @@ export default function Sidebar({
       <div className="nav-label t-label-section">Subjects</div>
 
       <div className="subj">
-        {subjects.length === 0 && <div className="subj-empty t-body-meta">No index yet</div>}
+        {subjects.length === 0 && (
+          <div className="subj-empty t-body-meta">No subjects yet</div>
+        )}
         {subjects.map((s) => (
           <SubjectRow
             key={s.id}

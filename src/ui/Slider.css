@@ -1,0 +1,87 @@
+/* Slider — `design/specs/components-controls.md` §6b, COMPONENT `613:3`. Nothing in app.css is
+   superseded: there was no slider. The nearest thing in the tree is `.rd-opacity-range` in
+   WorkspaceView.css, which is the Reader's own range input painted as the §7b meter — this is the
+   component the file finally has, and that block is a candidate to retire onto it.
+   NOT `Meter`: same 4px `--hair` track and `--accent` fill, but a meter has no knob and no drag. */
+
+input.bell-slider {
+  /* Element-qualified deliberately: index.css's global `:focus-visible` sets `border-radius: 6px`
+     and loads after ui.css, so a bare `.bell-slider` would tie on specificity and lose — the focus
+     ring would square off against a pill-shaped track. Same reason as Switch.css and
+     SegmentedControl.css. */
+  box-sizing: border-box;
+  /* The master is 232 x 20, but every instance is FILL — 94 in each of the STROKE card's two rows
+     (`screen-notebooks.md` §6a) — so the width comes from the row. Hard-coding a resized master is
+     the mistake `NavItem` documents. */
+  flex: 1 1 0;
+  min-width: 0;
+  width: 100%;
+  /* 20 is the box; the track is 4. The 8px above and below is invisible ground that gives the
+     control an operable hit target, and padding rather than a centring rule is what pins the
+     track's y deterministically — the content box IS the 4px track. `.rd-opacity-range` uses the
+     same trick. */
+  height: 20px;
+  padding: 8px 0;
+  margin: 0;
+  border: 0;
+  /* Not visible — the track's radius lives on the pseudo-element below — but it shapes the focus
+     outline, which should hug a pill as a pill. */
+  border-radius: var(--r-pill);
+  background: transparent;
+  /* Where the fill ends. Chromium insets the thumb's travel by half the thumb, so the thumb's
+     centre runs 7 -> W-7, where Figma pins the knob's centre to `done`'s max edge and lets it
+     overhang the track by 7 at both ends. The native inset is the behaviour to keep — an
+     overhanging knob would collide with the 58px label and 32px value cells either side of a 94px
+     slider — so the fill edge follows the thumb *centre* rather than `--value x W`. Tracking the
+     raw fraction instead would drift by up to 3.5px at the quarter marks and visibly unstick the
+     knob from the end of the fill.
+     It is declared here, on the element, and read in the track below: a custom property is
+     substituted as tokens into the *consuming* declaration, so the `100%` resolves against the
+     track's own box — which is the same width anyway, since the padding above is vertical only. */
+  --done: calc(7px + (100% - 14px) * var(--value, 0));
+  /* Required before Chromium will let the two pseudo-elements below be styled at all. */
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input.bell-slider:disabled {
+  /* §0: Figma dims the whole node rather than recolouring, so the knob's cast dims with it. Do not
+     build a disabled palette. */
+  opacity: 0.55;
+}
+
+/* `track` FILL x 4 radius 999 `--hair`, with `done` painted over it in `--accent` (§6b). One
+   gradient rather than two boxes: `done` / `rest` is a `layoutGrow` split in the file, and the
+   knob — which is the only part of `done` whose right edge is ever visible — covers that edge
+   completely at 14px over a 4px bar. `done`'s own radius 999 is therefore invisible and costs
+   nothing to drop. */
+input.bell-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(to right, var(--accent) 0 var(--done), var(--hair) var(--done) 100%);
+}
+
+/* `knob` — 14 x 14 ellipse, `--white` (§6b). Figma places it ABSOLUTE inside `done`, pinned
+   MAX / CENTER, measured at y **-5**; on a 4px track that -5 is literally the margin-top which
+   centres a 14px disc, so the file's own number ships unchanged. */
+input.bell-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--white);
+  /* DS-C (§9) — the Switch knob's own shadow, declared exactly as Switch.css declares it. There is
+     no black token, and `--plate` (#0b0c12) is the only mode-invariant near-black in the vocabulary;
+     mode-invariance is the property that matters, because the knob stays `--white` in both tones and
+     its cast must stay dark in both. */
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--plate) 30%, transparent);
+}
+
+/* No transition anywhere on purpose. The fill is a background gradient and the knob's x is the
+   native thumb position, so there is nothing here that `transform` or `opacity` could carry — and a
+   transition on the thumb would lag the pointer during a drag. A value change is a repaint, which
+   is the same call `Meter.css` makes. The set has no Hover or Disabled variant either, so there is
+   no hover rule: that is missing from the design, not from the port. */

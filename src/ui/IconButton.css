@@ -14,8 +14,9 @@ button.icobtn {
   width: 34px;
   height: 34px;
   padding: 0;
-  /* No stroke in either state. app.css carried a transparent 1px so that adding a hover border
-     would not shift the glyph — there is no hover border in the file to make room for. */
+  /* No stroke on Default or Hover, and `State=Active`'s is an inset ring below rather than a border.
+     app.css carried a transparent 1px so that adding a hover border would not shift the glyph — no
+     state in the file needs the room, so nothing here reserves it. */
   border: 0;
   border-radius: var(--r-btn);
   background: transparent; /* Fill = none on Default; the topbar instance's `fills: []` is this */
@@ -24,13 +25,26 @@ button.icobtn {
   overflow: hidden; /* clipsContent = true (§0) */
 }
 
-/* Hover is the set's only other variant. `--on` is that same paint made sticky: Figma has no
-   active/selected axis here, so rather than invent a third look, a control that stays lit while
-   its panel is open reuses Hover exactly. */
-button.icobtn:not(:disabled, [aria-disabled='true']):hover,
-button.icobtn--on {
+/* `State=Hover`. An active button is excluded from this rule rather than left to lose on
+   specificity — `:not(…)` takes the weight of its most specific argument, so adding `.icobtn--on`
+   to the list changes nothing there and simply stops the two fighting. The set has no Active+Hover
+   cell, so `State=Active` holds its own paint under the pointer instead of inventing a fourth look. */
+button.icobtn:not(:disabled, [aria-disabled='true'], .icobtn--on):hover {
   background: var(--hair-2);
   color: var(--ink);
+}
+
+/* `State=Active` `601:29`, added for the Notebooks tool dock (§5 · screen-notebooks.md §5b). Fill
+   `--accent-soft` plus a 1px INSIDE `--accent` stroke. The stroke is an inset box-shadow rather than
+   a `border` so the button's 34 x 34 box does not change size — INSIDE strokes do not grow the
+   intrinsic sizes (§0), and a border here would make it 36 x 36 and shift the glyph off centre. */
+button.icobtn--on {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  /* The glyph deliberately stays `--ink-2`, the Default paint: an accent fill *and* an accent glyph
+     *and* an accent line is three signals for one state (§5). Restated rather than left to the base
+     rule, because it is the one surprising number in the variant. */
+  color: var(--ink-2);
 }
 
 /* Also an app addition: the Icon Button set has no Disabled variant, but §0's set-wide convention
@@ -51,7 +65,9 @@ button.icobtn[aria-disabled='true'] {
 
 @media (prefers-reduced-motion: no-preference) {
   button.icobtn {
-    transition: background-color 0.16s, color 0.16s;
+    /* `box-shadow` is here for `State=Active`'s inset ring, so the line arrives with the wash
+       instead of snapping in over a fading background. */
+    transition: background-color 0.16s, color 0.16s, box-shadow 0.16s;
   }
   /* The reindex button while the index rebuilds. No motion for this exists in Figma; the 1.1s is
      inherited from app.css. Under `reduce` the glyph simply holds still — a replacement pulse is

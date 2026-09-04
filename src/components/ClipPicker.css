@@ -1,0 +1,122 @@
+/* "Clip to notebook" destination picker.
+
+   Chrome glass, because it is a popover over content — rule 1. The recipe is the ⌘K palette's and
+   the mark-scheme sheet's: `--glass-strong`, a hairline, a real backdrop blur, and `--shadow-pop`.
+   Its own class prefix, `clipp-`, so nothing here can collide with the Reader's `rd-` block. */
+
+.clipp {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  width: 268px; /* the inspector's width — the same object, seen from the Reader */
+  max-height: 380px;
+  overflow: hidden auto;
+  padding: 10px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-panel);
+  background: var(--glass-strong);
+  backdrop-filter: blur(26px) saturate(165%);
+  box-shadow: var(--shadow-pop);
+}
+
+.clipp-head {
+  padding: 2px 6px 8px;
+  color: var(--ink-3);
+}
+
+.clipp-empty {
+  margin: 0;
+  padding: 0 6px 10px;
+  color: var(--ink-2);
+}
+
+.clipp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clipp-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 6px;
+  border: 0;
+  border-radius: var(--r-btn);
+  background: none;
+  color: inherit;
+  text-align: left;
+}
+.clipp-row:hover {
+  background: var(--hair-2);
+}
+/* Rule 2: the accent as a line on a live element. `--accent-soft` is the permitted wash and it is
+   already spent on the row fill, so the ring carries the focus. */
+.clipp-row:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+  background: var(--accent-soft);
+}
+
+/* §4e's cover, at the smallest size that still reads as a book rather than a colour chip: the spine
+   is the whole tell, so it stays even at 22px. */
+.clipp-swatch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 28px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.clipp-swatch::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--cover-shade);
+}
+
+.clipp-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.clipp-name {
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clipp-meta {
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clipp-plus {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 22px;
+  height: 28px;
+  border: 1px dashed var(--hair);
+  border-radius: 4px;
+  color: var(--ink-3);
+}
+.clipp-plus svg {
+  width: 14px;
+  height: 14px;
+}
+
+.clipp-new .clipp-name {
+  color: var(--ink-2);
+}

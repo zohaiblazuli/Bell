@@ -1,11 +1,9 @@
 [package]
 name = "bell"
 version = "0.1.0"
-description = "Focused, offline studying of Cambridge exam papers"
+description = "Focused studying of Cambridge exam papers"
 authors = ["Zohaib"]
 edition = "2021"
-# `src/bin/index_check.rs` is a verification tool; the app is the default binary.
-default-run = "bell"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -25,6 +23,18 @@ tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rusqlite = { version = "0.40.2", features = ["bundled"] }
-walkdir = "2.5.0"
 thiserror = "2.0.20"
+# All network access lives in Rust (see src/catalog.rs) so the webview's CSP can stay
+# closed. rustls rather than native-tls to avoid a system OpenSSL dependency.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip", "json"] }
+# Retry backoff, and the semaphore that caps how many documents are in flight at once.
+tokio = { version = "1", features = ["time", "sync"] }
+# Content addressing for notebook assets (src/notebooks.rs): the same clip pasted twice has to land
+# on the same file name. Pure Rust, and already compiled behind `tauri-codegen`, so the crate graph
+# gains nothing new.
+sha2 = "0.10"
+
+[dev-dependencies]
+# `blocking` only, for the ignored live-catalogue test in src/catalog.rs.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip", "json", "blocking"] }
 

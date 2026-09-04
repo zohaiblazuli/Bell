@@ -1,0 +1,779 @@
+/* The notebook inspector — `design/specs/screen-notebooks.md` §6. Rationale, spec citations and the
+   two deliberate divergences live in Inspector.tsx.
+
+   ONE THING TO KNOW BEFORE EDITING. This sheet loads BEFORE `app.css` and the `src/ui` layer,
+   because a `.tsx` import lands in Vite's module graph under `App` rather than in main.tsx's explicit
+   ordered list. So every name here is new (`nbi-*`) and carries the prefix without exception, and the
+   rules that must beat a `src/ui` component are element- or parent-qualified rather than relying on
+   order: `div.nbi-input` over `.bell-field`, `.nbi-input .bell-field__input` over its own class,
+   `button.nbi-export` over `.bell-btn`. A bare `.nbi-x` that happened to collide with an app.css name
+   would silently lose.
+
+   Element-qualifying every rule that sets a radius is the second reason: index.css's global
+   `:focus-visible` sets `border-radius: 6px` and loads after this sheet, so a bare class ties on
+   specificity and a disc would square off while focused. Switch.css and Button.css do the same. */
+
+/* ---------- §6 the panel box — the Reader's tool panel, to the pixel ---------- */
+
+.nbi {
+  box-sizing: border-box;
+  /* 268 x 808. The height comes from the stage; the width is the measured column and is FIXED, so
+     the spread beside it never reflows. Placement is the call site's — this is a column in
+     NotebookView's grid, not a positioned element. */
+  flex: none;
+  width: 268px;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px; /* §6: VERTICAL gap 16, pad 18 */
+  padding: 18px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(26px) saturate(165%);
+  backdrop-filter: blur(26px) saturate(165%);
+  /* 1px on ALL FOUR sides — not `border-left`. The Reader's topbar is the precedent for why: reusing
+     a one-edge rule drops three of them. */
+  border: 1px solid var(--hair);
+  box-shadow: inset 0 1px 0 var(--glass-hi); /* the specular top every glass surface carries */
+  overflow: hidden; /* §6: clip */
+}
+
+/* The tab panel is the scroller rather than `.nbi`, so the tab strip cannot scroll away from the
+   panel it switches. The inline margin/padding pair is 4px of slack for focus rings, which a
+   scroll container would otherwise slice off the edge tiles — it costs no content width, because the
+   padding gives back exactly what the margin took. */
+.nbi-tab {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-inline: -4px;
+  padding-inline: 4px;
+  overflow: hidden auto;
+}
+
+/* HUG, not FILL: four cards must not stretch to fill 808px of column. */
+.nbi-card {
+  flex: none;
+  gap: 13px; /* §6: cards are pad 16 (Card's own default) and V gap 13 */
+}
+
+/* Figma's own spacer frames, kept as real elements rather than `margin-left: auto` — the file
+   authors them, and a 1px strut is what a FILL spacer measures. */
+.nbi-gap {
+  flex: 1 1 0;
+  height: 1px;
+}
+/* §6c's FILL 40. It collapses to nothing when the column is shorter than its content, which is what
+   keeps the actions reachable in a short window instead of pushed past the fold. */
+.nbi-spacer {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+/* ---------- the `Text Field` recipe, applied to `@ui/Field` ----------
+   `components-controls.md` §6c measures `Text Field` 232 x 34 as the topbar search pill minus the
+   icon and the Kbd: r `--r-pill`, `--glass-strong`, 1px `--hair`, pad 0/12, Body/Default, and focus
+   swaps the hairline to `--accent`. `@ui/Field` is onboarding's input — 420 x 48, `--ground`,
+   `--r-btn` — so the geometry and the paint are both restated here. This is not a restyle for taste:
+   it is the measured control, held here until a real `TextField` primitive lands in `src/ui`. */
+
+div.nbi-input {
+  width: 100%;
+}
+.nbi-input .bell-field__input {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  background: var(--glass-strong);
+}
+.nbi-input .bell-field__input:focus {
+  /* 1px, not 2px: §6c swaps the hairline's colour and keeps its width, so the value cannot jog and
+     the padding needs no compensation. */
+  border: 1px solid var(--accent);
+  padding: 0 12px;
+}
+.nbi-input .bell-field__input:focus-visible {
+  border-radius: var(--r-pill);
+}
+
+/* §6b `jump to page` FILLs its 232; §6c `name` is 200 x 34 and centred under the cover. */
+div.nbi-name {
+  width: 200px;
+  align-self: center;
+}
+
+/* ---------- §6a `nib` — 2 x 2 of 96 x 56 ---------- */
+
+.nbi-nibs {
+  /* 200 x 120: two rows of two, gap 8 / 8. A grid rather than two flex rows, so the four tiles are
+     equal without either row hugging its own content. */
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+button.nbi-nib {
+  box-sizing: border-box;
+  height: 56px;
+  padding: 7px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border-radius: var(--r-btn);
+  /* The rest: 1px `--hair`, no fill. An inset ring rather than a border, so selecting a tile cannot
+     move the sample inside it — the same reason every stroke in this file is INSIDE. */
+  box-shadow: inset 0 0 0 1px var(--hair);
+}
+
+/* Selected = `--accent-soft` + 1px `--accent`. `aria-pressed` is the CSS hook as well as the
+   announced state, so the painted state and the read state cannot drift — NavItem's trick. */
+button.nbi-nib[aria-pressed='true'] {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+/* Not in the file, which measures no hover here. It is Button/Secondary's own hover — a 1px
+   `--accent` edge and nothing else — rather than a new gesture. */
+button.nbi-nib:not([aria-pressed='true']):hover {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.nbi-nib-ink {
+  display: block;
+  width: 100%;
+  height: 24px;
+  /* Painted ink, never the live colour: `--page-ink` on `--card` is all but invisible in Night. */
+  color: var(--ink-2);
+}
+/* The sample is a filled ribbon, so it has to opt out of index.css's global `svg { fill: none;
+   stroke: currentColor }` — which exists because sprite glyphs are strokes. `.nbi-nib-ink path`
+   beats a bare element selector without needing an order guarantee. */
+.nbi-nib-ink path {
+  fill: currentColor;
+  stroke: none;
+}
+/* Graphite lays down grey, and a marker is translucent where it crosses itself. Both are properties
+   of the nib, which is what this card is for. */
+.nbi-nib-ink[data-nib='pencil'] path {
+  fill-opacity: 0.78;
+}
+.nbi-nib-ink[data-nib='marker'] path {
+  fill-opacity: 0.5;
+}
+
+.nbi-nib-name {
+  color: var(--ink-2);
+}
+button.nbi-nib[aria-pressed='true'] .nbi-nib-name {
+  color: var(--ink);
+}
+
+/* ---------- §6a `ink` — two rows of five, then `recent` ---------- */
+
+.nbi-swatches {
+  /* 200 x 26, SPACE_BETWEEN. Five 26 boxes in 200 leaves 70 across four gaps — the gap is the
+     leftover, which is exactly what SPACE_BETWEEN means, so it is not written down. */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+button.nbi-swatch {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+}
+/* §6a: the selected swatch is marked by a 1.5px `--ink` ring ON THE 26 BOX — the Reader's own swatch
+   treatment, where the ring is a second cue on top of the colour rather than the only one. */
+button.nbi-swatch[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+.nbi-swatch-disc {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+}
+
+.nbi-recent {
+  display: flex;
+  align-items: center;
+  /* 16px discs at pitch 24. */
+  gap: 8px;
+  min-height: 24px;
+}
+.nbi-recent-label {
+  flex: none;
+  color: var(--ink-3);
+}
+
+.nbi-disc {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: 50%;
+}
+/* Drawn OUTSIDE a 16px disc, unlike the 26-box swatches: an inset ring at this size would eat the
+   colour it is meant to be pointing at. The `--card` layer punches the gap, because a transparent
+   box-shadow layer does not cut a hole in the one beneath it. Both numbers are `.rd-swatch`'s. */
+button.nbi-disc[aria-pressed='true'] {
+  box-shadow: 0 0 0 0.75px var(--card), 0 0 0 2.25px var(--ink);
+}
+/* A slot with no colour in it yet. Empty, not a colour — which is why it is a `<span>`. */
+.nbi-disc--empty {
+  box-shadow: inset 0 0 0 1px var(--hair);
+}
+
+/* §6a draws a 24 x 24 `Icon Button` `Icon=plus`. The control underneath is the platform colour
+   picker, laid transparently over the box so the native input is what takes focus and keys. */
+.nbi-custom {
+  position: relative;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-btn);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--ink-2);
+}
+.nbi-custom-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.nbi-custom-plus {
+  position: relative;
+  width: 14px;
+  height: 14px;
+}
+.nbi-custom-inp {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  /* Fully transparent, so the visible face above is ours and the picker's own swatch never shows.
+     Its focus ring goes with it, which is what `:has()` below puts back. */
+  opacity: 0;
+}
+/* An `opacity: 0` control cannot paint its own focus ring, so the box wears it. `:has()` rather than
+   `:focus-within` on purpose: a pointer press must not light a ring, which is the whole distinction
+   `:focus-visible` exists to draw. */
+.nbi-custom:has(:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* In use: the box becomes the colour and wears the same 1.5px `--ink` ring the palette swatches use,
+   so "selected" looks the same wherever it happens. A pseudo-element, because `.nbi-custom-fill` fills
+   the box and would paint over an inset shadow on the box itself. The `plus` goes — it means "add
+   one", and there is nothing to add once the box IS the colour. */
+.nbi-custom[data-on]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+  pointer-events: none;
+}
+.nbi-custom[data-on] .nbi-custom-plus {
+  display: none;
+}
+
+/* ---------- §6a `stroke` — the three dots, then two slider rows ---------- */
+
+.nbi-strokes {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+/* The file draws bare 5 / 8 / 12 px dots. Each sits in a 22px button here, because a 5px hit target
+   is not operable — the Reader made the same correction to the same row. */
+button.nbi-stroke {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+}
+.nbi-stroke-dot {
+  display: block;
+  border-radius: 50%;
+  background: var(--ink-3);
+}
+button.nbi-stroke:hover .nbi-stroke-dot {
+  background: var(--ink-2);
+}
+/* §6a lights the selected dot `--accent`. Size is the other cue, and it is the load-bearing one:
+   these three differ by 5 / 8 / 12 px before any colour is applied. */
+button.nbi-stroke[aria-pressed='true'] .nbi-stroke-dot {
+  background: var(--accent);
+}
+.nbi-strokes-read {
+  flex: none;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.nbi-slide {
+  /* label 58 fixed + slider FILL 94 + value 32 fixed = 184 in a 200 inner width, so the two gaps
+     are 8 each. The slider's FILL is `@ui/Slider`'s own `flex: 1 1 0`. */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nbi-slide-label {
+  flex: none;
+  width: 58px;
+  color: var(--ink-2);
+}
+.nbi-slide-val {
+  flex: none;
+  width: 32px;
+  text-align: right;
+  color: var(--ink-3);
+}
+
+/* ---------- §6a `behaviour` — three rows at pitch 36 ---------- */
+
+.nbi-switches {
+  display: flex;
+  flex-direction: column;
+  /* Pitch 36 is the 24px switch plus this. It is a group inside the card rather than three children
+     of it, because the card's own gap is 13 and these rows are not on that rhythm. */
+  gap: 12px;
+}
+.nbi-swrow {
+  display: flex;
+  align-items: center;
+  min-height: 24px; /* the Switch's own height — the row hugs it */
+}
+.nbi-swrow-label {
+  color: var(--ink-2);
+}
+
+/* ---------- §6b `spreads` — 2-up tiles and the trailing ghost ---------- */
+
+.nbi-spreads {
+  /* V gap 14 of rows, each H gap 14 of two 109 x 96 tiles: 109 + 14 + 109 = 232, the inner width.
+     `1fr` rather than a fixed 109 so the tiles stay right when a scrollbar takes its 10px. */
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+button.nbi-spread {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* the tile is V gap 6, counter CENTER */
+  gap: 6px;
+  padding: 0;
+  border-radius: 5px; /* shapes the focus ring around a 3px-radius sheet */
+}
+
+/* `sheet` 109 x 76 — two page minis, H gap 2, so the 2px of card showing between them IS the
+   notebook's gutter. Expressed as a ratio rather than 109 x 76, because the column can lose 10px to
+   a scrollbar and a fixed height would then stop matching the width. */
+.nbi-sheet {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  width: 100%;
+  aspect-ratio: 109 / 76;
+  border-radius: 3px;
+}
+/* Current spread: 1.5px `--accent`, INSIDE like every stroke in the file, so selecting a tile moves
+   nothing. It has to be a pseudo-element rather than the sheet's own inset shadow: the two page minis
+   fill the sheet edge to edge and would paint over it, where Figma renders a frame's stroke ABOVE its
+   children. The label goes `--accent` with it, and the stroke is the cue that does not rely on hue. */
+button.nbi-spread[aria-pressed='true'] .nbi-sheet::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+  pointer-events: none;
+}
+.nbi-spread-label {
+  color: var(--ink-3);
+}
+button.nbi-spread[aria-pressed='true'] .nbi-spread-label {
+  color: var(--accent);
+}
+
+/* The ghost's slot is a sheet with no pages in it, which is how the 106 x 74 ghost sits centred
+   inside the same 109 x 76 box every other tile occupies — so the labels across a row still line up. */
+.nbi-sheet--new {
+  display: grid;
+  place-items: center;
+  gap: 0;
+}
+.nbi-ghost {
+  width: calc(100% - 3px);
+  height: calc(100% - 2px);
+  display: grid;
+  place-items: center;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1.5px var(--hair);
+  color: var(--ink-3);
+}
+/* §4f's ghost cover centres an `Icon=plus` in exactly this box for exactly this reason: the outline
+   teaches the affordance the label names. */
+.nbi-ghost-plus {
+  width: 14px;
+  height: 14px;
+}
+
+button.nbi-spread:not([aria-pressed='true']):hover .nbi-spread-label {
+  color: var(--ink-2);
+}
+button.nbi-spread:hover .nbi-ghost {
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+  color: var(--accent);
+}
+
+/* ---------- the page minis — one recipe, two sizes ----------
+   §6b: "Page minis are drawn as real miniature pages, which is why the four paper styles need no new
+   glyphs." So this is the whole reason §10 ships 14 icons and not 18. The ruling is layered through
+   custom properties rather than per-style `background-image` declarations, because `background-image`
+   is one list per rule and a margin rule plus a grid needs three layers that no single style owns. */
+
+.nbi-page {
+  --nbi-pitch: 8px;
+  --nbi-margin: none;
+  --nbi-rule-v: none;
+  --nbi-rule-h: none;
+  flex: 1 1 0;
+  min-width: 0;
+  border-radius: 2px;
+  background-color: var(--paper);
+  background-image: var(--nbi-margin), var(--nbi-rule-v), var(--nbi-rule-h);
+}
+
+/* `--page-line` is the paper's own ruling token, mode-invariant with `--paper` and `--page-ink` for
+   the same reason: ink printed on paper must not invert when the app's tone does. */
+.nbi-page[data-paper='ruled'] {
+  --nbi-rule-h: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--nbi-pitch) - 1px),
+    var(--page-line) calc(var(--nbi-pitch) - 1px),
+    var(--page-line) var(--nbi-pitch)
+  );
+}
+.nbi-page[data-paper='grid'] {
+  --nbi-rule-h: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--nbi-pitch) - 1px),
+    var(--page-line) calc(var(--nbi-pitch) - 1px),
+    var(--page-line) var(--nbi-pitch)
+  );
+  --nbi-rule-v: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc(var(--nbi-pitch) - 1px),
+    var(--page-line) calc(var(--nbi-pitch) - 1px),
+    var(--page-line) var(--nbi-pitch)
+  );
+}
+/* Dots are the one style a repeating gradient cannot express on its own, so this layer tiles — and it
+   is the only rule here that has to name a `background-size`, one entry per layer in image order. */
+.nbi-page[data-paper='dotted'] {
+  --nbi-rule-h: radial-gradient(circle at 50% 50%, var(--page-line) 0 0.8px, transparent 0.8px);
+  background-size: auto, auto, var(--nbi-pitch) var(--nbi-pitch);
+}
+/* `blank` gets no ruling, which is the honest drawing of a blank page and the fourth distinct one. */
+
+/* The `Margin rule` switch, mirrored into every mini — so the Pages tab, the paper card and the page
+   itself all agree about what the paper looks like. */
+.nbi-page[data-margin] {
+  --nbi-margin: linear-gradient(
+    to right,
+    transparent 18%,
+    var(--page-line) 18%,
+    var(--page-line) calc(18% + 1px),
+    transparent calc(18% + 1px)
+  );
+}
+
+/* ---------- §6c `identity` — the 95 x 120 cover mini ----------
+   §4e's parts at `rescale(0.4)`: a 237 x 300 book lands on 95 x 120, a 14px spine on 5.6, 8px coils
+   on 3.2 at pitch 13.6, and the 6px page edge on 2.4. Radius stays the token rather than 0.4 of it —
+   a derived literal would be unreadable and unmaintainable, and `--r-card` is what the spec names.
+   COLLAPSE THIS ONTO `@ui/NotebookCover` when that component lands. */
+
+.nbi-cover {
+  position: relative;
+  align-self: center;
+  width: 95px;
+  height: 120px;
+  border-radius: var(--r-card);
+  /* §4e gives the book `Shadow/Card/*`. A cover is an object, not a content card, so this is not the
+     no-shadow rule being broken — and the token retones, which is what TRAP 9 asks an instance to do
+     by hand in Figma. */
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.nbi-cover-spine {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5.6px;
+  background: var(--cover-shade);
+}
+/* Solid rather than a 0.6px ring: at 3.2px a stroked coil is a dot with noise in it. */
+.nbi-cover-coil {
+  position: absolute;
+  left: 1.2px;
+  width: 3.2px;
+  height: 3.2px;
+  border-radius: 50%;
+  background: var(--cover-wire);
+}
+/* §4e's three `--paper` strips at node opacity 1 / 0.70 / 0.45, innermost first — one element with
+   three hard stops, because three 0.8px boxes would land between device pixels. */
+.nbi-cover-edges {
+  position: absolute;
+  top: 6.4px;
+  right: 0;
+  bottom: 6.4px;
+  width: 2.4px;
+  background: linear-gradient(
+    to right,
+    var(--paper) 0 0.8px,
+    color-mix(in srgb, var(--paper) 70%, transparent) 0.8px 1.6px,
+    color-mix(in srgb, var(--paper) 45%, transparent) 1.6px 2.4px
+  );
+}
+
+/* §6c's `linked subject` `Chip`, centred. */
+button.nbi-subject {
+  align-self: center;
+}
+
+/* No subject yet. Chip's own box — 32 tall, pad 12, gap 7, r `--r-pill` — with a native `<select>`
+   laid transparently over it. A popover would be the obvious alternative and it is the wrong one
+   here: this panel sets `backdrop-filter`, which makes it the containing block for `position: fixed`
+   descendants, so anything that wanted to escape 268px of glass could not. */
+.nbi-link {
+  position: relative;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--ink-2);
+}
+.nbi-link-plus {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+.nbi-link-label {
+  white-space: nowrap;
+}
+.nbi-link-sel {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+}
+.nbi-link:has(:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.nbi-link:hover {
+  box-shadow: inset 0 0 0 1px var(--accent);
+  color: var(--ink);
+}
+
+/* ---------- §6c `paper` — four 32 x 40 minis ---------- */
+
+.nbi-styles {
+  /* 200 x 59, H gap 16, four FILL columns: 4 x 38 + 3 x 16 = 200. */
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+button.nbi-style {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px; /* 40 + 5 + 14 = 59, the measured column */
+  padding: 0;
+  border-radius: 4px;
+}
+.nbi-style-page {
+  /* 6px ruling on a 32 x 40 page, against 8 on the 53-wide spread minis: the pitch is the one number
+     the two sizes cannot share, or a mini would show two lines and a mini page would show twenty. */
+  --nbi-pitch: 6px;
+  flex: none;
+  width: 32px;
+  height: 40px;
+  /* A blank page on `--card` needs an edge to be a page at all. */
+  box-shadow: inset 0 0 0 1px var(--hair);
+}
+button.nbi-style[aria-pressed='true'] .nbi-style-page {
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+.nbi-style-name {
+  color: var(--ink-3);
+}
+button.nbi-style[aria-pressed='true'] .nbi-style-name {
+  color: var(--accent);
+}
+button.nbi-style:not([aria-pressed='true']):hover .nbi-style-name {
+  color: var(--ink-2);
+}
+
+/* ---------- §6c `details` — three rows at pitch 24 ---------- */
+
+.nbi-details {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+.nbi-detail {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 24px; /* pitch 24, so the rows carry no gap of their own */
+}
+.nbi-detail dt {
+  color: var(--ink-2);
+}
+/* Mono because all three are machine facts about the file on disk — a page count, bytes, a stamp —
+   and because a right-aligned column of them wants tabular figures, which is what Mono/Small is for. */
+.nbi-detail dd {
+  margin: 0;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+/* ---------- §6c `actions` ---------- */
+
+.nbi-actions {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* FILL 232 x 34. `@ui/Button` is `inline-flex` and HUGs its label with primary MIN, so a full-width
+   instance has to say so and re-centre; element-qualified to beat `.bell-btn`, which loads later. */
+button.nbi-export {
+  width: 100%;
+  justify-content: center;
+}
+.nbi-hint {
+  margin: 0;
+  color: var(--ink-3);
+}
+
+/* §6c: 232 x 34, r `--r-btn`, `--danger-soft` fill, `trash` + `Body/Small` in `--danger`, centred.
+   `--danger`, never `--d5`: the difficulty heat ramp is a separate axis and borrowing it for state is
+   what rule 3 forbids outright. Closing that gap is why both tokens now exist. */
+button.nbi-kill {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 34px;
+  padding: 0;
+  border-radius: var(--r-btn);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+button.nbi-kill svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+/* A `color-mix` of the token, which is the sanctioned way to reach an alpha the palette does not
+   name. There is no `--danger-hover`, and inventing a second literal would be the bug. */
+button.nbi-kill:hover {
+  background: color-mix(in srgb, var(--danger) 24%, transparent);
+}
+
+/* The confirmation. A notebook is pages of the student's own handwriting and `nbDelete` is documented
+   "Irreversible", so the first press asks and the second does it. Both buttons are the same 34 tall
+   as the row they replace, so nothing below them moves. */
+.nbi-kill-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.nbi-kill-warn {
+  margin: 0;
+  color: var(--danger);
+}
+.nbi-kill-pair {
+  display: flex;
+  gap: 8px;
+}
+.nbi-kill-pair > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+/* The safe half is quiet on purpose: two loud buttons would make the pair a coin toss. */
+button.nbi-keep {
+  box-sizing: border-box;
+  height: 34px;
+  padding: 0;
+  border-radius: var(--r-btn);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--ink-2);
+}
+button.nbi-keep:hover {
+  box-shadow: inset 0 0 0 1px var(--accent);
+  color: var(--ink);
+}
+
+/* ---------- motion ----------
+   Colour only. Nothing here animates a layout property, and the one transform is a swatch's own
+   `scale` — the house rule is transform and opacity, and a paint crossfade is neither a layout pass
+   nor a compositing surprise. Wrapped rather than declared, so "Reduce motion" is a cut. */
+
+@media (prefers-reduced-motion: no-preference) {
+  button.nbi-nib,
+  .nbi-style-page,
+  .nbi-ghost,
+  .nbi-link,
+  button.nbi-disc,
+  button.nbi-kill,
+  button.nbi-keep {
+    transition: background-color 0.16s, box-shadow 0.16s, color 0.16s, transform 0.16s
+      cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .nbi-swatch-disc,
+  .nbi-stroke-dot,
+  .nbi-spread-label,
+  .nbi-style-name,
+  .nbi-nib-name {
+    transition: background-color 0.16s, color 0.16s, transform 0.16s
+      cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  button.nbi-swatch:hover .nbi-swatch-disc,
+  button.nbi-disc:hover {
+    transform: scale(1.08);
+  }
+}

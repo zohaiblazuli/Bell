@@ -1,0 +1,75 @@
+/* Panel Tabs — `design/specs/components-controls.md` §6a, set `618:24`; placed by
+   `screen-notebooks.md` §6 as the inspector's first child. Nothing in app.css is superseded: this
+   control is new. `.seg` / `SegmentedControl.css` is the closest existing shape and is deliberately
+   not shared — that set is icon-only, pads 4, fills `--hair-2` and carries separators. */
+
+.panel-tabs {
+  display: flex;
+  /* Both axes FIXED, counter MIN — but the segments are FILL / FILL, so they take the full 24 of
+     inner height either way, and stretching says that outright. */
+  align-items: stretch;
+  box-sizing: border-box;
+  /* 232 x 30. The 232 is not hard-coded: it is the inspector's inner width (268 - 2x18) and the
+     strip is a block that fills it, which is what keeps this off `NavItem`'s resized-master trap.
+     3 + 24 + 3 = 30, so padding is what sets the height with the box (§0). */
+  width: 100%;
+  height: 30px;
+  padding: 3px;
+  gap: 0;
+  border-radius: var(--r-pill);
+  background: var(--glass-strong);
+  /* Stroke INSIDE (§0), so it must not grow the 232 x 30 the segment maths depends on — an inset
+     ring is exactly that, where a `border` would add 2px to each axis. Same reasoning as Switch.css
+     and SegmentedControl.css. */
+  box-shadow: inset 0 0 0 1px var(--hair);
+}
+
+button.panel-tabs__tab {
+  /* Element-qualified: index.css's `:focus-visible` sets `border-radius: 6px` and loads after
+     ui.css, so a bare class ties on specificity and loses — the segment would square off inside the
+     pill while focused. */
+  /* FILL / FILL -> (232 - 6) / 3 = 75.333 each. `flex-basis: 0` plus `min-width: 0` is what makes
+     the three exactly equal and, with the label rule below, what makes a long word truncate instead
+     of widening the pill (§10: the segments are FILL, not HUG). */
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center; /* CENTER / CENTER, pad 0 */
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-pill);
+  /* Idle: no fill, no stroke, label `--ink-3`. */
+  background-color: transparent;
+  color: var(--ink-3);
+  overflow: hidden;
+}
+
+.panel-tabs__label {
+  /* Truncate, never reflow — the other half of the FILL rule above. `min-width: 0` is what lets a
+     flex item shrink below its content at all, and without it the ellipsis never appears. */
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+button.panel-tabs__tab[aria-selected='true'] {
+  background-color: var(--card);
+  color: var(--ink);
+  /* `Shadow/Card/Day` (foundations.md §4) is `--shadow-card` layer for layer in Day. Figma bakes the
+     Day style into both tones here on purpose (§6a, and screen-notebooks.md TRAP 10) — a 1px lift on
+     a 24px pill that it says reads correctly in Night. The token retones instead, which is the same
+     deliberate deviation SegmentedControl.css already took for the same effect style: holding the
+     Day value in Night would mean writing `#121432` into this file, and a raw hex is a bug. */
+  box-shadow: var(--shadow-card);
+}
+
+/* The set has one axis, `Selected`, so there is no hover rule here — it is missing from the design,
+   not from the port. Same as SegmentedControl. */
+
+@media (prefers-reduced-motion: no-preference) {
+  button.panel-tabs__tab {
+    transition: background-color 0.16s, color 0.16s, box-shadow 0.16s;
+  }
+}

@@ -19,6 +19,18 @@
   --color-ink: var(--ink);
   --color-ink-2: var(--ink-2);
   --color-ink-3: var(--ink-3);
+  --color-cover-1: var(--cover-1);
+  --color-cover-2: var(--cover-2);
+  --color-cover-3: var(--cover-3);
+  --color-cover-4: var(--cover-4);
+  --color-cover-5: var(--cover-5);
+  --color-cover-6: var(--cover-6);
+  --color-cover-7: var(--cover-7);
+  --color-cover-8: var(--cover-8);
+  --color-cover-shade: var(--cover-shade);
+  --color-cover-label: var(--cover-label);
+  --color-cover-label-2: var(--cover-label-2);
+  --color-cover-wire: var(--cover-wire);
   --color-card: var(--card);
   --color-card-brd: var(--card-brd);
   --color-hair: var(--hair);
