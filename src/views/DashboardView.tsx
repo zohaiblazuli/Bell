@@ -36,7 +36,7 @@ import Meter from '@ui/Meter';
 import SectionLabel from '@ui/SectionLabel';
 import Stat from '@ui/Stat';
 import SubjectIcon from '@ui/icons/SubjectIcon';
-import { bandFor, sessionLabel, variantLabel } from '@/lib/difficulty';
+import { bandFor, componentLabel, difficultyForScore, sessionLabel } from '@/lib/difficulty';
 import { daysUntil, nextWindow, windowsBetween, type Season } from '@/lib/sessions';
 import {
   loadFocus,
@@ -378,17 +378,17 @@ export default function DashboardView({
     for (const entry of recent) touched.add(codeOf(entry.key));
     touched.delete('');
 
-    // Mean parsed difficulty over the row snapshots on disk, plus the name they carry for a subject
-    // the index has since stopped holding. Partial by nature — the snapshots are only the papers
+    // Mean hardness score over the row snapshots on disk, plus the name they carry for a subject
+    // the catalogue has since stopped holding. Partial by nature — the snapshots are only the papers
     // something still points at — so `subjectScores` overrides it outright where a caller has the
-    // whole index behind it.
+    // whole catalogue behind it.
     const scored = new Map<string, { sum: number; n: number }>();
     const named = new Map<string, string>();
     for (const row of Object.values(rows)) {
       named.set(row.subjectCode, row.subjectName);
-      if (row.difficulty == null) continue;
+      if (row.hardnessScore == null) continue;
       const seen = scored.get(row.subjectCode) ?? { sum: 0, n: 0 };
-      scored.set(row.subjectCode, { sum: seen.sum + row.difficulty, n: seen.n + 1 });
+      scored.set(row.subjectCode, { sum: seen.sum + row.hardnessScore, n: seen.n + 1 });
     }
 
     const out = [...touched].map<Roll>((code) => {
@@ -482,7 +482,7 @@ export default function DashboardView({
   const subline = useMemo(() => {
     if (!resume) return 'Nothing open yet — pick a paper from the library and it lands here.';
     const paper = resume.paper;
-    const variant = paper.variant ? ` ${variantLabel(paper.variant)}` : '';
+    const variant = paper.component ? ` ${componentLabel(paper.component)}` : '';
     const session = sessionLabel(paper.scode);
     const next = `Next up — ${paper.subjectName} ${paper.subjectCode}, ${session}${variant}.`;
     if (weeklyTarget == null) return next;
@@ -682,14 +682,14 @@ export default function DashboardView({
 
             {/* §7b — weakest first. The difficulty word is the PAPER difficulty band, independent of
                 progress, and it is a word alone: §7b measures a 58px slot with no pips, so this is
-                `bandFor` plus `.t-label-difficulty` rather than the five-pip DifficultyMeter, which
+                `bandFor` plus `.t-label-difficulty` rather than the DifficultyBadge pill, which
                 is a different node (components-data.md §3) and would not fit the 34-tall row. */}
             <section className="db-mod" aria-label="Subject progress">
               <SectionLabel label="subject progress" meta="weakest first" />
               {progressRows.length > 0 ? (
                 <Card padding="list" className="db-progress">
                   {progressRows.map((roll) => {
-                    const band = bandFor(roll.score);
+                    const band = bandFor(difficultyForScore(roll.score));
                     const id = roll.id;
                     const body = (
                       <>
@@ -742,7 +742,7 @@ export default function DashboardView({
               {reviewRows.length > 0 ? (
                 <Card padding="list" className="db-review">
                   {reviewRows.map((roll) => {
-                    const band = bandFor(roll.score);
+                    const band = bandFor(difficultyForScore(roll.score));
                     const id = roll.id;
                     const body = (
                       <>
