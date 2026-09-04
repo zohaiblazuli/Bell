@@ -82,6 +82,7 @@ const APP = 'App';
 /** Handlers for what `screenCommands` builds: every screen the sidebar lists, plus one act. */
 export interface PaletteScreens {
   onLibrary: () => void;
+  onNotebooks: () => void;
   onDashboard: () => void;
   onBookmarks: () => void;
   onRecent: () => void;
@@ -109,18 +110,21 @@ export interface PaletteScreenCounts {
   docs?: number | null;
   bookmarks?: number | null;
   recent?: number | null;
+  /** Notebooks on the shelf. `null` while unread, so the hint falls back to prose. */
+  notebooks?: number | null;
 }
 
 /**
- * The five screens the sidebar lists, plus "Check for updates" when a handler exists for it, as
+ * Every screen the sidebar lists, plus "Check for updates" when a handler exists for it, as
  * commands. The definitions live here because the type does; the actions are the caller's, because
  * routing is `App`'s business and this component has no idea what a view is. Spread them into the
  * `commands` prop:
  *
  *     commands={[...screenCommands(handlers, { docs: stats?.docs }), ...whateverElse]}
  *
- * Order is the sidebar's nav order (`design/specs/screen-library-settings.md` §3 + the fifth row),
- * so the palette and the sidebar agree about what the app is made of.
+ * Order is the sidebar's nav order (`design/specs/screen-library-settings.md` §3, plus Settings as
+ * the fifth row and `screen-notebooks.md` §4a putting Notebooks second), so the palette and the
+ * sidebar agree about what the app is made of.
  */
 export function screenCommands(
   go: PaletteScreens,
@@ -138,6 +142,15 @@ export function screenCommands(
       icon: 'lib',
       keywords: 'papers browse subjects sessions',
       run: go.onLibrary,
+    },
+    {
+      id: 'go-notebooks',
+      section: GO_TO,
+      label: 'Notebooks',
+      hint: count(counts.notebooks, 'notebook', 'notebooks') ?? 'Your own working',
+      icon: 'book',
+      keywords: 'notebook write pages spread ink clip',
+      run: go.onNotebooks,
     },
     {
       id: 'go-dashboard',
