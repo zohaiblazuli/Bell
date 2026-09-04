@@ -1,24 +1,32 @@
-//! Read queries over the index, plus the write-back seams used by the
-//! threshold parser and the difficulty engine (both of which live in the webview,
-//! so the existing TypeScript can be reused as-is).
+//! Read queries over the cached catalogue, plus the sandboxed document reader.
+//!
+//! Every paper in the catalogue is listed here whether or not its PDF has been
+//! downloaded — that is the substantive change from the folder-scanning era, where a
+//! paper only existed if a file did. "Downloaded" is now a property of a row
+//! (`qpPath` present), not a precondition for having one.
 
 use rusqlite::{Connection, OptionalExtension};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::collections::HashMap;
 use tauri::State;
 
 use crate::db::{get_meta, Db};
+use crate::paths;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LibraryStats {
-    pub root: Option<String>,
     pub subjects: i64,
     pub sessions: i64,
-    pub docs: i64,
-    pub thresholds: i64,
+    pub papers: i64,
+    /// Files on this machine, question papers and mark schemes counted separately.
+    pub downloads: i64,
+    /// What those files take up. Summed from the recorded sizes rather than walked, so this
+    /// costs one aggregate instead of a stat() per file.
+    pub download_bytes: i64,
     pub levels: Vec<LevelCount>,
-    pub doc_types: Vec<TypeCount>,
+    /// Epoch ms; formatted in the webview so no date handling lives in Rust.
+    pub synced_at_ms: Option<i64>,
 }
 
 #[derive(Serialize)]
@@ -26,14 +34,7 @@ pub struct LibraryStats {
 pub struct LevelCount {
     pub level: String,
     pub subjects: i64,
-    pub docs: i64,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TypeCount {
-    pub doc_type: String,
-    pub docs: i64,
+    pub papers: i64,
 }
 
 #[tauri::command]
@@ -47,64 +48,58 @@ pub fn library_stats(db: State<'_, Db>) -> Result<LibraryStats, String> {
     {
         let mut st = conn
             .prepare(
-                "SELECT s.level, COUNT(DISTINCT s.id), COUNT(d.id)
-                 FROM subject s
-                 LEFT JOIN session se ON se.subject_id = s.id
-                 LEFT JOIN doc d      ON d.session_id  = se.id
-                 GROUP BY s.level ORDER BY s.level",
+                "SELECT su.qualification, COUNT(DISTINCT su.id), COUNT(p.id)
+                 FROM catalog_subject su
+                 LEFT JOIN catalog_paper p ON p.subject_id = su.id
+                 GROUP BY su.qualification",
             )
             .map_err(|e| e.to_string())?;
         let rows = st
             .query_map([], |r| {
-                Ok(LevelCount { level: r.get(0)?, subjects: r.get(1)?, docs: r.get(2)? })
+                let qualification: String = r.get(0)?;
+                Ok(LevelCount {
+                    level: paths::level_label(&qualification).to_string(),
+                    subjects: r.get(1)?,
+                    papers: r.get(2)?,
+                })
             })
             .map_err(|e| e.to_string())?;
         for row in rows {
             levels.push(row.map_err(|e| e.to_string())?);
         }
     }
-
-    let mut doc_types = Vec::new();
-    {
-        let mut st = conn
-            .prepare("SELECT doc_type, COUNT(*) FROM doc GROUP BY doc_type ORDER BY 2 DESC")
-            .map_err(|e| e.to_string())?;
-        let rows = st
-            .query_map([], |r| Ok(TypeCount { doc_type: r.get(0)?, docs: r.get(1)? }))
-            .map_err(|e| e.to_string())?;
-        for row in rows {
-            doc_types.push(row.map_err(|e| e.to_string())?);
-        }
-    }
+    levels.sort_by(|a, b| a.level.cmp(&b.level));
 
     Ok(LibraryStats {
-        root: get_meta(&conn, "library_root"),
-        subjects: one("SELECT COUNT(*) FROM subject")?,
-        sessions: one("SELECT COUNT(*) FROM session")?,
-        docs: one("SELECT COUNT(*) FROM doc")?,
-        thresholds: one("SELECT COUNT(*) FROM threshold")?,
+        subjects: one("SELECT COUNT(*) FROM catalog_subject")?,
+        sessions: one("SELECT COUNT(*) FROM catalog_session")?,
+        papers: one("SELECT COUNT(*) FROM catalog_paper")?,
+        downloads: one("SELECT COUNT(*) FROM download")?,
+        download_bytes: one("SELECT COALESCE(SUM(size),0) FROM download")?,
         levels,
-        doc_types,
+        synced_at_ms: get_meta(&conn, "catalog_synced_at").and_then(|v| v.parse().ok()),
     })
 }
 
-/// Question papers the index holds per sitting, keyed `9701/s25`.
+/// Papers per sitting, keyed `9701/s25`.
 ///
-/// The Dashboard's session-coverage matrix needs a denominator: without one a cell can only say
-/// "you have done some of this sitting", never "you have done all of it", so every column reads
-/// partial forever. Counting `qp` rows rather than all docs is the whole point — a sitting with four
-/// question papers also carries four mark schemes, a threshold table and an examiner report, and
-/// only the question papers are things you sit.
+/// The Dashboard's coverage matrix needs a denominator: without one a cell can only
+/// say "you have done some of this sitting", never "all of it". Now that the
+/// catalogue is authoritative this is the *true* number of papers in a sitting,
+/// rather than however many happened to be on disk — so coverage stops flattering.
 #[tauri::command]
 pub fn sitting_totals(db: State<'_, Db>) -> Result<HashMap<String, i64>, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
+    count_sittings(&conn)
+}
+
+pub fn count_sittings(conn: &Connection) -> Result<HashMap<String, i64>, String> {
     let mut st = conn
         .prepare(
-            "SELECT s.code || '/' || se.scode, COUNT(*)
-             FROM doc d
-             JOIN session se ON se.id = d.session_id
-             JOIN subject s  ON s.id  = se.subject_id
-             WHERE d.doc_type = 'qp'
+            "SELECT su.code || '/' || se.code, COUNT(*)
+             FROM catalog_paper p
+             JOIN catalog_subject su ON su.id = p.subject_id
+             JOIN catalog_session se ON se.id = p.session_id
              GROUP BY 1",
         )
         .map_err(|e| e.to_string())?;
@@ -124,14 +119,18 @@ pub fn sitting_totals(db: State<'_, Db>) -> Result<HashMap<String, i64>, String>
 pub struct Subject {
     pub id: i64,
     pub level: String,
+    pub qualification: String,
     pub code: String,
     pub name: String,
+    pub slug: String,
     pub sessions: i64,
     pub papers: i64,
+    pub downloaded: i64,
     pub first_year: Option<i64>,
     pub last_year: Option<i64>,
 }
 
+/// `level` accepts either the display label ("A Level") or the enum ("a_level").
 #[tauri::command]
 pub fn list_subjects(db: State<'_, Db>, level: Option<String>) -> Result<Vec<Subject>, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
@@ -139,65 +138,172 @@ pub fn list_subjects(db: State<'_, Db>, level: Option<String>) -> Result<Vec<Sub
 }
 
 pub fn query_subjects(conn: &Connection, level: Option<String>) -> Result<Vec<Subject>, String> {
+    let qualification = match level.as_deref() {
+        None => None,
+        Some(raw) => match paths::qualification_from_label(raw) {
+            Some(q) => Some(q.to_string()),
+            // An unrecognised filter should show nothing, not everything.
+            None => return Ok(Vec::new()),
+        },
+    };
+
     let mut st = conn
         .prepare(
-            "SELECT s.id, s.level, s.code, s.name,
-                    COUNT(DISTINCT se.id),
-                    COUNT(DISTINCT CASE WHEN d.doc_type='qp' THEN se.scode||'/'||COALESCE(d.variant,'-') END),
+            "SELECT su.id, su.qualification, su.code, su.name, su.slug,
+                    COUNT(DISTINCT p.session_id),
+                    COUNT(p.id),
+                    COUNT(d.paper_id),
                     MIN(se.year), MAX(se.year)
-             FROM subject s
-             LEFT JOIN session se ON se.subject_id = s.id
-             LEFT JOIN doc d      ON d.session_id  = se.id
-             WHERE (?1 IS NULL OR s.level = ?1)
-             GROUP BY s.id ORDER BY s.level, s.name",
+             FROM catalog_subject su
+             LEFT JOIN catalog_paper p   ON p.subject_id = su.id
+             LEFT JOIN catalog_session se ON se.id = p.session_id
+             LEFT JOIN download d         ON d.paper_id = p.id AND d.kind = 'qp'
+             WHERE (?1 IS NULL OR su.qualification = ?1)
+             GROUP BY su.id
+             ORDER BY su.qualification, su.name",
         )
         .map_err(|e| e.to_string())?;
     let rows = st
-        .query_map([level], |r| {
+        .query_map([qualification], |r| {
+            let qualification: String = r.get(1)?;
             Ok(Subject {
                 id: r.get(0)?,
-                level: r.get(1)?,
+                level: paths::level_label(&qualification).to_string(),
+                qualification,
                 code: r.get(2)?,
                 name: r.get(3)?,
-                sessions: r.get(4)?,
-                papers: r.get(5)?,
-                first_year: r.get(6)?,
-                last_year: r.get(7)?,
+                slug: r.get(4)?,
+                sessions: r.get(5)?,
+                papers: r.get(6)?,
+                downloaded: r.get(7)?,
+                first_year: r.get(8)?,
+                last_year: r.get(9)?,
             })
         })
         .map_err(|e| e.to_string())?;
     rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
 }
 
+/// One row per paper in the catalogue.
+///
+/// `qpPath` / `msPath` are present only when that file is on this machine, so the
+/// reader's existing "is there a path?" guards keep working — they now mean "has it
+/// been downloaded" rather than "is it in the folder". `hasMs` is separate on purpose:
+/// it distinguishes *no mark scheme exists* from *not fetched yet*.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperRow {
+    /// Remote catalogue id — stable across syncs, and what the download API takes.
+    pub id: i64,
     pub subject_id: i64,
     pub subject_code: String,
     pub subject_name: String,
+    pub qualification: String,
+    /// Display label for `qualification`, e.g. "A Level".
     pub level: String,
     pub year: i64,
     pub scode: String,
+    /// Upstream enum: may_june | oct_nov | feb_mar. Labelled in the webview.
     pub season: String,
-    pub variant: Option<String>,
+    /// Two-digit component, e.g. "12". Third part of the paper key.
+    pub component: String,
+    pub paper_number: i64,
+    pub variant: i64,
+    pub total_marks: Option<i64>,
+    pub a_threshold: Option<i64>,
+    pub b_threshold: Option<i64>,
+    pub c_threshold: Option<i64>,
+    pub d_threshold: Option<i64>,
+    pub e_threshold: Option<i64>,
+    pub a_pct: Option<f64>,
+    pub curve_mean_pct: Option<f64>,
+    pub span_pct: Option<f64>,
+    /// 0-100, higher = harder. Computed upstream; never recomputed here.
+    pub hardness_score: Option<i64>,
+    pub difficulty: Option<String>,
+    pub difficulty_basis: Option<String>,
+    pub difficulty_note: Option<String>,
+    pub has_ms: bool,
     pub qp_path: Option<String>,
     pub ms_path: Option<String>,
-    pub er_path: Option<String>,
-    pub difficulty: Option<f64>,
-    pub band: Option<String>,
 }
 
-/// One row per question paper (subject + session + variant), newest first.
+const PAPER_SELECT: &str = "
+SELECT p.id, p.subject_id, su.code, su.name, su.qualification,
+       se.year, se.code, se.season,
+       p.component, p.paper_number, p.variant,
+       p.total_marks, p.a_threshold, p.b_threshold, p.c_threshold, p.d_threshold, p.e_threshold,
+       p.a_pct, p.curve_mean_pct, p.span_pct,
+       p.hardness_score, p.difficulty, p.difficulty_basis, p.difficulty_note, p.has_ms,
+       dq.path, dm.path
+FROM catalog_paper p
+JOIN catalog_subject su  ON su.id = p.subject_id
+JOIN catalog_session se  ON se.id = p.session_id
+LEFT JOIN download dq    ON dq.paper_id = p.id AND dq.kind = 'qp'
+LEFT JOIN download dm    ON dm.paper_id = p.id AND dm.kind = 'ms'
+";
+
+const PAPER_ORDER: &str = " ORDER BY se.year DESC, se.code DESC, su.name, p.component ";
+
+fn map_paper(r: &rusqlite::Row) -> rusqlite::Result<PaperRow> {
+    let qualification: String = r.get(4)?;
+    Ok(PaperRow {
+        id: r.get(0)?,
+        subject_id: r.get(1)?,
+        subject_code: r.get(2)?,
+        subject_name: r.get(3)?,
+        // Borrowed before the move below; struct fields evaluate in written order.
+        level: paths::level_label(&qualification).to_string(),
+        qualification,
+        year: r.get(5)?,
+        scode: r.get(6)?,
+        season: r.get(7)?,
+        component: r.get(8)?,
+        paper_number: r.get(9)?,
+        variant: r.get(10)?,
+        total_marks: r.get(11)?,
+        a_threshold: r.get(12)?,
+        b_threshold: r.get(13)?,
+        c_threshold: r.get(14)?,
+        d_threshold: r.get(15)?,
+        e_threshold: r.get(16)?,
+        a_pct: r.get(17)?,
+        curve_mean_pct: r.get(18)?,
+        span_pct: r.get(19)?,
+        hardness_score: r.get(20)?,
+        difficulty: r.get(21)?,
+        difficulty_basis: r.get(22)?,
+        difficulty_note: r.get(23)?,
+        has_ms: r.get::<_, i64>(24)? != 0,
+        qp_path: r.get(25)?,
+        ms_path: r.get(26)?,
+    })
+}
+
+/// Resolve an optional level filter to a qualification enum.
+///
+/// An unrecognised value returns `None` inside `Some`, meaning "match nothing" —
+/// showing the whole catalogue when a filter fails to parse would be worse.
+fn filter_qualification(level: Option<String>) -> Result<Option<String>, ()> {
+    match level.as_deref() {
+        None => Ok(None),
+        Some(raw) => paths::qualification_from_label(raw)
+            .map(|q| Some(q.to_string()))
+            .ok_or(()),
+    }
+}
+
 #[tauri::command]
 pub fn list_papers(
     db: State<'_, Db>,
     subject_id: Option<i64>,
     level: Option<String>,
     scode: Option<String>,
+    downloaded_only: Option<bool>,
     limit: Option<i64>,
 ) -> Result<Vec<PaperRow>, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
-    query_papers(&conn, subject_id, level, scode, limit)
+    query_papers(&conn, subject_id, level, scode, downloaded_only, limit)
 }
 
 pub fn query_papers(
@@ -205,62 +311,47 @@ pub fn query_papers(
     subject_id: Option<i64>,
     level: Option<String>,
     scode: Option<String>,
+    downloaded_only: Option<bool>,
     limit: Option<i64>,
 ) -> Result<Vec<PaperRow>, String> {
-    let mut st = conn
-        .prepare(
-            "SELECT su.id, su.code, su.name, su.level, se.year, se.scode, se.season, d.variant,
-                    MAX(CASE WHEN d.doc_type='qp' THEN d.path END),
-                    MAX(CASE WHEN d.doc_type='ms' THEN d.path END),
-                    MAX(CASE WHEN d.doc_type='er' THEN d.path END),
-                    di.score, di.band
-             FROM doc d
-             JOIN session se ON se.id = d.session_id
-             JOIN subject su ON su.id = se.subject_id
-             LEFT JOIN difficulty di
-                    ON di.subject_id = su.id AND di.scode = se.scode
-                   AND di.component = COALESCE(d.variant,'')
-             WHERE d.doc_type IN ('qp','ms','er')
-               AND (?1 IS NULL OR su.id    = ?1)
-               AND (?2 IS NULL OR su.level = ?2)
-               AND (?3 IS NULL OR se.scode = ?3)
-             GROUP BY su.id, se.scode, d.variant
-             HAVING MAX(CASE WHEN d.doc_type='qp' THEN 1 ELSE 0 END) = 1
-             ORDER BY se.year DESC, se.scode DESC, su.name, d.variant
-             LIMIT ?4",
-        )
-        .map_err(|e| e.to_string())?;
+    let Ok(qualification) = filter_qualification(level) else {
+        return Ok(Vec::new());
+    };
+
+    let sql = format!(
+        "{PAPER_SELECT}
+         WHERE (?1 IS NULL OR p.subject_id = ?1)
+           AND (?2 IS NULL OR su.qualification = ?2)
+           AND (?3 IS NULL OR se.code = ?3)
+           AND (?4 = 0 OR dq.path IS NOT NULL)
+         {PAPER_ORDER}
+         LIMIT ?5"
+    );
+
+    let mut st = conn.prepare(&sql).map_err(|e| e.to_string())?;
     let rows = st
         .query_map(
-            rusqlite::params![subject_id, level, scode, limit.unwrap_or(500)],
-            |r| {
-                Ok(PaperRow {
-                    subject_id: r.get(0)?,
-                    subject_code: r.get(1)?,
-                    subject_name: r.get(2)?,
-                    level: r.get(3)?,
-                    year: r.get(4)?,
-                    scode: r.get(5)?,
-                    season: r.get(6)?,
-                    variant: r.get(7)?,
-                    qp_path: r.get(8)?,
-                    ms_path: r.get(9)?,
-                    er_path: r.get(10)?,
-                    difficulty: r.get(11)?,
-                    band: r.get(12)?,
-                })
-            },
+            rusqlite::params![
+                subject_id,
+                qualification,
+                scode,
+                if downloaded_only.unwrap_or(false) { 1 } else { 0 },
+                // The whole catalogue is ~2.6k rows, so the default lets everything
+                // through: the Library now lists papers that are not on disk too.
+                limit.unwrap_or(4000)
+            ],
+            map_paper,
         )
         .map_err(|e| e.to_string())?;
     rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
 }
 
-/// Free-text search over the index for the ⌘K palette.
+/// Free-text search for the ⌘K palette.
 ///
-/// The query is split on whitespace and every token has to match somewhere in the paper's
-/// searchable text — code, subject, level, session, variant, year — so `9709 s24 12` and
-/// `maths w23` both narrow the way you'd expect. Kept in SQL because the whole library is
-/// ~6k sittings: pulling them into the webview to filter would be the wrong trade.
+/// Every whitespace-separated token must match somewhere in the paper's searchable
+/// text, so `9709 s24 12` and `maths w23` both narrow the way you would expect.
+/// Still a LIKE scan rather than FTS5: the catalogue is ~2.6k rows, which is fewer
+/// than the folder-scanning version had to cope with.
 #[tauri::command]
 pub fn search_papers(
     db: State<'_, Db>,
@@ -268,15 +359,15 @@ pub fn search_papers(
     limit: Option<i64>,
 ) -> Result<Vec<PaperRow>, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
-    search_indexed_papers(&conn, &query, limit)
+    search_catalog(&conn, &query, limit)
 }
 
-pub fn search_indexed_papers(
+pub fn search_catalog(
     conn: &Connection,
     query: &str,
     limit: Option<i64>,
 ) -> Result<Vec<PaperRow>, String> {
-    // A blank query is the palette's resting state; it has its own recents list to show.
+    // A blank query is the palette's resting state; it shows recents instead.
     let tokens: Vec<String> = query
         .split_whitespace()
         .take(8)
@@ -286,8 +377,9 @@ pub fn search_indexed_papers(
         return Ok(Vec::new());
     }
 
-    const HAY: &str = "lower(su.code||' '||su.name||' '||su.level||' '||se.scode||' '\
-                       ||COALESCE(d.variant,'')||' '||se.year||' '||se.season)";
+    // `replace(qualification,'_',' ')` is what lets "a level" match `a_level`.
+    const HAY: &str = "lower(su.code||' '||su.name||' '||replace(su.qualification,'_',' ')||' '\
+                       ||se.code||' '||p.component||' '||se.year||' '||se.season)";
     let clauses = tokens
         .iter()
         .enumerate()
@@ -296,22 +388,7 @@ pub fn search_indexed_papers(
         .join(" AND ");
 
     let sql = format!(
-        "SELECT su.id, su.code, su.name, su.level, se.year, se.scode, se.season, d.variant,
-                MAX(CASE WHEN d.doc_type='qp' THEN d.path END),
-                MAX(CASE WHEN d.doc_type='ms' THEN d.path END),
-                MAX(CASE WHEN d.doc_type='er' THEN d.path END),
-                di.score, di.band
-         FROM doc d
-         JOIN session se ON se.id = d.session_id
-         JOIN subject su ON su.id = se.subject_id
-         LEFT JOIN difficulty di
-                ON di.subject_id = su.id AND di.scode = se.scode
-               AND di.component = COALESCE(d.variant,'')
-         WHERE d.doc_type IN ('qp','ms','er') AND {clauses}
-         GROUP BY su.id, se.scode, d.variant
-         HAVING MAX(CASE WHEN d.doc_type='qp' THEN 1 ELSE 0 END) = 1
-         ORDER BY se.year DESC, se.scode DESC, su.name, d.variant
-         LIMIT ?{}",
+        "{PAPER_SELECT} WHERE {clauses} {PAPER_ORDER} LIMIT ?{}",
         tokens.len() + 1
     );
 
@@ -323,217 +400,18 @@ pub fn search_indexed_papers(
 
     let mut st = conn.prepare(&sql).map_err(|e| e.to_string())?;
     let rows = st
-        .query_map(rusqlite::params_from_iter(params.iter().map(|p| p.as_ref())), |r| {
-            Ok(PaperRow {
-                subject_id: r.get(0)?,
-                subject_code: r.get(1)?,
-                subject_name: r.get(2)?,
-                level: r.get(3)?,
-                year: r.get(4)?,
-                scode: r.get(5)?,
-                season: r.get(6)?,
-                variant: r.get(7)?,
-                qp_path: r.get(8)?,
-                ms_path: r.get(9)?,
-                er_path: r.get(10)?,
-                difficulty: r.get(11)?,
-                band: r.get(12)?,
-            })
-        })
-        .map_err(|e| e.to_string())?;
-    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
-}
-
-// ---------------------------------------------------------------------------
-// Threshold + difficulty seams. The `gt` PDFs are parsed in the webview with
-// pdf.js (reusing scambridge's parser), then written back here.
-// ---------------------------------------------------------------------------
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GtDoc {
-    pub subject_id: i64,
-    pub subject_code: String,
-    pub level: String,
-    pub scode: String,
-    pub path: String,
-}
-
-/// Every grade-threshold PDF in the index, optionally only those not yet parsed.
-#[tauri::command]
-pub fn list_threshold_docs(
-    db: State<'_, Db>,
-    unparsed_only: Option<bool>,
-    limit: Option<i64>,
-) -> Result<Vec<GtDoc>, String> {
-    let conn = db.0.lock().map_err(|e| e.to_string())?;
-    query_threshold_docs(&conn, unparsed_only, limit)
-}
-
-pub fn query_threshold_docs(
-    conn: &Connection,
-    unparsed_only: Option<bool>,
-    limit: Option<i64>,
-) -> Result<Vec<GtDoc>, String> {
-    let mut st = conn
-        .prepare(
-            "SELECT su.id, su.code, su.level, se.scode, d.path
-             FROM doc d
-             JOIN session se ON se.id = d.session_id
-             JOIN subject su ON su.id = se.subject_id
-             WHERE d.doc_type = 'gt'
-               AND (?1 = 0 OR NOT EXISTS (
-                     SELECT 1 FROM threshold t
-                      WHERE t.subject_id = su.id AND t.scode = se.scode))
-             ORDER BY se.year DESC, su.code
-             LIMIT ?2",
-        )
-        .map_err(|e| e.to_string())?;
-    let rows = st
         .query_map(
-            rusqlite::params![
-                if unparsed_only.unwrap_or(false) { 1 } else { 0 },
-                limit.unwrap_or(100_000)
-            ],
-            |r| {
-                Ok(GtDoc {
-                    subject_id: r.get(0)?,
-                    subject_code: r.get(1)?,
-                    level: r.get(2)?,
-                    scode: r.get(3)?,
-                    path: r.get(4)?,
-                })
-            },
+            rusqlite::params_from_iter(params.iter().map(|p| p.as_ref())),
+            map_paper,
         )
         .map_err(|e| e.to_string())?;
     rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
 }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ThresholdRow {
-    pub subject_id: i64,
-    pub scode: String,
-    pub component: String,
-    pub max_mark: Option<i64>,
-    pub grade: String,
-    pub mark: i64,
-}
-
-#[tauri::command]
-pub fn save_thresholds(db: State<'_, Db>, rows: Vec<ThresholdRow>) -> Result<usize, String> {
-    let mut conn = db.0.lock().map_err(|e| e.to_string())?;
-    insert_thresholds(&mut conn, &rows)
-}
-
-pub fn insert_thresholds(conn: &mut Connection, rows: &[ThresholdRow]) -> Result<usize, String> {
-    let tx = conn.transaction().map_err(|e| e.to_string())?;
-    let mut n = 0usize;
-    {
-        let mut st = tx
-            .prepare(
-                "INSERT INTO threshold(subject_id,scode,component,max_mark,grade,mark)
-                 VALUES(?1,?2,?3,?4,?5,?6)
-                 ON CONFLICT(subject_id,scode,component,grade)
-                 DO UPDATE SET mark=excluded.mark, max_mark=excluded.max_mark",
-            )
-            .map_err(|e| e.to_string())?;
-        for r in rows {
-            st.execute((r.subject_id, &r.scode, &r.component, r.max_mark, &r.grade, r.mark))
-                .map_err(|e| e.to_string())?;
-            n += 1;
-        }
-    }
-    tx.commit().map_err(|e| e.to_string())?;
-    Ok(n)
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ThresholdOut {
-    pub component: String,
-    pub max_mark: Option<i64>,
-    pub grade: String,
-    pub mark: i64,
-    pub scode: String,
-}
-
-#[tauri::command]
-pub fn get_thresholds(
-    db: State<'_, Db>,
-    subject_id: i64,
-    scode: Option<String>,
-) -> Result<Vec<ThresholdOut>, String> {
-    let conn = db.0.lock().map_err(|e| e.to_string())?;
-    query_thresholds(&conn, subject_id, scode)
-}
-
-pub fn query_thresholds(
-    conn: &Connection,
-    subject_id: i64,
-    scode: Option<String>,
-) -> Result<Vec<ThresholdOut>, String> {
-    let mut st = conn
-        .prepare(
-            "SELECT component, max_mark, grade, mark, scode FROM threshold
-             WHERE subject_id = ?1 AND (?2 IS NULL OR scode = ?2)
-             ORDER BY scode, component, grade",
-        )
-        .map_err(|e| e.to_string())?;
-    let rows = st
-        .query_map(rusqlite::params![subject_id, scode], |r| {
-            Ok(ThresholdOut {
-                component: r.get(0)?,
-                max_mark: r.get(1)?,
-                grade: r.get(2)?,
-                mark: r.get(3)?,
-                scode: r.get(4)?,
-            })
-        })
-        .map_err(|e| e.to_string())?;
-    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct DifficultyRow {
-    pub subject_id: i64,
-    pub scode: String,
-    pub component: String,
-    pub score: f64,
-    pub band: String,
-    pub sample: i64,
-}
-
-#[tauri::command]
-pub fn save_difficulty(db: State<'_, Db>, rows: Vec<DifficultyRow>) -> Result<usize, String> {
-    let mut conn = db.0.lock().map_err(|e| e.to_string())?;
-    insert_difficulty(&mut conn, &rows)
-}
-
-pub fn insert_difficulty(conn: &mut Connection, rows: &[DifficultyRow]) -> Result<usize, String> {
-    let tx = conn.transaction().map_err(|e| e.to_string())?;
-    let mut n = 0usize;
-    {
-        let mut st = tx
-            .prepare(
-                "INSERT INTO difficulty(subject_id,scode,component,score,band,sample)
-                 VALUES(?1,?2,?3,?4,?5,?6)
-                 ON CONFLICT(subject_id,scode,component)
-                 DO UPDATE SET score=excluded.score, band=excluded.band, sample=excluded.sample",
-            )
-            .map_err(|e| e.to_string())?;
-        for r in rows {
-            st.execute((r.subject_id, &r.scode, &r.component, r.score, &r.band, r.sample))
-                .map_err(|e| e.to_string())?;
-            n += 1;
-        }
-    }
-    tx.commit().map_err(|e| e.to_string())?;
-    Ok(n)
-}
-
-/// Resolve `level` + subject `code` to the indexed subject id.
+/// Resolve a subject `code` (with an optional level) to its catalogue id.
+///
+/// Codes are unique across the catalogue in practice, but the level narrows it in
+/// case a code is ever reused across qualifications.
 #[tauri::command]
 pub fn find_subject(
     db: State<'_, Db>,
@@ -541,36 +419,40 @@ pub fn find_subject(
     level: Option<String>,
 ) -> Result<Option<i64>, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let Ok(qualification) = filter_qualification(level) else {
+        return Ok(None);
+    };
     conn.query_row(
-        "SELECT id FROM subject WHERE code = ?1 AND (?2 IS NULL OR level = ?2) LIMIT 1",
-        rusqlite::params![code, level],
+        "SELECT id FROM catalog_subject
+         WHERE code = ?1 AND (?2 IS NULL OR qualification = ?2) LIMIT 1",
+        rusqlite::params![code, qualification],
         |r| r.get(0),
     )
     .optional()
     .map_err(|e| e.to_string())
 }
 
-/// Read one PDF's bytes for the webview (pdf.js, and later the paper viewer).
+/// Read one downloaded PDF's bytes for the webview.
 ///
-/// The path must already be in the index, which only ever holds files found under the three
-/// level directories of the configured library root. That check *is* the sandbox: there is no
-/// path glob to get subtly wrong, and nothing outside the library is reachable. Read-only —
-/// the library is never written to.
+/// The path must be recorded in `download`, which only ever names files this app has
+/// itself fetched and validated. That check *is* the sandbox: there is no path glob
+/// to get subtly wrong, and nothing else on the disk is reachable. Do not replace it
+/// with the asset protocol.
 #[tauri::command]
 pub fn read_document(db: State<'_, Db>, path: String) -> Result<tauri::ipc::Response, String> {
     let bytes = {
         let conn = db.0.lock().map_err(|e| e.to_string())?;
-        read_indexed(&conn, &path)?
+        read_downloaded(&conn, &path)?
     };
     Ok(tauri::ipc::Response::new(bytes))
 }
 
-pub fn read_indexed(conn: &Connection, path: &str) -> Result<Vec<u8>, String> {
+pub fn read_downloaded(conn: &Connection, path: &str) -> Result<Vec<u8>, String> {
     let known: i64 = conn
-        .query_row("SELECT COUNT(*) FROM doc WHERE path = ?1", [path], |r| r.get(0))
+        .query_row("SELECT COUNT(*) FROM download WHERE path = ?1", [path], |r| r.get(0))
         .map_err(|e| e.to_string())?;
     if known == 0 {
-        return Err(format!("not in the library index: {path}"));
+        return Err(format!("not a downloaded paper: {path}"));
     }
     std::fs::read(path).map_err(|e| format!("{path}: {e}"))
 }
@@ -578,212 +460,311 @@ pub fn read_indexed(conn: &Connection, path: &str) -> Result<Vec<u8>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{db, ingest};
+    use crate::catalog::{replace_catalog, ApiCatalog, ApiPaper, ApiSession, ApiSubject};
+    use crate::{db, downloads};
     use std::path::{Path, PathBuf};
 
-    /// A miniature copy of the real tree's shape, including two directories that must be ignored.
-    fn fixture() -> (PathBuf, Connection) {
-        let root = std::env::temp_dir().join(format!(
-            "bell-test-{}-{}",
+    fn temp_dir(tag: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "bell-{tag}-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
                 .as_nanos()
         ));
-        let files = [
-            r"A Level\Mathematics (9709)\2024\May-June (s24)\Question Papers\9709_s24_qp_12.pdf",
-            r"A Level\Mathematics (9709)\2024\May-June (s24)\Mark Schemes\9709_s24_ms_12.pdf",
-            r"A Level\Mathematics (9709)\2024\May-June (s24)\Grade Thresholds\9709_s24_gt.pdf",
-            r"A Level\Mathematics (9709)\2023\Oct-Nov (w23)\Question Papers\9709_w23_qp_12.pdf",
-            r"IGCSE\Biology (0610)\2024\May-June (s24)\Question Papers\0610_s24_qp_42.pdf",
-            // ignored: not one of the three levels
-            r"caie\scraped\9709_s24_qp_99.pdf",
-            // ignored: not a PDF
-            r"A Level\Mathematics (9709)\2024\May-June (s24)\Question Papers\readme.txt",
-        ];
-        for rel in files {
-            let path = root.join(rel);
-            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-            std::fs::write(&path, b"%PDF-1.4\n").unwrap();
-        }
-        let conn = db::open(&root.join("index.sqlite3")).unwrap();
-        (root, conn)
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
     }
 
-    fn walk(root: &Path, conn: &mut Connection) -> ingest::IngestReport {
-        ingest::walk_into(conn, root, |_| {}).unwrap()
+    fn paper(id: i64, subject_id: i64, session_id: i64, component: &str, scored: bool) -> ApiPaper {
+        ApiPaper {
+            id,
+            subject_id,
+            session_id,
+            component: component.to_string(),
+            paper_number: component[0..1].parse().unwrap(),
+            variant: component[1..2].parse().unwrap(),
+            total_marks: Some(75),
+            a_threshold: Some(60),
+            b_threshold: Some(51),
+            c_threshold: Some(41),
+            d_threshold: Some(31),
+            e_threshold: Some(21),
+            a_pct: Some(80.0),
+            curve_mean_pct: Some(54.4),
+            span_pct: Some(52.0),
+            hardness_score: scored.then_some(71),
+            difficulty: scored.then(|| "hard".to_string()),
+            difficulty_basis: scored.then(|| "component".to_string()),
+            difficulty_note: scored.then(|| "An A needed 80.0% of the marks.".to_string()),
+            has_ms: true,
+        }
+    }
+
+    /// Two subjects, two sittings, three papers — one of them deliberately unscored,
+    /// because the catalogue includes papers whose thresholds were never parsed.
+    fn sample() -> ApiCatalog {
+        ApiCatalog {
+            version: 1,
+            generated_at: "2026-07-29T16:26:35.419Z".into(),
+            subjects: vec![
+                ApiSubject {
+                    id: 65,
+                    code: "9709".into(),
+                    name: "Mathematics".into(),
+                    slug: "mathematics".into(),
+                    qualification: "a_level".into(),
+                    board: "caie".into(),
+                },
+                ApiSubject {
+                    id: 70,
+                    code: "0610".into(),
+                    name: "Biology".into(),
+                    slug: "biology".into(),
+                    qualification: "igcse".into(),
+                    board: "caie".into(),
+                },
+            ],
+            sessions: vec![
+                ApiSession { id: 1, code: "s24".into(), year: 2024, season: "may_june".into() },
+                ApiSession { id: 2, code: "w23".into(), year: 2023, season: "oct_nov".into() },
+            ],
+            papers: vec![
+                paper(9001, 65, 1, "12", true),
+                paper(9002, 65, 2, "12", false),
+                paper(9003, 70, 1, "42", true),
+            ],
+        }
+    }
+
+    fn fixture(tag: &str) -> (PathBuf, Connection) {
+        let dir = temp_dir(tag);
+        let mut conn = db::open(&dir.join("index.sqlite3")).unwrap();
+        replace_catalog(&mut conn, &sample()).unwrap();
+        (dir, conn)
+    }
+
+    /// Write a valid PDF where a real download would land, and return that path.
+    fn place_pdf(root: &Path, conn: &Connection, paper_id: i64, kind: &str) -> PathBuf {
+        let (qualification, name, code, year, season, scode, component): (
+            String,
+            String,
+            String,
+            i64,
+            String,
+            String,
+            String,
+        ) = conn
+            .query_row(
+                "SELECT su.qualification, su.name, su.code, se.year, se.season, se.code, p.component
+                 FROM catalog_paper p
+                 JOIN catalog_subject su ON su.id = p.subject_id
+                 JOIN catalog_session se ON se.id = p.session_id
+                 WHERE p.id = ?1",
+                [paper_id],
+                |r| {
+                    Ok((
+                        r.get(0)?,
+                        r.get(1)?,
+                        r.get(2)?,
+                        r.get(3)?,
+                        r.get(4)?,
+                        r.get(5)?,
+                        r.get(6)?,
+                    ))
+                },
+            )
+            .unwrap();
+        let dir = root.join(paths::paper_dir(
+            &qualification,
+            &name,
+            &code,
+            year,
+            &season,
+            &scode,
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join(paths::paper_file_name(&code, &scode, kind, &component));
+        std::fs::write(&path, b"%PDF-1.4\ntest\n").unwrap();
+        path
     }
 
     #[test]
-    fn indexes_only_the_three_levels() {
-        let (root, mut conn) = fixture();
-        let report = walk(&root, &mut conn);
+    fn lists_every_catalogue_paper_downloaded_or_not() {
+        let (dir, conn) = fixture("list");
 
-        assert_eq!(report.docs, 5, "the caie/ and .txt entries must not be indexed");
-        assert_eq!(report.subjects, 2);
-        assert_eq!(report.sessions, 3);
-        assert_eq!(report.skipped, 0);
+        let papers = query_papers(&conn, None, None, None, None, None).unwrap();
+        assert_eq!(papers.len(), 3, "nothing is on disk, yet every paper is listed");
+        assert_eq!(papers[0].year, 2024, "newest sitting first");
+        assert!(papers.iter().all(|p| p.qp_path.is_none()));
+        assert!(papers.iter().all(|p| p.has_ms), "the catalogue says a mark scheme exists");
+
+        let maths = papers.iter().find(|p| p.id == 9001).unwrap();
+        assert_eq!(maths.component, "12");
+        assert_eq!(maths.paper_number, 1);
+        assert_eq!(maths.variant, 2);
+        assert_eq!(maths.level, "A Level");
+        assert_eq!(maths.qualification, "a_level");
+        assert_eq!(maths.season, "may_june");
+        assert_eq!(maths.difficulty.as_deref(), Some("hard"));
+        assert_eq!(maths.hardness_score, Some(71));
+        assert_eq!(maths.a_pct, Some(80.0));
+
+        // An unscored paper still appears; it simply has no rating to show.
+        let unscored = papers.iter().find(|p| p.id == 9002).unwrap();
+        assert!(unscored.difficulty.is_none());
+        assert!(unscored.hardness_score.is_none());
+        assert!(unscored.difficulty_note.is_none());
+
+        // Filters
+        assert_eq!(query_papers(&conn, None, Some("IGCSE".into()), None, None, None).unwrap().len(), 1);
+        assert_eq!(query_papers(&conn, None, Some("igcse".into()), None, None, None).unwrap().len(), 1);
+        assert_eq!(query_papers(&conn, None, None, Some("w23".into()), None, None).unwrap().len(), 1);
+        assert_eq!(query_papers(&conn, Some(65), None, None, None, None).unwrap().len(), 2);
+        // A filter we cannot parse must match nothing rather than everything.
+        assert!(query_papers(&conn, None, Some("A-Level".into()), None, None, None).unwrap().is_empty());
 
         let subjects = query_subjects(&conn, None).unwrap();
         assert_eq!(subjects.len(), 2);
         let maths = subjects.iter().find(|s| s.code == "9709").unwrap();
-        assert_eq!(maths.name, "Mathematics");
-        assert_eq!(maths.level, "A Level");
-        assert_eq!(maths.papers, 2, "two question papers across two sittings");
+        assert_eq!(maths.papers, 2);
+        assert_eq!(maths.downloaded, 0);
         assert_eq!(maths.first_year, Some(2023));
         assert_eq!(maths.last_year, Some(2024));
 
-        assert_eq!(query_subjects(&conn, Some("IGCSE".into())).unwrap().len(), 1);
-        std::fs::remove_dir_all(&root).ok();
+        // The coverage denominator is the catalogue's count, not a file count.
+        let totals = count_sittings(&conn).unwrap();
+        assert_eq!(totals.get("9709/s24"), Some(&1));
+        assert_eq!(totals.get("0610/s24"), Some(&1));
+
+        std::fs::remove_dir_all(&dir).ok();
     }
 
     #[test]
-    fn lists_question_papers_newest_first_with_siblings() {
-        let (root, mut conn) = fixture();
-        walk(&root, &mut conn);
+    fn a_resync_keeps_downloads() {
+        let (dir, mut conn) = fixture("resync");
+        let root = dir.join("library");
+        let qp = place_pdf(&root, &conn, 9001, "qp");
+        let ms = place_pdf(&root, &conn, 9001, "ms");
+        downloads::repair_into(&mut conn, &root).unwrap();
 
-        let papers = query_papers(&conn, None, None, None, None).unwrap();
-        assert_eq!(papers.len(), 3, "one row per qp; the ms and gt fold into their row");
-        assert_eq!(papers[0].year, 2024, "newest sitting first");
+        let before = query_papers(&conn, Some(65), None, Some("s24".into()), None, None).unwrap();
+        assert_eq!(before.len(), 1);
+        assert_eq!(before[0].qp_path.as_deref(), Some(qp.to_string_lossy().as_ref()));
+        assert_eq!(before[0].ms_path.as_deref(), Some(ms.to_string_lossy().as_ref()));
 
-        let s24 = papers
-            .iter()
-            .find(|p| p.subject_code == "9709" && p.scode == "s24")
-            .expect("9709 s24 must be listed");
-        assert_eq!(s24.variant.as_deref(), Some("12"));
-        assert_eq!(s24.season, "May-June");
-        assert!(s24.qp_path.as_ref().unwrap().ends_with("9709_s24_qp_12.pdf"));
-        assert!(s24.ms_path.as_ref().unwrap().ends_with("9709_s24_ms_12.pdf"));
-        assert!(s24.er_path.is_none());
-        assert!(s24.difficulty.is_none(), "unscored until thresholds are parsed");
+        // The downloaded-only filter is what the Library's chip drives.
+        assert_eq!(query_papers(&conn, None, None, None, Some(true), None).unwrap().len(), 1);
+        assert_eq!(query_subjects(&conn, None).unwrap().iter().find(|s| s.code == "9709").unwrap().downloaded, 1);
 
-        // A grade-threshold PDF is not a paper and must never appear as one.
-        assert!(!papers.iter().any(|p| p.qp_path.as_deref().unwrap_or("").contains("_gt")));
+        // Re-syncing replaces the catalogue wholesale. Under the old folder-walking
+        // schema that wiped every derived table; now it must leave download records
+        // — and therefore the user's files — completely alone. This is the inverse of
+        // the assertion the previous test suite pinned, and the reason `clear_catalog`
+        // exists instead of `clear_index`.
+        replace_catalog(&mut conn, &sample()).unwrap();
 
-        let igcse = query_papers(&conn, None, Some("IGCSE".into()), None, None).unwrap();
-        assert_eq!(igcse.len(), 1);
-        assert_eq!(igcse[0].subject_code, "0610");
+        let after = query_papers(&conn, Some(65), None, Some("s24".into()), None, None).unwrap();
+        assert_eq!(after.len(), 1);
+        assert_eq!(after[0].qp_path.as_deref(), Some(qp.to_string_lossy().as_ref()));
+        assert_eq!(after[0].ms_path.as_deref(), Some(ms.to_string_lossy().as_ref()));
+        assert_eq!(after[0].difficulty.as_deref(), Some("hard"), "difficulty comes back with the catalogue");
+        assert!(qp.exists() && ms.exists(), "the files themselves are untouched");
 
-        let by_session = query_papers(&conn, None, None, Some("w23".into()), None).unwrap();
-        assert_eq!(by_session.len(), 1);
-        assert_eq!(by_session[0].year, 2023);
-        std::fs::remove_dir_all(&root).ok();
+        std::fs::remove_dir_all(&dir).ok();
     }
 
     #[test]
-    fn thresholds_and_difficulty_reach_the_paper_row() {
-        let (root, mut conn) = fixture();
-        walk(&root, &mut conn);
+    fn repair_links_what_is_on_disk_and_prunes_what_is_not() {
+        let (dir, mut conn) = fixture("repair");
+        let root = dir.join("library");
+        let qp = place_pdf(&root, &conn, 9001, "qp");
 
-        let gts = query_threshold_docs(&conn, Some(true), None).unwrap();
-        assert_eq!(gts.len(), 1, "only 9709 s24 has a gt PDF in the fixture");
-        let gt = &gts[0];
-        assert_eq!(gt.scode, "s24");
+        // Something that is not a paper, and something that looks like one but isn't
+        // in the catalogue — both must be ignored rather than guessed at.
+        std::fs::write(root.join("notes.txt"), b"ignore me").unwrap();
+        let stray = qp.parent().unwrap().join("9709_s24_qp_99.pdf");
+        std::fs::write(&stray, b"%PDF-1.4\n").unwrap();
 
-        insert_thresholds(
-            &mut conn,
-            &[
-                ThresholdRow {
-                    subject_id: gt.subject_id,
-                    scode: "s24".into(),
-                    component: "12".into(),
-                    max_mark: Some(75),
-                    grade: "A".into(),
-                    mark: 62,
-                },
-                ThresholdRow {
-                    subject_id: gt.subject_id,
-                    scode: "s24".into(),
-                    component: "12".into(),
-                    max_mark: Some(75),
-                    grade: "B".into(),
-                    mark: 53,
-                },
-            ],
-        )
-        .unwrap();
+        let first = downloads::repair_into(&mut conn, &root).unwrap();
+        assert_eq!(first.linked, 1, "only the catalogued paper links");
+        assert_eq!(first.unmatched, 1, "the stray component 99 does not");
+        assert_eq!(first.scanned, 2, "the .txt is not even scanned as a candidate");
+        assert_eq!(first.pruned, 0);
 
-        assert!(
-            query_threshold_docs(&conn, Some(true), None).unwrap().is_empty(),
-            "a parsed session must drop out of the unparsed queue"
-        );
-        assert_eq!(query_thresholds(&conn, gt.subject_id, None).unwrap().len(), 2);
+        // A user deleting a PDF by hand must not leave the app claiming to have it,
+        // because that row is what authorises a read.
+        std::fs::remove_file(&qp).unwrap();
+        let second = downloads::repair_into(&mut conn, &root).unwrap();
+        assert_eq!(second.pruned, 1);
+        assert_eq!(second.linked, 0);
+        assert!(query_papers(&conn, None, None, None, Some(true), None).unwrap().is_empty());
 
-        insert_difficulty(
-            &mut conn,
-            &[DifficultyRow {
-                subject_id: gt.subject_id,
-                scode: "s24".into(),
-                component: "12".into(),
-                score: 71.0,
-                band: "hard".into(),
-                sample: 9,
-            }],
-        )
-        .unwrap();
-
-        // The join is doc.variant -> difficulty.component; this is what makes the meter light up.
-        let papers = query_papers(&conn, Some(gt.subject_id), None, Some("s24".into()), None).unwrap();
-        assert_eq!(papers.len(), 1);
-        assert_eq!(papers[0].difficulty, Some(71.0));
-        assert_eq!(papers[0].band.as_deref(), Some("hard"));
-
-        // Re-walking rebuilds the index from scratch, so derived data goes with it: a reindex
-        // must always be followed by a recompute. Pinning that here so it can't drift silently.
-        let again = walk(&root, &mut conn);
-        assert_eq!(again.docs, 5);
-        let after = query_papers(&conn, None, None, None, None).unwrap();
-        assert_eq!(after.len(), 3, "no duplicate rows after a second walk");
-        assert!(after.iter().all(|p| p.difficulty.is_none()));
-        assert!(query_thresholds(&conn, gt.subject_id, None).unwrap().is_empty());
-        std::fs::remove_dir_all(&root).ok();
+        std::fs::remove_dir_all(&dir).ok();
     }
 
     #[test]
-    fn searches_papers_by_code_subject_and_session() {
-        let (root, mut conn) = fixture();
-        walk(&root, &mut conn);
+    fn searches_by_code_subject_session_and_level() {
+        let (dir, conn) = fixture("search");
 
-        let hits = search_indexed_papers(&conn, "9709 s24", None).unwrap();
+        let hits = search_catalog(&conn, "9709 s24", None).unwrap();
         assert_eq!(hits.len(), 1);
-        assert_eq!(hits[0].variant.as_deref(), Some("12"));
+        assert_eq!(hits[0].component, "12");
 
-        // Subject name, case-insensitively, and every token has to match.
-        assert_eq!(search_indexed_papers(&conn, "mathematics", None).unwrap().len(), 2);
-        assert_eq!(search_indexed_papers(&conn, "MATHEMATICS w23", None).unwrap().len(), 1);
-        assert_eq!(search_indexed_papers(&conn, "biology", None).unwrap().len(), 1);
-        assert_eq!(search_indexed_papers(&conn, "igcse 2024", None).unwrap().len(), 1);
-        assert_eq!(search_indexed_papers(&conn, "mathematics biology", None).unwrap().len(), 0);
-        assert!(search_indexed_papers(&conn, "   ", None).unwrap().is_empty());
-        assert_eq!(search_indexed_papers(&conn, "mathematics", Some(1)).unwrap().len(), 1);
+        assert_eq!(search_catalog(&conn, "mathematics", None).unwrap().len(), 2);
+        assert_eq!(search_catalog(&conn, "MATHEMATICS w23", None).unwrap().len(), 1);
+        assert_eq!(search_catalog(&conn, "biology", None).unwrap().len(), 1);
+        // `a level` has to match the stored `a_level`, hence the replace() in HAY.
+        assert_eq!(search_catalog(&conn, "a level", None).unwrap().len(), 2);
+        assert_eq!(search_catalog(&conn, "igcse 2024", None).unwrap().len(), 1);
+        assert_eq!(search_catalog(&conn, "mathematics biology", None).unwrap().len(), 0);
+        assert!(search_catalog(&conn, "   ", None).unwrap().is_empty());
+        assert_eq!(search_catalog(&conn, "mathematics", Some(1)).unwrap().len(), 1);
 
-        // A grade-threshold PDF is not a paper, so it can never be a search hit.
-        assert!(search_indexed_papers(&conn, "9709", None)
-            .unwrap()
-            .iter()
-            .all(|p| p.qp_path.is_some()));
-        std::fs::remove_dir_all(&root).ok();
+        assert_eq!(find_subject_id(&conn, "9709", None), Some(65));
+        assert_eq!(find_subject_id(&conn, "9709", Some("IGCSE")), None);
+        assert_eq!(find_subject_id(&conn, "0610", Some("IGCSE")), Some(70));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Test-only mirror of the `find_subject` command's query.
+    fn find_subject_id(conn: &Connection, code: &str, level: Option<&str>) -> Option<i64> {
+        let qualification = level.map(|l| paths::qualification_from_label(l).unwrap().to_string());
+        conn.query_row(
+            "SELECT id FROM catalog_subject
+             WHERE code = ?1 AND (?2 IS NULL OR qualification = ?2) LIMIT 1",
+            rusqlite::params![code, qualification],
+            |r| r.get(0),
+        )
+        .optional()
+        .unwrap()
     }
 
     #[test]
-    fn only_indexed_files_can_be_read() {
-        let (root, mut conn) = fixture();
-        walk(&root, &mut conn);
+    fn only_downloaded_files_can_be_read() {
+        let (dir, mut conn) = fixture("sandbox");
+        let root = dir.join("library");
+        let qp = place_pdf(&root, &conn, 9001, "qp");
 
-        let papers = query_papers(&conn, None, None, None, None).unwrap();
-        let qp = papers[0].qp_path.clone().unwrap();
-        assert_eq!(read_indexed(&conn, &qp).unwrap(), b"%PDF-1.4\n");
+        // Before the download is recorded the bytes are on disk but unreachable —
+        // the row, not the file, is what authorises a read.
+        assert!(read_downloaded(&conn, &qp.to_string_lossy()).is_err());
 
-        // The .txt and the caie/ file were never indexed, so they are unreachable even though
-        // they sit right next to indexed files on disk.
-        let sibling = Path::new(&qp).parent().unwrap().join("readme.txt");
-        let err = read_indexed(&conn, &sibling.to_string_lossy()).unwrap_err();
-        assert!(err.contains("not in the library index"), "{err}");
+        downloads::repair_into(&mut conn, &root).unwrap();
+        assert_eq!(read_downloaded(&conn, &qp.to_string_lossy()).unwrap(), b"%PDF-1.4\ntest\n");
 
-        let outside = root.join(r"caie\scraped\9709_s24_qp_99.pdf");
-        assert!(read_indexed(&conn, &outside.to_string_lossy()).is_err());
-        assert!(read_indexed(&conn, r"C:\Windows\win.ini").is_err());
-        std::fs::remove_dir_all(&root).ok();
+        // A sibling in the same folder was never recorded, so it stays unreachable.
+        let sibling = qp.parent().unwrap().join("readme.txt");
+        std::fs::write(&sibling, b"secret").unwrap();
+        let err = read_downloaded(&conn, &sibling.to_string_lossy()).unwrap_err();
+        assert!(err.contains("not a downloaded paper"), "{err}");
+
+        assert!(read_downloaded(&conn, r"C:\Windows\win.ini").is_err());
+        assert!(read_downloaded(&conn, &dir.to_string_lossy()).is_err());
+
+        std::fs::remove_dir_all(&dir).ok();
     }
 }
+
