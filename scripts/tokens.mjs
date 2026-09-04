@@ -66,6 +66,23 @@ const GROUPS = [
     },
   },
   {
+    title: 'Cover — the eight notebook covers, plus the three paints that sit on one. Mode-invariant\n     for exactly the reason --paper and --page-ink are: a cover is an OBJECT, not chrome, and a\n     physical notebook does not change colour when you turn the lights on. All eight are picked so\n     --cover-label (white) clears 4.5:1 — the design file records 8.9 / 6.4 / 6.6 / 5.93 / 8.2 /\n     9.6 / 17.0 / 8.0; scripts/audit.mjs recomputes 8.78 / 6.30 / 6.52 / 5.93 / 8.08 / 9.71 /\n     17.00 / 7.92 from these hexes, so trust the audit for the last decimal. --cover-label-2 is 84%\n     and NOT 74%: at 74% covers 2, 3 and 4 fall to 4.26 / 4.40 / 4.05, below AA; at 84% the worst\n     case is 4.71 on cover 4. --cover-shade is the spine, --cover-wire the ring coils; both carry\n     alpha, so they ride any of the eight. No purple anywhere.',
+    tokens: {
+      '--cover-1': { day: '#1436c8' },
+      '--cover-2': { day: '#0f6b6b' },
+      '--cover-3': { day: '#1f6b3a' },
+      '--cover-4': { day: '#8a5a00' },
+      '--cover-5': { day: '#9e1239' },
+      '--cover-6': { day: '#3d4457' },
+      '--cover-7': { day: '#1a1c24' },
+      '--cover-8': { day: '#8f3312' },
+      '--cover-shade': { day: '#00000029' },
+      '--cover-label': { day: '#ffffff' },
+      '--cover-label-2': { day: '#ffffffd6' },
+      '--cover-wire': { day: '#ffffff94' },
+    },
+  },
+  {
     title: 'Plain white, for text and glyphs sitting ON the accent gradient. Figma binds these to\n     its `white` primitive rather than to `paper/base`, because the roles are unrelated.',
     tokens: {
       '--white': { day: '#ffffff' },
@@ -78,9 +95,9 @@ const GROUPS = [
     },
   },
   {
-    title: 'Scrim behind modals — the ⌘K palette and the update dialog.',
+    title: 'Scrim behind modals — the ⌘K palette and the update dialog. Was an app addition with a\n     guessed value (#10122847 / #00000080); Figma has since adopted it as `Color/ground/scrim`\n     (alpha/scrim-day #181A34 @28%, alpha/scrim-night #05060C @55%) and the file wins, so these are\n     the harvested numbers, not ours.',
     tokens: {
-      '--scrim': { day: '#10122847', night: '#00000080' },
+      '--scrim': { day: '#181a3447', night: '#05060c8c' },
     },
   },
   {
@@ -211,10 +228,10 @@ const GROUPS = [
     },
   },
   {
-    title: 'Danger — an APP ADDITION, not in Figma. The design system has no success/danger/warning\n     token, and error styling was borrowing --d5 by hand, which mixes the difficulty axis into\n     something that is not difficulty. Seeded from the same hue, declared separately.',
+    title: 'Danger — began as an APP ADDITION, because the design system had no success/danger/warning\n     token and error styling was borrowing --d5 by hand, which mixes the difficulty axis into\n     something that is not difficulty. Figma has since adopted it: `Color/state/danger` and\n     `Color/state/danger-soft` now exist (danger/day #B3261E, danger/night #FF6B6B; the soft wash is\n     the same hue at 12% Day / 16% Night), so the values below are harvested, not seeded — they\n     replace the #a5103a / #ff4d6a pair we guessed off --d5. Still never --d5 for state.',
     tokens: {
-      '--danger': { day: '#a5103a', night: '#ff4d6a' },
-      '--danger-soft': { day: '#a5103a1a', night: '#ff4d6a24' },
+      '--danger': { day: '#b3261e', night: '#ff6b6b' },
+      '--danger-soft': { day: '#b3261e1f', night: '#ff6b6b29' },
     },
   },
   {
@@ -288,6 +305,8 @@ writeFileSync(join(root, 'src', 'styles', 'tokens.css'), lines.join('\n'), 'utf8
 
 const COLOR_KEYS = [
   'ground', 'ground-2', 'paper', 'page-ink', 'white', 'plate', 'scrim', 'ink', 'ink-2', 'ink-3',
+  'cover-1', 'cover-2', 'cover-3', 'cover-4', 'cover-5', 'cover-6', 'cover-7', 'cover-8',
+  'cover-shade', 'cover-label', 'cover-label-2', 'cover-wire',
   'card', 'card-brd',
   'hair', 'hair-2', 'glass', 'glass-strong', 'glass-brd', 'glass-hi', 'accent', 'accent-soft',
   'iris-1', 'iris-2', 'iris-3', 'iris-4',
