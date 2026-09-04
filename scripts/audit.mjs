@@ -195,6 +195,29 @@ const PAIRS = [
   { fg: '--d5', bg: '--card', min: 3.0, exempt: true },
   { fg: '--activity-4', bg: '--card', min: 3.0, exempt: true, note: 'activity ramp — a heatmap' },
   { fg: '--hair', bg: '--card', min: 1.0, exempt: true, note: 'a hairline, not a boundary' },
+  /* The eight notebook covers. Mode-invariant, so both modes report the same figure — that is the
+     point of the family, not a bug in the loop. `--cover-label` is the cover title, `--cover-label-2`
+     the meta line under it, and the second one is the binding case: it is white at 84%, and 74% was
+     rejected precisely because covers 2, 3 and 4 failed there. */
+  { fg: '--cover-label', bg: '--cover-1', min: 4.5, note: 'cover title on cover 1' },
+  { fg: '--cover-label', bg: '--cover-2', min: 4.5, note: 'cover title on cover 2' },
+  { fg: '--cover-label', bg: '--cover-3', min: 4.5, note: 'cover title on cover 3' },
+  { fg: '--cover-label', bg: '--cover-4', min: 4.5, note: 'cover title on cover 4' },
+  { fg: '--cover-label', bg: '--cover-5', min: 4.5, note: 'cover title on cover 5' },
+  { fg: '--cover-label', bg: '--cover-6', min: 4.5, note: 'cover title on cover 6' },
+  { fg: '--cover-label', bg: '--cover-7', min: 4.5, note: 'cover title on cover 7' },
+  { fg: '--cover-label', bg: '--cover-8', min: 4.5, note: 'cover title on cover 8' },
+  { fg: '--cover-label-2', bg: '--cover-1', min: 4.5, note: 'cover meta on cover 1' },
+  { fg: '--cover-label-2', bg: '--cover-2', min: 4.5, note: 'cover meta on cover 2' },
+  { fg: '--cover-label-2', bg: '--cover-3', min: 4.5, note: 'cover meta on cover 3' },
+  { fg: '--cover-label-2', bg: '--cover-4', min: 4.5, note: 'cover meta on cover 4' },
+  { fg: '--cover-label-2', bg: '--cover-5', min: 4.5, note: 'cover meta on cover 5' },
+  { fg: '--cover-label-2', bg: '--cover-6', min: 4.5, note: 'cover meta on cover 6' },
+  { fg: '--cover-label-2', bg: '--cover-7', min: 4.5, note: 'cover meta on cover 7' },
+  { fg: '--cover-label-2', bg: '--cover-8', min: 4.5, note: 'cover meta on cover 8' },
+  /* `--danger` is text as well as a boundary — the Notice message and the Delete row both print in
+     it — so it is held to 4.5, not the 3.0 a pure boundary would take. */
+  { fg: '--danger', bg: '--card', min: 4.5, note: 'error text on a card' },
 ];
 
 function auditContrast() {
