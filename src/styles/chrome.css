@@ -91,6 +91,7 @@
   .app,
   .sidebar,
   .topbar,
+  .mascot,
   .bg-bloom,
   .bg-art,
   .bg-veil,
@@ -104,6 +105,7 @@
 [data-motion='off'],
 [data-motion='off'] .sidebar,
 [data-motion='off'] .topbar,
+[data-motion='off'] .mascot,
 [data-motion='off'] .bg-bloom,
 [data-motion='off'] .bg-art,
 [data-motion='off'] .bg-veil,
@@ -230,8 +232,32 @@
   /* Deliberately NOT `overflow: hidden`: the rig's claws reach 6px left and 10px right of its box
      and MrBell.css asks callers not to clip them. At 160 wide inside a 214 slot the overhang has
      room, so there is nothing to clip anyway. */
+  /* His drop shadow, which the rig itself deliberately has none of: 65 abutting rects mean a stroke
+     borders every block instead of the silhouette, so MrBell.css asks the PLACEMENT to give him his
+     edge definition (mr-bell.md TRAPS 12). `filter`, never `box-shadow`, for the same reason Splash
+     and Onboarding use it — the silhouette is not a rectangle, and only `drop-shadow` hugs it. The
+     values are the pair measured in `screen-library-settings.md` §3.3, one per mode: Day a single
+     soft cast, Night a stronger one plus the 28px blue lift (below), which is the same pair
+     `.onb__bell` already ships. Neither ink has a token — Day's `#121432` and Night's `#05060c` both
+     land nearest `--plate`, the substitution the other two placements make for this same rig.
+     It clears `.sidebar`'s `overflow: hidden` on its own: the furthest reach is the right claw 10px
+     past his box, which leaves 17 of the slot's 27px of slack for a 14px blur, and under him sit the
+     dev footer and 14px of padding. */
+  filter: drop-shadow(0 6px 10px color-mix(in srgb, var(--plate) 14%, transparent));
+  /* Tone-paired, so it crosses with the chrome instead of snapping a frame ahead of it; 0.3s ease-out
+     is `--tone-chrome`'s own timing. The var is not composed in front because the slot paints no
+     background, border or box-shadow for it to act on — `filter` is the only property here that
+     crosses. Named in both reduced-motion lists above, as the rule there requires. */
+  transition: filter 0.3s ease-out;
 }
 
+
+/* Night's half of that table. The lift's `rgba(44,123,255,.2)` IS `--bell-cap-mid` at 20%, and cast
+   before lift matches `.onb__bell` — chained shadows compose, so the order is not free. */
+.app[data-tone='night'] .mascot {
+  filter: drop-shadow(0 6px 14px color-mix(in srgb, var(--plate) 38%, transparent))
+    drop-shadow(0 0 28px color-mix(in srgb, var(--bell-cap-mid) 20%, transparent));
+}
 /* `dev` — the build stamp and the credit line. */
 .dev {
   flex: none;
