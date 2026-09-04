@@ -80,6 +80,34 @@
   gap: 8px;
 }
 
+/* The subject picker. Not a CardRow, for the reason spelled out at its call site: the row
+   model's control slot hugs, so a wrapping grid has to own the full card width instead. It
+   restates the row's `11 / 16` padding and its `--hair-2` top divider so it still reads as one
+   of the list, and sits last in the card, where a tall block pushes nothing else around. */
+.set-subjects {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 11px 16px;
+  border-top: 1px solid var(--hair-2);
+  min-width: 0;
+}
+.set-subjects__label {
+  color: var(--ink);
+}
+.set-subjects__helper {
+  color: var(--ink-3);
+}
+/* The chips themselves, on their own line under the label — full width, so `flex-wrap` finally
+   has an edge to wrap against. */
+.set-subjects__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  min-width: 0;
+}
+
 /* A filesystem path, not prose — `Mono/Small`, per §6.3's Papers folder helper. Long Windows paths
    break anywhere rather than widening the row past its column. */
 .set-path {

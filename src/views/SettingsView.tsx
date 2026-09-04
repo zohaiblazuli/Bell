@@ -28,7 +28,7 @@
  * The only state here is the clear-data confirm step. Every setting arrives as `settings` and
  * leaves through `onChange`, so this screen cannot drift from what `store.ts` persisted.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import './SettingsView.css';
 import Button from '@ui/Button';
 import Card from '@ui/Card';
@@ -40,38 +40,14 @@ import SectionLabel from '@ui/SectionLabel';
 import Switch from '@ui/Switch';
 import GitHubMark from '@ui/icons/GitHubMark';
 import SeasonIcon from '@ui/icons/SeasonIcon';
-import type { BuildProgress, BuildResult } from '@/lib/buildDifficulty';
+import Icon, { type IconName } from '@/components/Icon';
 import type { SeasonChoice, Settings, ToneChoice } from '@/lib/store';
-import type { IngestProgress, IngestReport, LibraryStats } from '@/lib/types';
+import type { LibraryStats, RepairReport, Subject, SyncReport } from '@/lib/types';
 
 /**
- * The two tone glyphs, verbatim from `design/specs/icons-paths.md` (`163:2` sun, `163:5` moon) and
- * identical to the pair `TonePill` inlines. Both files carry a copy because `sun` and `moon` are not
- * in the sprite's `IconName` union yet; when the re-exported set lands they both collapse to
- * `<Icon name="sun" />`. The sun's rays keep the spec's `butt` caps against index.css's global round.
- */
-const SUN_RAYS =
-  'M18.2 12H21.4M16.384 16.384L18.647 18.647M12 18.2V21.4M7.616 16.384L5.353 18.647M5.8 12H2.6M7.616 7.616L5.353 5.353M12 5.8V2.6M16.384 7.616L18.647 5.353';
-const MOON =
-  'M20.983 12.77C20.566 17.516 16.517 21.118 11.755 20.979C6.993 20.84 3.161 17.009 3.021 12.247C2.881 7.485 6.484 3.434 11.23 3.017C9.191 5.797 9.485 9.639 11.923 12.077C14.361 14.515 18.199 14.809 20.981 12.772L20.983 12.77Z';
-
-function ToneGlyph({ night }: { night: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      {night ? (
-        <path d={MOON} />
-      ) : (
-        <>
-          <circle cx="12" cy="12" r="3.125" />
-          <path d={SUN_RAYS} strokeLinecap="butt" />
-        </>
-      )}
-    </svg>
-  );
-}
-
-/**
- * `tone choice` `534:387` — Day (sun) · Night (moon) · Match system (no glyph).
+ * `tone choice` `534:387` — Day (sun) · Night (moon) · Match system (no glyph). `glyph` is the
+ * sprite name to clone, or `null` for the row that carries none — `sun` `163:2` and `moon` `163:5`
+ * live in `IconName` now, so this screen no longer inlines their paths.
  *
  * CLAUDE.md is explicit that the tone is a **product-level toggle, not `prefers-color-scheme`**:
  * Day is `:root` and Night overrides on `.app[data-tone='night']`. So "Match system" is an explicit
@@ -80,9 +56,9 @@ function ToneGlyph({ night }: { night: boolean }) {
  * selected chip while its own topbar pill reads "Day"; the selection is bound to the live value
  * here, which is what that trap asks for.)
  */
-const TONES: { value: ToneChoice; label: string; glyph: boolean | null }[] = [
-  { value: 'day', label: 'Day', glyph: false },
-  { value: 'night', label: 'Night', glyph: true },
+const TONES: { value: ToneChoice; label: string; glyph: IconName | null }[] = [
+  { value: 'day', label: 'Day', glyph: 'sun' },
+  { value: 'night', label: 'Night', glyph: 'moon' },
   { value: 'system', label: 'Match system', glyph: null },
 ];
 
@@ -90,10 +66,20 @@ const TONES: { value: ToneChoice; label: string; glyph: boolean | null }[] = [
  * The three CAIE series, in the order the library filter row lists them (§5.1) rather than the
  * order of the session-code letters. Palettes are the file's own `Season/*` chip washes.
  */
+/** The three qualifications, in the order every other surface lists them. */
+const LEVELS = ['A Level', 'IGCSE', 'O Level'] as const;
+
+/** Matches LibraryView's chips, so a qualification wears one colour across the app. */
+const LEVEL_PALETTE: Record<(typeof LEVELS)[number], ChipPalette> = {
+  'A Level': 'a-level',
+  IGCSE: 'igcse',
+  'O Level': 'o-level',
+};
+
 const SERIES: { value: SeasonChoice; label: string; palette: ChipPalette }[] = [
   { value: 's', label: 'May/June', palette: 'may-june' },
   { value: 'w', label: 'Oct/Nov', palette: 'oct-nov' },
-  { value: 'm', label: 'Feb/March', palette: 'feb-march' },
+  { value: 'm', label: 'Feb/Mar', palette: 'feb-march' },
 ];
 
 /**
@@ -146,62 +132,53 @@ function MinutesField({
 }
 
 /**
- * The Library card's two status lines. Both read only what the ingest and the difficulty pass
- * actually report — there is no "last indexed 4 minutes ago" here, because nothing records a
- * timestamp, and the file's own string for that row (`535:432`) is Figma copy, not a measurement.
- * `null` means the row shows no helper at all, which is the honest state before the first run.
+ * The Library card's status lines.
+ *
+ * Unlike the folder-walking version there IS an honest "last synced" figure now —
+ * `catalog_meta.synced_at` records one — so the row that used to have no timestamp to
+ * show finally has one. `null` still means no helper at all, which is the truthful
+ * state before the first sync.
  */
-function indexLine(
-  busy: boolean,
-  progress: IngestProgress | null,
-  report: IngestReport | null,
-): string | null {
-  if (busy) {
-    const docs = progress?.docs ?? 0;
-    // The walk reports the file it is on before it has counted anything.
-    if (docs === 0) return progress?.current ?? 'Walking the tree…';
-    return `${docs.toLocaleString()} documents · ${progress?.current ?? ''}`;
-  }
+function syncLine(busy: boolean, progress: string | null, report: SyncReport | null): string | null {
+  if (busy) return progress ?? 'Checking for a newer catalogue…';
   if (!report) return null;
-  const bits = [
-    `${report.docs.toLocaleString()} documents`,
-    `${report.subjects.toLocaleString()} subjects`,
-    `${(report.elapsedMs / 1000).toFixed(1)}s`,
-  ];
-  // Unparseable filenames are the one ingest fact a user can act on, so it is not swallowed.
-  if (report.skipped > 0) bits.push(`${report.skipped.toLocaleString()} skipped`);
-  return bits.join(' · ');
+  const { status } = report;
+  if (!report.changed) {
+    return `Already current · ${status.papers.toLocaleString()} papers`;
+  }
+  return [
+    `${status.papers.toLocaleString()} papers`,
+    `${status.subjects.toLocaleString()} subjects`,
+    `${status.sessions.toLocaleString()} sessions`,
+  ].join(' · ');
 }
 
-function difficultyLine(
-  busy: boolean,
-  progress: BuildProgress | null,
-  result: BuildResult | null,
-  thresholds: number | null,
-): string | null {
-  if (busy) {
-    const phase =
-      progress?.phase === 'scoring'
-        ? 'Scoring'
-        : progress?.phase === 'saving'
-          ? 'Saving'
-          : 'Reading thresholds';
-    const done = progress?.done ?? 0;
-    const total = progress?.total ?? 0;
-    return total > 0 ? `${phase} · ${done.toLocaleString()} of ${total.toLocaleString()}` : `${phase}…`;
-  }
-  if (result) {
-    const bits = [
-      `${result.parsedDocs.toLocaleString()} of ${result.docs.toLocaleString()} threshold PDFs read`,
-      `${result.scored.toLocaleString()} sittings scored`,
-    ];
-    if (result.failedDocs > 0) bits.push(`${result.failedDocs.toLocaleString()} failed`);
-    return bits.join(' · ');
-  }
-  if (thresholds != null && thresholds > 0) {
-    return `${thresholds.toLocaleString()} grade boundaries stored`;
-  }
-  return null;
+/** `132120576` -> `126 MB`. Whole numbers past a megabyte: nobody needs 126.4 here. */
+function formatSize(bytes: number): string {
+  if (bytes <= 0) return '0 MB';
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  const mb = bytes / (1024 * 1024);
+  return mb < 1024 ? `${Math.round(mb)} MB` : `${(mb / 1024).toFixed(1)} GB`;
+}
+
+/** `1738099200000` -> `2 hours ago`. Absent means never synced. */
+function syncedAgo(ms: number | null | undefined): string | null {
+  if (ms == null) return null;
+  const minutes = Math.max(0, Math.round((Date.now() - ms) / 60000));
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+function repairLine(report: RepairReport | null): string | null {
+  if (!report) return null;
+  const bits = [`${report.scanned.toLocaleString()} files scanned`];
+  if (report.linked > 0) bits.push(`${report.linked.toLocaleString()} linked`);
+  if (report.pruned > 0) bits.push(`${report.pruned.toLocaleString()} missing`);
+  if (report.unmatched > 0) bits.push(`${report.unmatched.toLocaleString()} unrecognised`);
+  return bits.join(' · ');
 }
 
 export interface Props {
@@ -211,20 +188,32 @@ export interface Props {
   onChange: (patch: Partial<Settings>) => void;
 
   /* ---- Library. The same props SetupView takes, which this screen retires. ---- */
-  /** The watched library root. Read-only: Rust owns it and it is never chosen from here. */
+  /** Where downloads land. Read-only: Rust owns it and it is never chosen from here. */
   root: string;
-  /** Index counts. `null` before the first index — every count then renders its empty state. */
+  /** Catalogue counts. `null` before the first sync — every count renders its empty state. */
   stats: LibraryStats | null;
   busy: boolean;
-  progress: IngestProgress | null;
-  report: IngestReport | null;
-  onIngest: () => void;
-  diffBusy: boolean;
-  diffProgress: BuildProgress | null;
-  diffResult: BuildResult | null;
-  onBuildDifficulty: () => void;
-  /** The last ingest failure, shown under the Library card. */
+  /** Human-readable sync step, straight from Rust. */
+  progress: string | null;
+  report: SyncReport | null;
+  onSync: () => void;
+  /** Reconcile the download records with what is actually on disk. */
+  onRepair: () => void;
+  /** Open the downloads folder in Explorer. */
+  onRevealDownloads: () => void;
+  repairReport?: RepairReport | null;
+  /** The last sync or download failure, shown under the Library card. */
   error?: string | null;
+
+  /* ---- Your subjects. The sidebar's list, and the reason it is short. ---- */
+  /** Every subject in the catalogue. Filtered to `board` for the chips below. */
+  subjects: Subject[];
+  /** Chosen qualification, spelled as the catalogue labels it: `A Level` etc. */
+  board: string | null;
+  onBoard: (level: string | null) => void;
+  /** Syllabus codes, not ids — a code survives a resync and a level change. */
+  chosenSubjects: string[];
+  onToggleSubject: (code: string) => void;
 
   /* ---- Updates ---- */
   /** Running version — the same string the sidebar footer prints. Never derived here. */
@@ -260,12 +249,16 @@ export default function SettingsView({
   busy,
   progress,
   report,
-  onIngest,
-  diffBusy,
-  diffProgress,
-  diffResult,
-  onBuildDifficulty,
+  onSync,
+  onRepair,
+  onRevealDownloads,
+  repairReport = null,
   error,
+  subjects,
+  board,
+  onBoard,
+  chosenSubjects,
+  onToggleSubject,
   version,
   build,
   onCheckUpdates,
@@ -288,9 +281,20 @@ export default function SettingsView({
     if (confirmClear) confirmRef.current?.querySelector('button')?.focus();
   }, [confirmClear]);
 
-  const indexed = stats != null && stats.docs > 0;
-  const indexStatus = indexLine(busy, progress, report);
-  const diffStatus = difficultyLine(diffBusy, diffProgress, diffResult, stats?.thresholds ?? null);
+  const synced = stats != null && stats.papers > 0;
+  const syncStatus = syncLine(busy, progress, report);
+  const repairStatus = repairLine(repairReport);
+  const lastSynced = syncedAgo(stats?.syncedAtMs);
+
+  /** The chips to offer. Alphabetical, and narrowed to the chosen qualification. */
+  const boardSubjects = useMemo(
+    () =>
+      subjects
+        .filter((s) => !board || s.level === board)
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [subjects, board],
+  );
   /** The build line, wherever it appears. One expression, so the two places cannot disagree. */
   const buildLine = build ? `build ${build}` : null;
 
@@ -314,10 +318,10 @@ export default function SettingsView({
         <header className="set-head">
           <h1 className="set-title t-greeting">Settings</h1>
           <p className="set-sub t-body-small">
-            {`Bell ${version} · one watched folder, `}
-            {indexed
-              ? `${(stats?.docs ?? 0).toLocaleString()} documents indexed`
-              : 'nothing indexed yet'}
+            {`Bell ${version} · `}
+            {synced
+              ? `${(stats?.papers ?? 0).toLocaleString()} papers in the catalogue`
+              : 'catalogue not synced yet'}
           </p>
         </header>
 
@@ -335,7 +339,7 @@ export default function SettingsView({
                         key={t.value}
                         label={t.label}
                         filled={settings.tone === t.value}
-                        icon={t.glyph == null ? undefined : <ToneGlyph night={t.glyph} />}
+                        icon={t.glyph ? <Icon name={t.glyph} /> : undefined}
                         onClick={() => onChange({ tone: t.value })}
                       />
                     ))}
@@ -353,86 +357,99 @@ export default function SettingsView({
             </section>
 
             <section className="set-group" aria-label="Library">
-              {/* The only sec-label in the file that carries a meta (§6.1). Ours counts documents,
-                  not "papers": `stats.docs` is every indexed file — question papers, mark schemes,
-                  thresholds and reports — and calling that a paper count would be wrong by ~4x. */}
+              {/* The only sec-label in the file that carries a meta (§6.1). It counts PAPERS now,
+                  which is finally the same unit the rest of the app says: the old figure counted
+                  every indexed file — question papers, mark schemes, thresholds and reports — and
+                  was wrong by roughly 4x as a paper count. */}
               <SectionLabel
                 label="Library"
-                meta={indexed ? `${(stats?.docs ?? 0).toLocaleString()} documents` : undefined}
+                meta={synced ? `${(stats?.papers ?? 0).toLocaleString()} papers` : undefined}
               />
               <Card rows>
                 {/* §6.3 sets this helper in `Mono/Small` rather than the row's Body/Meta — it is a
                     path, not prose — and the inner class wins over the ramp class CardRow applies. */}
+                {/* The path was always printed here; what it lacked was a way to get to it. The
+                    Study data row a column over has had a Reveal since the start, and the folder
+                    holding the actual papers is the one people want to open. */}
                 <CardRow
-                  label="Papers folder"
+                  label="Downloads folder"
                   helper={<span className="set-path t-mono-small">{root}</span>}
-                />
+                >
+                  <Button icon="folder" label="Reveal" onClick={onRevealDownloads} />
+                </CardRow>
 
                 <CardRow
-                  label="Documents"
+                  label="Catalogue"
                   helper={
-                    indexed
+                    synced
                       ? `${(stats?.subjects ?? 0).toLocaleString()} subjects · ${(
                           stats?.sessions ?? 0
                         ).toLocaleString()} sessions`
-                      : 'Nothing indexed yet'
+                      : 'Not synced yet'
                   }
                 >
                   {/* §6.2's last control type: plain `Mono/Meta` on `--ink-2`, no button, no
                       chevron — `Storage used` `537:552` is the file's instance of it. */}
-                  {indexed ? (
+                  {synced ? (
                     <span className="set-value t-mono-meta">
-                      {(stats?.docs ?? 0).toLocaleString()}
+                      {(stats?.papers ?? 0).toLocaleString()}
                     </span>
                   ) : null}
                 </CardRow>
 
                 <CardRow
-                  label="Index"
+                  label="On this machine"
                   helper={
-                    indexStatus ? (
-                      <span className="set-now">{indexStatus}</span>
+                    (stats?.downloads ?? 0) > 0
+                      ? `Question papers and mark schemes · ${formatSize(stats?.downloadBytes ?? 0)}`
+                      : 'Nothing downloaded yet — papers arrive when you open them'
+                  }
+                >
+                  <span className="set-value t-mono-meta">
+                    {(stats?.downloads ?? 0).toLocaleString()}
+                  </span>
+                </CardRow>
+
+                <CardRow
+                  label="Catalogue"
+                  helper={
+                    syncStatus ? (
+                      <span className="set-now">{syncStatus}</span>
+                    ) : lastSynced ? (
+                      `Last synced ${lastSynced}. Ratings and grade boundaries come from ShinyPapers.`
                     ) : (
-                      'Walks the watched folder in place. Nothing on the drive is written to.'
+                      'Fetched from ShinyPapers. Browsing works offline once it has synced once.'
                     )
                   }
                 >
                   <Button
                     icon="sync"
                     className={busy ? 'set-spin' : undefined}
-                    /* A scoring pass reads the index this would be rebuilding underneath it. */
-                    disabled={busy || diffBusy}
-                    onClick={onIngest}
-                    label={busy ? 'Indexing…' : 'Rebuild index'}
+                    disabled={busy}
+                    onClick={onSync}
+                    label={busy ? 'Syncing…' : 'Sync catalogue'}
                   />
                 </CardRow>
 
                 <CardRow
-                  label="Difficulty"
+                  label="Downloaded files"
                   helper={
-                    diffStatus ??
-                    "Scored locally from the library's own grade-threshold PDFs, per component."
+                    repairStatus ??
+                    'Re-links anything moved into the folder by hand, and forgets files that have gone.'
                   }
                 >
                   <Button
                     /* `sync` while it runs: `set-spin` rotates whatever glyph is in the slot, and a
                        revolving check-in-circle reads as a rendering fault rather than progress. */
-                    icon={diffBusy ? 'sync' : 'checkc'}
-                    className={diffBusy ? 'set-spin' : undefined}
-                    /* Nothing to score before there is an index, and the two passes share it. */
-                    disabled={diffBusy || busy || !indexed}
-                    onClick={onBuildDifficulty}
-                    label={diffBusy ? 'Scoring…' : 'Rebuild difficulty'}
+                    icon="checkc"
+                    disabled={busy}
+                    onClick={onRepair}
+                    label="Check downloads"
                   />
                 </CardRow>
               </Card>
 
               {error ? <Notice className="set-notice">{error}</Notice> : null}
-              {/* One failure, not the list: `failures` is capped at 8 by buildDifficulty and the
-                  first is representative — the same call SetupView made. */}
-              {!diffBusy && diffResult && diffResult.failures.length > 0 ? (
-                <Notice className="set-notice">{diffResult.failures[0]}</Notice>
-              ) : null}
             </section>
 
             <section className="set-group" aria-label="Exam sessions">
@@ -462,6 +479,72 @@ export default function SettingsView({
                     ))}
                   </span>
                 </CardRow>
+              </Card>
+            </section>
+
+            <section className="set-group" aria-label="Your subjects">
+              {/* The sidebar lists these and nothing else, which is the whole point: the
+                  catalogue holds every subject Cambridge publishes and almost none of them
+                  are yours. Answered first in onboarding's step 03 and edited here — one
+                  stored list, not two that can disagree. */}
+              <SectionLabel
+                label="Your subjects"
+                meta={chosenSubjects.length > 0 ? `${chosenSubjects.length} chosen` : undefined}
+              />
+              <Card rows>
+                <CardRow
+                  label="Qualification"
+                  helper="Narrows the subjects below. Papers from other qualifications stay searchable."
+                >
+                  <span className="set-choice" role="group" aria-label="Qualification">
+                    {LEVELS.map((level) => (
+                      <Chip
+                        key={level}
+                        label={level}
+                        palette={LEVEL_PALETTE[level]}
+                        filled={board === level}
+                        onClick={() => onBoard(board === level ? null : level)}
+                      />
+                    ))}
+                  </span>
+                </CardRow>
+
+                {/* Deliberately NOT a CardRow. That component's control slot is `flex: none`
+                    because Figma hugs it — its own note says "a three-chip row in the 585 column
+                    should clip against the card, not squash" — and thirteen subject chips are not
+                    a three-chip row: they overflow the card sideways instead of wrapping, because
+                    an unconstrained slot gives `flex-wrap` nothing to wrap against. So the grid
+                    takes the card's full width under a label of its own, and keeps the row model's
+                    padding and divider by hand. */}
+                <div className="set-subjects">
+                  <span className="set-subjects__label t-body-default">Subjects you sit</span>
+                  <span className="set-subjects__helper t-body-meta">
+                    {boardSubjects.length === 0
+                      ? board
+                        ? `No ${board} subjects in the catalogue yet`
+                        : 'Pick a qualification to see its subjects'
+                      : chosenSubjects.length > 0
+                        ? 'These are the subjects in the sidebar'
+                        : 'Nothing chosen — the sidebar falls back to the whole catalogue'}
+                  </span>
+                  {boardSubjects.length > 0 && (
+                    <span
+                      className="set-subjects__grid"
+                      role="group"
+                      aria-label="Subjects you sit"
+                    >
+                      {boardSubjects.map((subject) => (
+                        <Chip
+                          key={subject.id}
+                          label={subject.name}
+                          code={subject.code}
+                          filled={chosenSubjects.includes(subject.code)}
+                          onClick={() => onToggleSubject(subject.code)}
+                        />
+                      ))}
+                    </span>
+                  )}
+                </div>
               </Card>
             </section>
           </div>
@@ -508,12 +591,13 @@ export default function SettingsView({
             <section className="set-group" aria-label="Updates">
               <SectionLabel label="Updates" />
               <Card rows>
-                {/* Off by default, and that default is the point: offline is a hard requirement, so
-                    nothing reaches the network unless the user asks here or presses Check now. The
-                    file draws this switch On (`536:451`); the requirement outranks the mock. */}
+                {/* Off by default, and that default is still the point even though the app now has
+                    a network: the catalogue is fetched because the library depends on it, whereas a
+                    background version check is something the user should opt into. The file draws
+                    this switch On (`536:451`); the default outranks the mock. */}
                 <CardRow
                   label="Check automatically"
-                  helper="Daily, in the background. Off by default — Bell makes no network request otherwise."
+                  helper="Daily, in the background. Off by default — nothing but the catalogue is fetched otherwise."
                 >
                   <Switch
                     checked={settings.updateAuto}
@@ -558,7 +642,7 @@ export default function SettingsView({
                   helper={
                     confirmClear
                       ? 'Every mark, every focused minute and all annotation ink. This cannot be undone.'
-                      : 'The index rebuilds itself from the drive; this is the part that only exists here.'
+                      : 'The catalogue and your downloads stay; this is the part that only exists here.'
                   }
                 >
                   {confirmClear ? (
