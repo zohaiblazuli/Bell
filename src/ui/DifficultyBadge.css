@@ -1,0 +1,56 @@
+/* Difficulty Badge — replaces DifficultyMeter.css.
+ *
+ * A pill, not a row: the meter owned a whole 248px line because it had five pips, a
+ * word and a right-thrown numeral under SPACE_BETWEEN. Three labels need none of that,
+ * so this hugs its content and can sit inline anywhere the meter used to end a card.
+ *
+ * Nothing pins a height. Every text style in the design file is lineHeight AUTO, so the
+ * pill height is a hug result; pinning it crops descenders where font metrics differ.
+ */
+
+.dbadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  /* --r-chip is 9, which reads as a lozenge at this height and is exactly right here. */
+  border-radius: var(--r-chip, 9px);
+  white-space: nowrap;
+  flex: none;
+  font-weight: 500;
+}
+
+.dbadge--md {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.dbadge--sm {
+  padding: 2px 8px;
+  gap: 5px;
+  font-size: 11px;
+}
+
+/* Unrated is an em-dash in --ink-3: no tint, no dot, no padding to draw a box around
+   nothing. */
+.dbadge--unrated {
+  background: transparent;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.dbadge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  flex: none;
+}
+
+.dbadge__label {
+  min-width: 0;
+}
+
+/* Deliberately dimmer than the label: the word is the rating, the number is detail. */
+.dbadge__score {
+  opacity: 0.72;
+  flex: none;
+}
