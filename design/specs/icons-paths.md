@@ -3,7 +3,8 @@
 Companion to `icons.md`. Extracted from Figma `GnDdYtn8SaQjgmA4SQRCn7` by exporting each
 component-set frame as SVG and translating every coordinate into the glyph's local `0 0 24 24`
 box (offsets are whole pixels, so the translation is lossless). Verified against per-node
-exports of `17:89` (ret) and `47:72` (islamiyat) — identical to 3 dp.
+exports of `17:89` (ret) and `47:72` (islamiyat) — identical to 3 dp. The 14 Notebooks glyphs were
+exported per node and rounded to the same 3 dp; no coordinate leaves the 0..24 box (verified).
 
 Every symbol below assumes it sits inside a wrapper that supplies the defaults:
 
@@ -17,7 +18,7 @@ marks a glyph whose Figma cap is NOT round.
 
 ---
 
-## Icon — set `17:119` (31 glyphs, paint `--ink-2`)
+## Icon — set `17:119` (45 glyphs, paint `--ink-2`)
 
 `17:6`
 ```html
@@ -263,6 +264,131 @@ marks a glyph whose Figma cap is NOT round.
 ```html
 <symbol id="i-moon" viewBox="0 0 24 24">
   <path d="M20.983 12.77C20.566 17.516 16.517 21.118 11.755 20.979C6.993 20.84 3.161 17.009 3.021 12.247C2.881 7.485 6.484 3.434 11.23 3.017C9.191 5.797 9.485 9.639 11.923 12.077C14.361 14.515 18.199 14.809 20.981 12.772L20.983 12.77Z"/>
+</symbol>
+```
+
+### The 14 added for Notebooks
+
+Same defaults wrapper as above. `dots` is the only solid glyph in the batch, so its three discs
+carry `fill="currentColor" stroke="none"`. `plus`, `right`, `pan`, `ruler` and `trash` each pack
+several subpaths into a single `d` — leave them packed.
+
+`595:5`
+```html
+<symbol id="i-pencil" viewBox="0 0 24 24">
+  <path d="M17.2 3.8L20.2 6.8L10 17L5.2 18.8L7 14L17.2 3.8Z"/>
+  <path d="M7 14L10 17"/>
+  <path d="M14.4 6.6L17.4 9.6"/>
+</symbol>
+```
+
+`595:10`
+```html
+<symbol id="i-lasso" viewBox="0 0 24 24">
+  <path d="M12 15.5C16.694 15.5 20.5 13.038 20.5 10C20.5 6.962 16.694 4.5 12 4.5C7.306 4.5 3.5 6.962 3.5 10C3.5 13.038 7.306 15.5 12 15.5Z"/>
+  <path d="M7.8 14.9C7.6 17 8.4 18.6 9.8 19.4"/>
+  <path d="M10.6 21.8C11.373 21.8 12 21.173 12 20.4C12 19.627 11.373 19 10.6 19C9.827 19 9.2 19.627 9.2 20.4C9.2 21.173 9.827 21.8 10.6 21.8Z"/>
+</symbol>
+```
+
+`595:14`
+```html
+<symbol id="i-shapes" viewBox="0 0 24 24">
+  <path d="M12.9 3.5H5.1C4.216 3.5 3.5 4.216 3.5 5.1V12.9C3.5 13.784 4.216 14.5 5.1 14.5H12.9C13.784 14.5 14.5 13.784 14.5 12.9V5.1C14.5 4.216 13.784 3.5 12.9 3.5Z"/>
+  <path d="M15.4 20.5C18.217 20.5 20.5 18.217 20.5 15.4C20.5 12.583 18.217 10.3 15.4 10.3C12.583 10.3 10.3 12.583 10.3 15.4C10.3 18.217 12.583 20.5 15.4 20.5Z"/>
+</symbol>
+```
+
+`595:19`
+```html
+<symbol id="i-text" viewBox="0 0 24 24">
+  <path d="M5.5 5.5H18.5"/>
+  <path d="M12 5.5V18.5"/>
+  <path d="M9 18.5H15"/>
+</symbol>
+```
+
+`596:6`
+```html
+<symbol id="i-image" viewBox="0 0 24 24">
+  <path d="M18.6 4.6H5.4C4.185 4.6 3.2 5.585 3.2 6.8V17.2C3.2 18.415 4.185 19.4 5.4 19.4H18.6C19.815 19.4 20.8 18.415 20.8 17.2V6.8C20.8 5.585 19.815 4.6 18.6 4.6Z"/>
+  <path d="M9 11.7C9.939 11.7 10.7 10.939 10.7 10C10.7 9.061 9.939 8.3 9 8.3C8.061 8.3 7.3 9.061 7.3 10C7.3 10.939 8.061 11.7 9 11.7Z"/>
+  <path d="M4 17.6L9.6 12L14.6 16.4L17.2 14.2L20 16.8"/>
+</symbol>
+```
+
+`596:10`
+```html
+<symbol id="i-clip" viewBox="0 0 24 24">
+  <path d="M7.5 3V15.5C7.5 16.3 8.2 17 9 17H21"/>
+  <path d="M3 7.5H15C15.8 7.5 16.5 8.2 16.5 9V21"/>
+</symbol>
+```
+
+`596:16`
+```html
+<symbol id="i-sticky" viewBox="0 0 24 24">
+  <path d="M4.5 4.5H19.5V14.5L14.5 19.5H4.5V4.5Z"/>
+  <path d="M19.5 14.5H14.5V19.5"/>
+  <path d="M8 9H16"/>
+  <path d="M8 12.2H13"/>
+</symbol>
+```
+
+`596:20`
+```html
+<symbol id="i-ruler" viewBox="0 0 24 24">
+  <path d="M2.06 18.06L18.06 2.06L21.95 5.95L5.95 21.95L2.06 18.06Z"/>
+  <path d="M5.24 14.88L6.65 16.29M8.42 11.7L9.83 13.11M11.61 8.51L13.02 9.92M14.79 5.33L16.2 6.74"/>
+</symbol>
+```
+
+`597:5`
+```html
+<symbol id="i-pan" viewBox="0 0 24 24">
+  <path d="M12 3.2V20.8M3.2 12H20.8"/>
+  <path d="M9.6 5.8L12 3.2L14.4 5.8M9.6 18.2L12 20.8L14.4 18.2M5.8 9.6L3.2 12L5.8 14.4M18.2 9.6L20.8 12L18.2 14.4"/>
+</symbol>
+```
+
+`597:8`
+```html
+<symbol id="i-plus" viewBox="0 0 24 24">
+  <path d="M12 5V19M5 12H19"/>
+</symbol>
+```
+
+`597:14`
+```html
+<symbol id="i-trash" viewBox="0 0 24 24">
+  <path d="M4.5 7.5H19.5"/>
+  <path d="M9.5 7.5V4.8C9.5 4.3 9.9 3.9 10.4 3.9H13.6C14.1 3.9 14.5 4.3 14.5 4.8V7.5"/>
+  <path d="M6.6 7.5L7.5 19.6C7.6 20.3 8.2 20.9 8.9 20.9H15.1C15.8 20.9 16.4 20.3 16.5 19.6L17.4 7.5"/>
+  <path d="M10.4 11.4V17M13.6 11.4V17"/>
+</symbol>
+```
+
+`597:19`
+```html
+<symbol id="i-dots" viewBox="0 0 24 24">
+  <path d="M5.6 13.5C6.428 13.5 7.1 12.828 7.1 12C7.1 11.172 6.428 10.5 5.6 10.5C4.772 10.5 4.1 11.172 4.1 12C4.1 12.828 4.772 13.5 5.6 13.5Z" fill="currentColor" stroke="none"/>
+  <path d="M12 13.5C12.828 13.5 13.5 12.828 13.5 12C13.5 11.172 12.828 10.5 12 10.5C11.172 10.5 10.5 11.172 10.5 12C10.5 12.828 11.172 13.5 12 13.5Z" fill="currentColor" stroke="none"/>
+  <path d="M18.4 13.5C19.228 13.5 19.9 12.828 19.9 12C19.9 11.172 19.228 10.5 18.4 10.5C17.572 10.5 16.9 11.172 16.9 12C16.9 12.828 17.572 13.5 18.4 13.5Z" fill="currentColor" stroke="none"/>
+</symbol>
+```
+
+`598:2`
+```html
+<symbol id="i-redo" viewBox="0 0 24 24">
+  <path d="M15 10L19 14L15 18"/>
+  <path d="M19 14H8C7.204 14 6.441 13.684 5.879 13.121C5.316 12.559 5 11.796 5 11V6"/>
+</symbol>
+```
+
+`598:5`
+```html
+<symbol id="i-right" viewBox="0 0 24 24">
+  <path d="M5 12H19M12 5L19 12L12 19"/>
 </symbol>
 ```
 
