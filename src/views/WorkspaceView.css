@@ -9,13 +9,14 @@
  *
  * TWO THINGS TO KNOW BEFORE EDITING.
  *
- * 1. It loads BEFORE `app.css` and `ui/styles`, because a `.tsx` import lands in Vite's module
- *    graph under `App` rather than in main.tsx's explicit ordered list. So every name here is new
- *    (`rd-*`) rather than a restyle of `.paper` / `.pagepill` / `.ms`, and the few rules that do
- *    have to beat a later sheet win on specificity — `section.rd` over `.view`,
- *    `.rd-bar button.icobtn.icobtn--on` over `.icobtn--on`, `.rd-questions .section-label` over
- *    `.section-label`. Adding a bare `.rd-x` rule that collides with an app.css name will silently
- *    lose.
+ * 1. **This sheet loads AFTER `app.css` and `ui/styles`, not before.** The header used to claim the
+ *    reverse; measured off the built bundle in Phase 6, the byte offsets in `dist/assets/*.css` run
+ *    chrome.css → app.css → ui/styles → view CSS, in both the dev server (ES module evaluation order,
+ *    with `App` imported last) and the production build. So a view sheet WINS a tie. The `rd-*` prefix
+ *    stays anyway — a bare `.paper` / `.pagepill` / `.ms` here would be a collision waiting for
+ *    someone to rename something — and the couple of rules written extra-specific to "beat a later
+ *    sheet" (`section.rd` over `.view`, `.rd-questions .section-label`) are harmless but were not
+ *    necessary. `TASKS.md` and the Phase 6 plan still carry the old claim.
  * 2. The three columns are FIXED tracks and focus mode recedes the outer two with a transform, so
  *    the well never widens. That is deliberate: growing it would mean animating `grid-template`.
  */
@@ -262,6 +263,85 @@ button.rd-badge:disabled {
   cursor: crosshair;
 }
 
+/* ---------- clip a region into a notebook ---------- */
+
+/* Sits above the ink layer and takes the pointer while clip mode is armed, so one drag can only ever
+   mean one thing. Crosshair for the same reason the armed ink layer gets one: this is a surface you
+   are being asked to drag on, and the app's global `cursor: default` would hide that. */
+.rd-clip {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  cursor: crosshair;
+  touch-action: none;
+}
+/* The accent as a LINE on a live element — rule 2 — with `--accent-soft` as the one permitted wash,
+   behind one element. Dashed at the same 5/4 rhythm as the lasso the notebook spread draws. */
+.rd-clip-box {
+  position: absolute;
+  border: 1px dashed var(--accent);
+  background: var(--accent-soft);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+/* The topbar button's anchor. `position: relative` and nothing else — the popover positions itself
+   against this, and giving the wrapper any box of its own would push the bar's 12px gaps out. */
+.rd-clipwrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* The hint rides over the well on the same offset idiom as the tool bar: the wrapper spans the frame
+   and the transform shifts it onto the well's own midline, 64px left of the frame's. */
+.rd-cliphint {
+  position: absolute;
+  inset-inline: 0;
+  top: 12px;
+  z-index: 6;
+  display: flex;
+  justify-content: center;
+  transform: translateX(-64px);
+  pointer-events: none;
+}
+.rd-cliphint-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 70%;
+  padding: 7px 8px 7px 14px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-pill);
+  background: var(--glass-strong);
+  backdrop-filter: blur(26px) saturate(165%);
+  box-shadow: var(--shadow-card);
+  color: var(--ink-2);
+  pointer-events: auto;
+}
+/* No trailing control, so the pill is symmetric again. */
+.rd-cliphint-pill:not(:has(button)) {
+  padding-right: 14px;
+}
+.rd-cliphint-pill strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.rd-cliphint-esc {
+  margin-left: 10px;
+  color: var(--ink-3);
+}
+.rd-cliphint-bad {
+  color: var(--danger);
+}
+button.rd-cliphint-go {
+  padding: 3px 10px;
+  border: 1px solid var(--accent);
+  border-radius: var(--r-pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 /* ---------- §8 floating tool bar `201:30` ---------- */
 
 /* The wrapper spans the frame, so the pill centres on the frame — but the well's midline is 64px
@@ -312,13 +392,15 @@ button.rd-badge:disabled {
   text-align: center;
   color: var(--ink-2);
 }
-/* §8: only the active tool carries a fill, and it is `--accent-soft` — not the Icon Button set's
-   own Hover grey, which is what `.icobtn--on` paints. Three classes deep so it beats IconButton.css,
-   which loads after this sheet. */
-.rd-bar button.icobtn.icobtn--on {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
+/* §8's active tool used to be hand-filled here, because `Icon Button` shipped only `Default | Hover`
+   and `.icobtn--on` therefore painted the Hover grey. It now has a real `State=Active` — the
+   Notebooks pass added it (`components-controls.md` §5) — so the hand-fill is retired and the Reader
+   inherits `--accent-soft` plus the 1px inset `--accent` ring from the component.
+
+   The ring is the point: at 34px a bare wash is very faint, and a line on a live element is the design
+   system's own rule doing the work. The glyph deliberately stays `--ink-2` rather than the `--accent`
+   this rule used to force — an accent fill AND an accent glyph AND an accent line is three signals for
+   one state, and §5 says so explicitly. */
 /* §8 builds `next page` from the `left` glyph rotated 180°; redo is the same trick on `ret`. Both
    glyphs are symmetric about the horizontal axis, so one mirror serves for both. */
 .rd-bar button.rd-flip svg {
