@@ -73,7 +73,7 @@ export default function TopBar({
 
         <IconButton
           icon="sync"
-          label="Rebuild the library index"
+          label="Sync the catalogue"
           spin={busy}
           disabled={busy}
           onClick={onReindex}
