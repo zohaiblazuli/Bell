@@ -1,50 +1,89 @@
 /**
- * Difficulty presentation. The heat scale (--d1..--d5) is a separate axis from the brand
- * iris and must never be mixed with it.
+ * Difficulty presentation.
  *
- * The score itself comes from the ported scambridge formula (grade thresholds -> a 0-100
- * "how hard was this sitting" number). Until a paper's thresholds are parsed, `score` is
- * null and the meter reads as unrated rather than guessing.
+ * The rating is computed by ShinyPapers from published grade thresholds and arrives on
+ * every paper row; this file only decides how it looks. Nothing here derives a rating
+ * for a paper — one whose thresholds were never parsed has `difficulty: null` and
+ * reads as unrated rather than being guessed at.
+ *
+ * Labels, cutoffs and palette mirror the website exactly (`lib/difficulty.ts` and
+ * `components/ui/DifficultyBadge.tsx` over there), so the same paper cannot read
+ * "Hard" in one product and "Typical" in the other.
  */
+import type { Difficulty, Season } from './types';
 
-export interface Band {
+/** Upstream's cutoffs on the 0-100 hardness score. */
+export const HARD_SCORE_CUTOFF = 67;
+export const MEDIUM_SCORE_CUTOFF = 34;
+
+export interface DifficultyBand {
   label: string;
+  /** Solid mid-tone — dots, chart fills. */
   color: string;
-  lit: number;
+  /** Deeper tone, for text sitting on `tint`. */
+  deep: string;
+  /** Light tint, for a badge background. */
+  tint: string;
+  rated: boolean;
+}
+
+/** Sky → Amber → Rose, the website's data palette. Deliberately not the brand iris. */
+const BANDS: Record<Difficulty, DifficultyBand> = {
+  easy: { label: 'Easy', color: '#0ea5e9', deep: '#0369a1', tint: '#e0f2fe', rated: true },
+  medium: { label: 'Medium', color: '#f59e0b', deep: '#b45309', tint: '#fef3c7', rated: true },
+  hard: { label: 'Hard', color: '#f43f5e', deep: '#be123c', tint: '#ffe4e6', rated: true },
+};
+
+/** An em-dash, matching the website. Not the word "Unrated", not an empty space. */
+export const UNRATED: DifficultyBand = {
+  label: '—',
+  color: 'var(--ink-3)',
+  deep: 'var(--ink-3)',
+  tint: 'transparent',
+  rated: false,
+};
+
+export function bandFor(difficulty: Difficulty | null | undefined): DifficultyBand {
+  return difficulty ? BANDS[difficulty] : UNRATED;
 }
 
 /**
- * Five presentation bands nested inside the formula's own three (easy < 34, medium, hard >= 67
- * — see difficultyFormula.ts), so the finer label never contradicts the coarse one.
+ * Bucket a 0-100 score into upstream's three bands.
+ *
+ * For aggregates the catalogue does not label — a subject's mean, say. A single paper
+ * carries its own `difficulty` and that must always be preferred: re-deriving one here
+ * risks disagreeing with the note the server already wrote for it.
  */
-const BANDS: { under: number; band: Band }[] = [
-  { under: 34, band: { label: 'Gentle', color: 'var(--d1)', lit: 1 } },
-  { under: 50, band: { label: 'Steady', color: 'var(--d2)', lit: 2 } },
-  { under: 67, band: { label: 'Typical', color: 'var(--d3)', lit: 3 } },
-  { under: 84, band: { label: 'Tough', color: 'var(--d4)', lit: 4 } },
-  { under: Infinity, band: { label: 'Brutal', color: 'var(--d5)', lit: 5 } },
-];
-
-export const UNRATED: Band = { label: 'Unrated', color: 'var(--ink-3)', lit: 0 };
-
-export function bandFor(score: number | null | undefined): Band {
-  if (score == null || Number.isNaN(score)) return UNRATED;
-  return (BANDS.find((b) => score < b.under) ?? BANDS[BANDS.length - 1]).band;
+export function difficultyForScore(score: number | null | undefined): Difficulty | null {
+  if (score == null || Number.isNaN(score)) return null;
+  if (score >= HARD_SCORE_CUTOFF) return 'hard';
+  if (score >= MEDIUM_SCORE_CUTOFF) return 'medium';
+  return 'easy';
 }
 
-/** `s15` -> `May/June 2015` */
+const SEASON_LABELS: Record<Season, string> = {
+  may_june: 'May/June',
+  oct_nov: 'Oct/Nov',
+  feb_mar: 'Feb/Mar',
+};
+
+/** `may_june` -> `May/June`. One spelling, matching the website's `seasonLabel`. */
+export function seasonLabel(season: Season | string): string {
+  return SEASON_LABELS[season as Season] ?? 'Unknown';
+}
+
+/** `s15` -> `May/June 2015`. Derived from the code so it works without a full row. */
 export function sessionLabel(scode: string): string {
-  const season =
-    { s: 'May/June', w: 'Oct/Nov', m: 'Feb/March' }[scode[0]?.toLowerCase() ?? ''] ?? 'Unknown';
+  const season = { s: 'may_june', w: 'oct_nov', m: 'feb_mar' }[scode[0]?.toLowerCase() ?? ''];
+  const label = season ? seasonLabel(season) : 'Unknown';
   const yy = Number(scode.slice(1));
   const year = Number.isNaN(yy) ? '' : ` ${yy >= 80 ? 1900 + yy : 2000 + yy}`;
-  return `${season}${year}`;
+  return `${label}${year}`;
 }
 
-/** `12` -> `Paper 1 / Variant 2`, for the card subtitle. */
-export function variantLabel(variant: string | null): string {
-  if (!variant) return 'All papers';
-  if (/^\d{2}$/.test(variant)) return `Paper ${variant[0]} · Variant ${variant[1]}`;
-  if (/^\d$/.test(variant)) return `Paper ${variant}`;
-  return `Paper ${variant}`;
+/** `12` -> `Paper 1 · Variant 2`, for the card subtitle. */
+export function componentLabel(component: string | null): string {
+  if (!component) return 'All papers';
+  if (/^\d{2}$/.test(component)) return `Paper ${component[0]} · Variant ${component[1]}`;
+  return `Paper ${component}`;
 }
