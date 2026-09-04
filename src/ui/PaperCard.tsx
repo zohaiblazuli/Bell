@@ -35,8 +35,8 @@
 
 import type { ReactNode } from 'react';
 import Icon, { type IconName } from '../components/Icon';
-import DifficultyMeter from './DifficultyMeter';
-import type { Band } from '../lib/difficulty';
+import DifficultyBadge from './DifficultyBadge';
+import type { DifficultyBand } from '../lib/difficulty';
 
 /**
  * The three toggles. `bookmarked` is this component's name for the store's `bookmarks` set: the card
@@ -98,8 +98,8 @@ export interface PaperCardProps {
    * renders nine cards, all Yes. Pass one or the other, not both, unless the override is the point.
    */
   bookmarked?: boolean;
-  /** Which band the meter lights, from `bandFor(score)`. Owned by `src/lib/difficulty.ts`. */
-  band: Band;
+  /** Which rating the badge shows, from `bandFor(difficulty)`. Owned by `src/lib/difficulty.ts`. */
+  band: DifficultyBand;
   marks: PaperCardMarks;
   onMark: (mark: MarkName) => void;
   onOpen: () => void;
@@ -165,9 +165,9 @@ export default function PaperCard({
           )}
         </span>
 
-        {/* `foot` `66:251`: one hairline, then the meter at FILL with the score gated off. */}
+        {/* `foot` `66:251`: one hairline, then the rating. */}
         <span className="pc-foot">
-          <DifficultyMeter band={band} showScore={false} />
+          <DifficultyBadge band={band} size="sm" />
         </span>
       </button>
 
