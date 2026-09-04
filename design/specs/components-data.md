@@ -16,10 +16,12 @@ pin.
 | Doc Badge | `14:14` | COMPONENT_SET | 4 (Type) | 23 x 17 |
 | Session Code | `15:8` | COMPONENT_SET | 2 (Style) | 30 x 16 / 20 x 14 |
 | Window Lights | `41:46` | COMPONENT_SET | 4 (Window x Hover) | 62 x 16 |
+| **Notebook Cover** | `606:50` | COMPONENT_SET | **16** (State x Cover) | 237 x 321 |
 
 Letter-spacing, px equivalents of the % in the style sheet:
 `Mono/Stat` 19 @ -2% = **-0.38px** · `Title/Card` 15 @ -1% = **-0.15px** ·
 `Body/Nav` 13 @ -0.4% = **-0.052px** · `Label/Stat` 10 @ +6% = **0.6px** ·
+`Title/Card` on the cover 15 @ -1% = **-0.15px** ·
 Doc Badge 10 @ +3% = **0.3px** (ad-hoc, no named style).
 
 ---
@@ -66,8 +68,10 @@ the same writing line as the big numeral.
 CSS: `.stat { display:flex; flex-direction:column; gap:2px; padding:12px 14px; }`
 `.stat-row { display:flex; gap:8px; align-items:baseline; }`
 
-The delta is **uncoloured on purpose** (`--ink-2`): the system ships no success/danger tokens, so
-direction must be carried by the string — `+6`, `−6`, `↑6`. Never tint it green/red.
+The delta is **uncoloured on purpose** (`--ink-2`). It stays that way even though `--danger` and
+`--danger-soft` now exist (added for Notebooks, `screen-notebooks.md` section 8): those are for
+destructive *actions*, not for figures, and there is still no success token to pair with one. Carry
+direction in the string — `+6`, `−6`, `↑6`. Never tint it green/red.
 
 ---
 
@@ -444,6 +448,90 @@ Colours **do not retone in Night** — macOS keeps them constant.
 gaps** with the older Big Sur hexes — that is Apple's *Utility* (small-window) metric. Adopting this
 spec grows each disc by 3px and the whole cluster from 47 to 62 wide; budget for the titlebar
 reflow before changing it.
+
+---
+
+## 9. Notebook Cover — `606:50`
+
+The shelf tile on `Screen — Notebooks`, and the whole reason the `--cover-*` family exists. A student
+notebook drawn as a physical object rather than a card with a colour swatch on it.
+
+**Axes** — `Cover` = `1 … 8` x `State` = `Default | Hover` → **16 variants**, full grid, no holes.
+Sheet is 1068 x 1404: 4 columns at pitch **261**, 4 rows at pitch **345**, origin (24,24), Default
+rows first (`603:3` … `605:143`) then Hover (`605:166` … `605:327`).
+
+```
+237 x 321   VERTICAL  gap 8  FIXED / HUG      <- the tile
++---------------------------------------+ 0    book 237x300, r --r-card, clip, Shadow/Card/Day
+| |s|  o                                |      spine 14x300 (left corners 13 only) --cover-shade
+| |p|  o   [sticker 56]                 |      rings 14x212 @(0,44), 7 coils, pitch 34
+| |i|  o                                |      page edges 6x268 @(231,16), 3 rects --paper
+| |n|  o   Mechanics          | | |     |      front 185x108 @(26,34), V gap 16
+| |e|  o   Physics 9702       | | |     |      label 185x36 @(0,72), V gap 4
+| | |  o                       edges    |
++---------------------------------------+ 300
+| 48 pages  ·  edited 2h ago            |      edited, Body/Meta --ink-3
++---------------------------------------+ 321
+```
+
+| child | node (Cover=1 Default) | x,y | box | spec |
+|---|---|---|---|---|
+| `book` | inside `603:3` | 0,0 | 237 x 300 | FILL / FIXED, radius `--r-card` (13), `clipsContent: true`, fill **`--cover-N`**, effect style `Shadow/Card/Day` |
+| › `spine` | | 0,0 | 14 x 300 | radius **mixed 13 / 0 / 0 / 13** — left corners only. Fill `--cover-shade` |
+| › `rings` | | 0,44 | 14 x 212 | plain frame; 7 `coil` ellipses **8 x 8 @ x 3**, pitch **34**, stroke **1.5** `--cover-wire` |
+| › `page edges` | | 231,16 | 6 x 268 | 3 rects **2 x 268** at x 0 / 2 / 4, fill `--paper`, **node opacity 1 / 0.70 / 0.45** |
+| › `front` | | 26,34 | 185 x 108 | VERTICAL gap 16 |
+| ›› `sticker` | | 0,0 | 56 x 56 | radius **14**, fill `--paper`, `Shadow/Card/Day`, align CENTER/CENTER; holds a **28 x 28** `Subject Icon` instance |
+| ›› `photo` | | 0,0 | 185 x 120 | radius 8, fill `--cover-shade`, 1 px `--cover-wire`. **`visible: false`** in every variant |
+| ›› `label` | | 0,72 | 185 x 36 | FILL / HUG, VERTICAL gap 4 |
+| ››› `title` | | 0,0 | 185 x 18 | **Title/Card** SF Pro Semibold 15 / -0.15px, **`--cover-label`** |
+| ››› `meta` | | 0,22 | 185 x 14 | **Mono/Small** Geist Mono Regular 11 / 0, **`--cover-label-2`** |
+| `edited` | | 0,308 | 136 x 13 | HUG, **Body/Meta** SF Pro Regular 11, `--ink-3` |
+
+**Properties** — 6 plus the two variant axes:
+
+| name | id | type | default |
+|---|---|---|---|
+| Name | `#608:0` | TEXT | `Mechanics` |
+| Meta | `#608:17` | TEXT | `Physics 9702` |
+| Edited | `#608:34` | TEXT | `48 pages  ·  edited 2h ago` |
+| Show Sticker | `#608:51` | BOOLEAN | `true` |
+| Show Photo | `#608:68` | BOOLEAN | **`false`** |
+| Sticker | `#608:85` | INSTANCE_SWAP | `47:49` (`Subject Icon / Subject=physics`), preferred set `Subject Icon` `47:81` |
+
+Same API shape as `Chip` — the palette on a variant axis, the content on props — so it is not a new
+idiom to learn.
+
+**Why 321 never moves** (*derived*): `300 + 8 + 13 = 321`. `book` is FIXED at 300 and `edited` is a
+single 11px line, so no override can grow the tile. The coils are symmetric — first centre y **48**,
+last y **252** in a 300-tall book, 48px clear top and bottom — which is what makes the spine read as
+a continuous wire rather than a run of dots that happens to stop.
+
+**Hover** changes exactly one thing: `book`'s effect style goes `Shadow/Card/Day` →
+**`Shadow/Card Hover/Day`**. No transform, no fill change, no lift on the label. Everything else in
+the 16 variants is byte-identical.
+
+### The three cover tokens, and why they are not primitives
+
+`title`, `meta` and the coils originally bound `Primitives/white`, `Primitives/alpha/white-74` and
+`Primitives/alpha/white-58` **directly** — a design-system violation, and a contrast bug: white at
+74% measures **4.26 / 4.40 / 4.05** against `cover/2`, `cover/3` and `cover/4`, all below 4.5:1.
+Fixed by adding `Color/cover/label` (→ white), `Color/cover/label-2` (→ a new
+`Primitives/alpha/white-84`, worst case **5.93**) and `Color/cover/wire` (→ `alpha/white-58`), then
+rebinding all 16 variants — 144 rebindings. The hidden `photo` plate was rebound the same way, onto
+`--cover-shade` and `--cover-wire`.
+
+**Do not bind a cover child to a primitive.** The audit that catches raw hexes does not catch a
+primitive binding, and a primitive has no contrast contract attached to it.
+
+### Placing it on a Night screen
+
+The component ships the **Day** shadow styles. Every instance on a Night frame must override `book`
+to `Shadow/Card/Night` (and `Shadow/Card Hover/Night` on `State=Hover`). The component description
+says so; no automated check will catch it, because an effect style is not a paint.
+
+Containers holding these tiles need **`clipsContent = false`** — `Shadow/Card/*` reaches 12px below
+and 8px to the sides, and a hugging container that clips slices it.
 
 ---
 

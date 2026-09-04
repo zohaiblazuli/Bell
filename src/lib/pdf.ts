@@ -7,7 +7,7 @@
  */
 
 import type * as PdfJs from 'pdfjs-dist';
-import type { PDFDocumentProxy } from 'pdfjs-dist';
+import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
 import type { TextItem } from 'pdfjs-dist/types/src/display/api';
 
 /** Rows on the same printed line can differ by a fraction of a point. */
@@ -52,6 +52,19 @@ export interface RenderedSize {
 }
 
 /**
+ * The render in flight for each canvas, so a second render on the same one cancels the first.
+ *
+ * pdf.js refuses to draw two pages into one canvas at once — *"Cannot use the same canvas during
+ * multiple render() operations"* — and every caller here legitimately re-renders the same element:
+ * the reader on zoom, a thumbnail when it scrolls back into reach, the mark-scheme sheet whenever
+ * React re-runs an effect (which StrictMode does deliberately, twice, in development). Handling it
+ * once here beats asking four call sites to remember.
+ *
+ * A `WeakMap`, so an unmounted canvas takes its entry with it.
+ */
+const inFlight = new WeakMap<HTMLCanvasElement, RenderTask>();
+
+/**
  * Draw one page into `canvas` at `targetCssWidth` logical pixels wide, backed at the display's
  * real pixel density so text stays crisp when zoomed.
  */
@@ -74,7 +87,25 @@ export async function renderPage(
   canvas.style.width = `${cssWidth}px`;
   canvas.style.height = `${cssHeight}px`;
 
-  await page.render({ canvas, viewport }).promise;
+  // Cancel whatever was being drawn here and wait for it to actually stop: `cancel()` only asks,
+  // and starting a second render before the first has unwound is precisely what pdf.js rejects.
+  const previous = inFlight.get(canvas);
+  if (previous) {
+    previous.cancel();
+    await previous.promise.catch(() => {});
+  }
+
+  const task = page.render({ canvas, viewport });
+  inFlight.set(canvas, task);
+  try {
+    await task.promise;
+  } catch (error) {
+    // A cancelled render is the expected outcome of a newer one starting, not a failure worth
+    // showing anybody: the render that replaced it is about to paint the same box.
+    if ((error as { name?: string })?.name !== 'RenderingCancelledException') throw error;
+  } finally {
+    if (inFlight.get(canvas) === task) inFlight.delete(canvas);
+  }
   page.cleanup();
   return { cssWidth, cssHeight };
 }

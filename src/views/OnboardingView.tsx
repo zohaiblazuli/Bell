@@ -35,7 +35,8 @@ import SubjectIcon from '@ui/icons/SubjectIcon';
 import Icon from '@/components/Icon';
 import WindowLights from '@/components/WindowLights';
 import { sessionLabel } from '@/lib/difficulty';
-import type { IngestProgress, LevelCount, Subject } from '@/lib/types';
+import type { BulkProgress } from '@/state/useLibraryIndex';
+import type { LevelCount, Subject } from '@/lib/types';
 
 /** How hard the user intends to work. Stored inside `onboarding.plan`. */
 export type RhythmKey = 'casual' | 'steady' | 'intense';
@@ -129,6 +130,53 @@ const MOODS: Record<number, BellMood> = {
 };
 
 /** 4 columns x 3 rows — the measured grid (§5.3). Also what "Showing 12 of 34" counts. */
+/**
+ * 05 is the one place the app makes anyone wait, and a wait with nothing to read is longer than a
+ * wait with something. So the status line natters. Every line is a real thing a person does to a
+ * pile of exam papers, except the two that are not, which is the joke.
+ */
+const CHATTER = [
+  'Scuttling…',
+  'Rifling the filing cabinet…',
+  'Uncrumpling…',
+  'Collating…',
+  'Alphabetising…',
+  'Flibbertigibbeting…',
+  'Sharpening pencils…',
+  'Squaring the margins…',
+  'Marshalling mark schemes…',
+  'Hole-punching…',
+  'Shuffling sittings…',
+  'Bepondering…',
+  'Unstapling…',
+  'Nibbling a corner…',
+  'Sorting by hardness…',
+  'Consulting the crab…',
+] as const;
+
+/** How often the chatter changes and the estimate is recomputed. */
+const BEAT_MS = 2600;
+
+/**
+ * Papers that must land before an estimate is shown.
+ *
+ * The first few carry the TLS handshake and whatever the connection was doing beforehand, so
+ * projecting off one of them reads "about 4 hours left" on a job that takes two minutes. Better to
+ * say nothing for a moment than to say something wrong with a number in it.
+ */
+const ETA_AFTER = 6;
+
+/** `about 4 minutes left`. Deliberately vague: a projection is not a countdown. */
+function etaLabel(ms: number): string {
+  const seconds = Math.round(ms / 1000);
+  if (seconds < 20) return 'a few seconds left';
+  if (seconds < 90) return `about ${Math.max(10, Math.round(seconds / 10) * 10)} seconds left`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `about ${plural(minutes, 'minute', 'minutes')} left`;
+  const hours = Math.floor(minutes / 60);
+  return `about ${plural(hours, 'hour', 'hours')} ${minutes % 60}m left`;
+}
+
 const TILES_PER_PAGE = 12;
 
 /** 28 blocks at 24x10, gap 4 → the 780 bar of §5.5. */
@@ -175,10 +223,15 @@ export interface Props {
   levels: LevelCount[];
   /** The sittings 04 offers, soonest first. Empty and the step says so and stops asking. */
   sessions: SessionOption[];
-  /** True while the Rust ingest is walking the library. Drives 05, and 05 → 06 when it clears. */
+  /** True for the whole of 05's prepare pass. Drives 05, and 05 → 06 when it clears. */
   busy: boolean;
-  /** The ingest's own progress events. Null before the first one arrives. */
-  progress: IngestProgress | null;
+  /** The catalogue sync's own progress events. Null before the first one arrives. */
+  progress: string | null;
+  /**
+   * Aggregate download progress, counted in papers. Present once the papers start arriving, which
+   * is what turns 05's indeterminate sweep into a real bar with a real estimate behind it.
+   */
+  download?: BulkProgress | null;
   /**
    * Papers the ingest is expected to find, when that is genuinely known — a previous index's
    * `LibraryStats.docs` on a rebuild. On a true first run nothing knows it, so leave it null: 05
@@ -190,7 +243,7 @@ export interface Props {
   indexedPapers?: number | null;
   /** Why the build failed, if it did. Shown on 05 with a retry; the flow does not advance. */
   error?: string | null;
-  /** Start the real ingest. Fired by 04's "Build my library" and by 05's retry. */
+  /** Fetch the catalogue and download the chosen subjects. Fired by 04 and by 05's retry. */
   onBuild: () => void;
   /** Leave onboarding for the app. Fired by 05's "Run in the background" and 06's "Open Bell". */
   onFinish: () => void;
@@ -204,6 +257,7 @@ export default function OnboardingView({
   sessions,
   busy,
   progress,
+  download = null,
   expectedPapers = null,
   indexedPapers = null,
   error = null,
@@ -251,7 +305,16 @@ export default function OnboardingView({
   const chosenSession = sessions.find((s) => s.scode === answers.plan.session) ?? null;
   const days = daysUntil(chosenSession?.firstPaper);
 
-  /** §3.3: Continue is live only when the step it sits under has been answered. */
+  /**
+   * §3.3: Continue is live only when the step it sits under has been answered.
+   *
+   * 05 is the exception, and it is a deliberate change from the spec. The file offers "Run in the
+   * background" there, which made sense when the step was a folder walk nobody needed to watch —
+   * but it now downloads every paper for the chosen subjects, and a library half-fetched is a
+   * library that fails to open a paper in the middle of a revision session. So the button waits
+   * until the papers are actually in, and the label says what is happening instead of offering an
+   * exit that has nothing behind it. A failure still gets its own retry inside the step.
+   */
   const satisfied =
     step === 1
       ? answers.name.trim().length > 0
@@ -261,7 +324,9 @@ export default function OnboardingView({
           ? noSubjects || answers.subjects.length > 0
           : step === 4
             ? answers.plan.rhythm != null && (answers.plan.session != null || sessions.length === 0)
-            : true;
+            : step === 5
+              ? !busy
+              : true;
 
   const finish = useCallback(() => {
     onAnswer('done', true);
@@ -272,7 +337,7 @@ export default function OnboardingView({
     if (step <= 3) setStep(step + 1);
     else if (step === 4) {
       // The one place the build starts. Doing it here rather than in an effect on 05 keeps it tied
-      // to the press that says "Build my library", so a re-render cannot fire a second walk of G:.
+      // to the press that says "Get the catalogue", so a re-render cannot fire a second fetch.
       setStep(5);
       onBuild();
     } else finish();
@@ -351,29 +416,54 @@ export default function OnboardingView({
   const board = BOARDS.find((b) => b.level === answers.board) ?? null;
   const rhythm = RHYTHMS.find((r) => r.key === answers.plan.rhythm) ?? null;
 
-  // §3.3, verbatim. 05's is the one Secondary — it leaves a build running rather than committing to
-  // anything — and 01/02/03 carry no leading glyph (TRAP 14: the template's chevron points down).
+  // §3.3, verbatim except for 05: it no longer offers to leave a build running, because the build
+  // is now the download the library depends on — see `satisfied`. 01/02/03 carry no leading glyph
+  // (TRAP 14: the template's chevron points down).
   const continueLabel =
     step === 3 && !noSubjects
       ? `Continue with ${answers.subjects.length}`
       : step === 4
-        ? 'Build my library'
+        ? 'Get the catalogue'
         : step === 5
-          ? 'Run in the background'
+          ? busy
+            ? 'Downloading…'
+            : 'Open Bell'
           : step === 6
             ? 'Open Bell'
             : 'Continue';
 
   /**
-   * 05's one honest number. A percentage needs a denominator and `IngestProgress` has none — so
-   * unless the caller knows what to expect, there is no percentage and no proportion of the bar to
-   * light. That is the whole reason `expectedPapers` exists.
+   * 05's progress, in two halves.
+   *
+   * The catalogue sync genuinely has no denominator — it is one small request — so the bar sweeps
+   * indeterminate through it. The paper download does have one, and it is the half that takes the
+   * time, so from the first paper onward the bar is real. One unit is one paper and both of its
+   * documents; see `BulkProgress`.
    */
   const pct =
-    progress && expectedPapers && expectedPapers > 0
-      ? Math.min(100, Math.round((progress.docs / expectedPapers) * 100))
+    download && download.total > 0
+      ? Math.min(100, Math.round((download.done / download.total) * 100))
       : null;
   const lit = pct == null ? 0 : Math.round((pct / 100) * PROGRESS_BLOCKS);
+
+  /* A slow heartbeat, so the chatter changes and the estimate re-projects even between papers.
+     Only while the pass is running: a timer ticking behind a finished screen is a leak. */
+  const [beat, setBeat] = useState(0);
+  useEffect(() => {
+    if (step !== 5 || !busy) return;
+    const timer = window.setInterval(() => setBeat((n) => n + 1), BEAT_MS);
+    return () => window.clearInterval(timer);
+  }, [step, busy]);
+
+  const chatter = CHATTER[beat % CHATTER.length];
+
+  const eta = useMemo(() => {
+    if (!download || download.done < ETA_AFTER || download.done >= download.total) return null;
+    const perPaper = (Date.now() - download.startedAt) / download.done;
+    return (download.total - download.done) * perPaper;
+    // `beat` is the dependency that matters: it is what re-projects between papers.
+     
+  }, [download, beat]);
 
   /**
    * 06's three rows (§5.6). Each one is built from an answer, so a row whose answer never got made
@@ -469,7 +559,7 @@ export default function OnboardingView({
                     const on = answers.board === b.level;
                     /* The count is the index's, or there is no count. §5.2 draws `5,420 papers`
                        because a mock must; an unbuilt index has no number to print. */
-                    const docs = levels.find((l) => l.level === b.level)?.docs ?? null;
+                    const docs = levels.find((l) => l.level === b.level)?.papers ?? null;
                     return (
                       <button
                         key={b.level}
@@ -506,7 +596,7 @@ export default function OnboardingView({
                   <div className="onb-heading">
                     <h1 className="t-display-setup-title">Pick your subjects</h1>
                     <p className="onb-sub t-body-default">
-                      Only these appear in your library and your dashboard.
+                      These are the subjects listed in your sidebar. You can change them in Settings.
                     </p>
                   </div>
                   <div className="onb-count">
@@ -516,15 +606,30 @@ export default function OnboardingView({
                 </div>
 
                 {noSubjects ? (
-                  /* The flow asks for subjects before it builds the index, so on a true first run
-                     there is genuinely nothing to offer. Say which of the two silences it is —
-                     an empty index reads nothing like a board the drive happens not to hold — and
-                     let `satisfied` pass the step, because there is nothing here to answer. */
-                  <p className="onb-empty t-body-default">
-                    {subjects.length === 0
-                      ? 'Nothing is indexed yet, so there are no subjects to pick from. Bell builds the index in a moment — choose your subjects from Settings once it has.'
-                      : `The index holds no ${answers.board} subjects. Go back and pick another qualification, or rebuild the index from Settings.`}
-                  </p>
+                  /* Three different silences, and conflating them is what made this step a dead
+                     end: the catalogue still arriving, the catalogue having failed to arrive, and a
+                     qualification the catalogue genuinely has nothing for. Only the middle one is a
+                     problem the user can act on, and it is the one that used to read as the first.
+                     `satisfied` passes the step in every case, because there is nothing to answer. */
+                  subjects.length === 0 ? (
+                    busy ? (
+                      <p className="onb-empty t-body-default">
+                        Fetching the catalogue from ShinyPapers…
+                      </p>
+                    ) : (
+                      <div className="onb-fail">
+                        <Notice>
+                          {error ??
+                            'The catalogue has not arrived yet, so there are no subjects to pick from.'}
+                        </Notice>
+                        <Button icon="sync" label="Try again" onClick={onBuild} />
+                      </div>
+                    )
+                  ) : (
+                    <p className="onb-empty t-body-default">
+                      {`The catalogue holds no ${answers.board} subjects. Go back and pick another qualification.`}
+                    </p>
+                  )
                 ) : (
                   <>
                     <div className="onb-search">
@@ -672,11 +777,12 @@ export default function OnboardingView({
               <>
                 <div className="onb-heading">
                   <h1 className="t-display-setup-title">Building your library</h1>
-                  {/* The spec's copy reads "Downloading and indexing", which this app does not do:
-                      the ingest walks G: in place and writes only the local index. One word changed
-                      so the sentence is true — and the count is the real one, not the spec's six. */}
+                  {/* The spec's copy reads "Downloading and indexing", and for the first time it is
+                      literally what happens: every question paper and mark scheme for the chosen
+                      subjects is fetched here, so the app is usable with the network unplugged
+                      afterwards. The count is the real one, not the spec's six. */}
                   <p className="onb-sub t-body-default">
-                    Reading and indexing every past paper for{' '}
+                    Downloading every past paper and mark scheme for{' '}
                     {answers.subjects.length > 0
                       ? `your ${plural(answers.subjects.length, 'subject', 'subjects')}`
                       : 'your library'}
@@ -709,23 +815,22 @@ export default function OnboardingView({
 
                 <p className="onb-status">
                   <span className="onb-status__now t-mono-small">
-                    {progress
-                      ? `${progress.current} — ${
-                          expectedPapers
-                            ? `${progress.docs.toLocaleString()} of ${expectedPapers.toLocaleString()} papers`
-                            : plural(progress.docs, 'paper', 'papers')
+                    {download
+                      ? `${chatter} ${plural(download.done, 'paper', 'papers')} of ${download.total.toLocaleString()}${
+                          download.failed > 0 ? ` · ${download.failed} unavailable` : ''
                         }`
-                      : /* SetupView's own wording for the same moment — one phrase, not two. */
-                        'walking the tree…'}
+                      : (progress ?? 'fetching the catalogue…')}
                   </span>
                   {/* §5.5 runs this row the full 944 while the bar stops at 780, so the right-hand
                       figure lands on the same column as the step label and the button (TRAP 16). */}
                   <span className="onb-status__pct t-mono-small">
-                    {pct != null
-                      ? `${pct}%`
-                      : progress
-                        ? plural(progress.subjects, 'subject', 'subjects')
-                        : ''}
+                    {eta
+                      ? etaLabel(eta)
+                      : download
+                        ? `${pct ?? 0}%`
+                        : expectedPapers
+                          ? plural(expectedPapers, 'paper', 'papers')
+                          : ''}
                   </span>
                 </p>
 
@@ -787,8 +892,10 @@ export default function OnboardingView({
                 there is no way out of onboarding but through it. */}
             {step >= 2 && step <= 4 && <Button label="Back" onClick={() => setStep(step - 1)} />}
             <Button
-              variant={step === 5 ? 'secondary' : 'primary'}
-              icon={step === 4 ? 'check' : step === 6 ? 'ret' : undefined}
+              /* 05 was the file's one Secondary because it walked away from a running job. It
+                 waits for that job now, so it commits like every other step and takes Primary. */
+              variant="primary"
+              icon={step === 4 ? 'check' : step === 5 && !busy ? 'ret' : step === 6 ? 'ret' : undefined}
               label={continueLabel}
               disabled={!satisfied}
               onClick={advance}

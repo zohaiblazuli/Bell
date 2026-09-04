@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { renderPage } from '../lib/pdf';
+import { cropLayers, type ClipRect } from '../lib/clip';
 import {
   drawMarks,
   markFor,
@@ -39,6 +40,13 @@ export interface Props {
    * thumbnails started earlier would queue in front of it.
    */
   onRendered?: () => void;
+  /**
+   * Clip mode: a marquee takes the page's pointer events instead of the ink layer, and releasing
+   * hands back a PNG of the dragged region. It suppresses drawing entirely rather than layering on
+   * top of it — one drag cannot mean both "write here" and "keep this".
+   */
+  clipping?: boolean;
+  onClip?: (png: Blob) => void;
 }
 
 export default function PaperCanvas({
@@ -50,12 +58,17 @@ export default function PaperCanvas({
   marks,
   onCommit,
   onRendered,
+  clipping,
+  onClip,
 }: Props) {
   const pageCanvas = useRef<HTMLCanvasElement>(null);
   const inkCanvas = useRef<HTMLCanvasElement>(null);
   const draft = useRef<Mark | null>(null);
   const [size, setSize] = useState({ cssWidth: width, cssHeight: Math.round(width * 1.414) });
   const [rendering, setRendering] = useState(true);
+  /** The live marquee, in fractions of the page box. Null when no drag is in flight. */
+  const [marquee, setMarquee] = useState<ClipRect | null>(null);
+  const clipStart = useRef<Point | null>(null);
 
   // Held in a ref so a fresh closure from the parent cannot invalidate the render effect and
   // re-rasterise the page for nothing.
@@ -105,7 +118,7 @@ export default function PaperCanvas({
   }
 
   function start(e: ReactPointerEvent<HTMLCanvasElement>) {
-    if (!tool || e.button !== 0) return;
+    if (!tool || clipping || e.button !== 0) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     // The canvas is the tone context: it sits inside `.app`, so the swatch token resolves to the
     // literal for the tone the stroke is actually being drawn in.
@@ -130,6 +143,58 @@ export default function PaperCanvas({
     if (mark) onCommit(mark);
   }
 
+  /* --- clip mode ---------------------------------------------------------- */
+
+  /** A drag smaller than this is a mis-click, not a region. Fractions of the page box. */
+  const MIN_CLIP = 0.02;
+
+  const rectBetween = (a: Point, b: Point): ClipRect => ({
+    x: Math.min(a.x, b.x),
+    y: Math.min(a.y, b.y),
+    w: Math.abs(b.x - a.x),
+    h: Math.abs(b.y - a.y),
+  });
+
+  function clipStartAt(e: ReactPointerEvent<HTMLDivElement>) {
+    if (e.button !== 0) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const p = pointIn(e.currentTarget, e);
+    clipStart.current = p;
+    setMarquee({ x: p.x, y: p.y, w: 0, h: 0 });
+  }
+
+  function clipMove(e: ReactPointerEvent<HTMLDivElement>) {
+    if (!clipStart.current) return;
+    setMarquee(rectBetween(clipStart.current, pointIn(e.currentTarget, e)));
+  }
+
+  function clipFinish(e: ReactPointerEvent<HTMLDivElement>) {
+    const from = clipStart.current;
+    clipStart.current = null;
+    setMarquee(null);
+    if (!from) return;
+    const rect = rectBetween(from, pointIn(e.currentTarget, e));
+    if (rect.w < MIN_CLIP || rect.h < MIN_CLIP) return;
+
+    const layers = [pageCanvas.current, inkCanvas.current].filter(
+      (c): c is HTMLCanvasElement => c != null,
+    );
+    // Both layers, in paint order, so a clip keeps the highlight that is half the reason for
+    // keeping the question.
+    void cropLayers(layers, rect)
+      .then((png) => onClip?.(png))
+      .catch(() => {});
+  }
+
+  /** A pointer position as a fraction of an element's own box. */
+  function pointIn(el: HTMLElement, e: { clientX: number; clientY: number }): Point {
+    const box = el.getBoundingClientRect();
+    return {
+      x: Math.min(1, Math.max(0, (e.clientX - box.left) / box.width)),
+      y: Math.min(1, Math.max(0, (e.clientY - box.top) / box.height)),
+    };
+  }
+
   return (
     <div
       className="rd-paper"
@@ -140,13 +205,36 @@ export default function PaperCanvas({
       <canvas
         ref={inkCanvas}
         className="rd-paper-ink"
-        data-live={tool ? 'true' : undefined}
+        data-live={tool && !clipping ? 'true' : undefined}
         aria-label={`Annotation layer for page ${page}`}
         onPointerDown={start}
         onPointerMove={move}
         onPointerUp={finish}
         onPointerCancel={finish}
       />
+      {clipping && (
+        <div
+          className="rd-clip"
+          role="application"
+          aria-label={`Drag a box around the part of page ${page} to keep`}
+          onPointerDown={clipStartAt}
+          onPointerMove={clipMove}
+          onPointerUp={clipFinish}
+          onPointerCancel={clipFinish}
+        >
+          {marquee && (
+            <span
+              className="rd-clip-box"
+              style={{
+                left: `${marquee.x * 100}%`,
+                top: `${marquee.y * 100}%`,
+                width: `${marquee.w * 100}%`,
+                height: `${marquee.h * 100}%`,
+              }}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }

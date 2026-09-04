@@ -4,19 +4,25 @@ import AppBackground from './components/AppBackground';
 import Sidebar, { type View } from './components/Sidebar';
 import TopBar from './components/TopBar';
 import CommandPalette, { screenCommands, type PaletteCommand } from './components/CommandPalette';
+import Button from '@ui/Button';
+import Dialog from '@ui/Dialog';
+import MrBell from '@ui/brand/MrBell';
+import * as api from './lib/api';
 import Splash, { type SplashPhase, type SplashTargets } from './components/Splash';
 import { UpdateDialog, UpdatePill } from './components/UpdateFlow';
 import LibraryView from './views/LibraryView';
 import DashboardView from './views/DashboardView';
 import WorkspaceView from './views/WorkspaceView';
+import NotebooksView from './views/NotebooksView';
+import NotebookView from './views/NotebookView';
 import SettingsView from './views/SettingsView';
 import OnboardingView, { type SessionOption } from './views/OnboardingView';
 import { usePrefs } from './state/usePrefs';
 import { useLibraryIndex } from './state/useLibraryIndex';
 import { useStudyState } from './state/useStudyState';
 import { useUpdates } from './state/useUpdates';
+import { useNotebooks } from './state/useNotebooks';
 import { useMascot } from './state/useMascot';
-import * as api from './lib/api';
 import { UPDATES_CONFIGURED } from './lib/updates';
 import { windowsBetween } from './lib/sessions';
 import { loadRecent, type MarkFilter } from './lib/store';
@@ -32,12 +38,15 @@ import type { PaperRow } from './lib/types';
  * ability to test a screen on its own. See `state/usePrefs.ts`.
  */
 
-/** The bar's title per route. The Reader composes its own, so it is absent here. */
+/** The bar's title per route. The Reader and the open notebook compose their own, so both are here
+ *  only because the union demands it — neither renders `TopBar` from `screens()`. */
 const TITLES: Record<View, string> = {
   library: 'Library',
   bookmarks: 'Bookmarks',
   recent: 'Recent',
   dashboard: 'Dashboard',
+  notebooks: 'Notebooks',
+  notebook: 'Notebook',
   settings: 'Settings',
   reader: 'Reader',
   onboarding: 'Welcome',
@@ -55,12 +64,73 @@ export default function App() {
 
   const [view, setView] = useState<View>(() => (onboarding.done ? 'library' : 'onboarding'));
   const [openPaper, setOpenPaper] = useState<PaperRow | null>(null);
+  /**
+   * Which notebook is open, and at which disk page index.
+   *
+   * A pair rather than a bare id because the Reader's clip confirmation offers "Go there", and
+   * landing on the shelf and making them find the page again would waste the one gesture that makes
+   * clipping worth having. `page` seeds the spread; the notebook owns it from then on.
+   */
+  const [openNotebook, setOpenNotebook] = useState<{ id: string; page: number } | null>(null);
+  /** Set when something elsewhere asked for the New Notebook dialog — the empty clip picker does. */
+  const [newNotebook, setNewNotebook] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [palette, setPalette] = useState(false);
 
   const lib = useLibraryIndex(view === 'onboarding');
+
+  /**
+   * The sidebar lists the subjects you sit, not the whole catalogue.
+   *
+   * `onboarding.subjects` holds syllabus codes — answered in the flow's step 03, edited in
+   * Settings, and stored as codes rather than ids so a resync cannot orphan them. With
+   * nothing chosen the whole catalogue is shown rather than an empty rail: someone who
+   * skipped the flow should still be able to reach a paper, and Settings says so.
+   */
+  const mySubjects = useMemo(() => {
+    const chosen = new Set(onboarding.subjects);
+    if (chosen.size === 0) return lib.subjects;
+    return lib.subjects.filter((s) => chosen.has(s.code));
+  }, [lib.subjects, onboarding.subjects]);
+
+  /**
+   * What the sidebar's Library row counts.
+   *
+   * The catalogue total would be a lie next to a filtered list — 2,605 beside a screen showing 126.
+   * Summed from the subjects on show, so the number and the list always agree.
+   */
+  const visiblePapers = useMemo(
+    () => mySubjects.reduce((total, s) => total + s.papers, 0),
+    [mySubjects],
+  );
+
+  /** Add or drop one subject. Order is the catalogue's, not the order they were pressed. */
+  const toggleSubject = useCallback(
+    (code: string) => {
+      const chosen = new Set(onboarding.subjects);
+      if (chosen.has(code)) chosen.delete(code);
+      else chosen.add(code);
+      prefs.answerOnboarding(
+        'subjects',
+        lib.subjects.filter((s) => chosen.has(s.code)).map((s) => s.code),
+      );
+    },
+    [onboarding.subjects, lib.subjects, prefs],
+  );
   const study = useStudyState();
   const up = useUpdates(settings.updateAuto, lib.setError);
+  const notebooks = useNotebooks();
+
+  /**
+   * The reset confirmation. Held here rather than in the palette because the command only
+   * *asks* — a keystroke away from erasing everything is exactly the shape of accident this
+   * dialog exists to prevent, so the palette closes and the decision happens in a modal.
+   */
+  /** True for the whole of onboarding's prepare pass — the catalogue sync and the downloads. */
+  const [preparing, setPreparing] = useState(false);
+
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const [splash, setSplash] = useState<SplashPhase>('splash');
   const [splashTargets, setSplashTargets] = useState<SplashTargets | null>(null);
@@ -101,6 +171,78 @@ export default function App() {
     },
     [study],
   );
+
+  /**
+   * Open a notebook onto its spread. Called with a page index from the Reader's clip confirmation and
+   * without one from the shelf, where the whole notebook is what was asked for.
+   *
+   * The shelf's row is re-read on the way in rather than trusted: `pages` is derived from the
+   * filesystem, and a clip that just spilled onto a new page would otherwise open a spread the
+   * cached row does not know exists.
+   */
+  const openNotebookAt = useCallback(
+    (id: string, page = 0) => {
+      setOpenNotebook({ id, page });
+      setFocusMode(false);
+      setView('notebook');
+      void notebooks.refresh();
+    },
+    [notebooks],
+  );
+
+  /**
+   * Wipe and start over.
+   *
+   * The reload is not laziness: `store.ts` hydrates every key into a module-level cache once
+   * before the first render, and `usePrefs`, `useStudyState` and `useLibraryIndex` all hold
+   * their own copies of what was just deleted. Resetting a dozen hooks by hand would leave one
+   * of them carrying a stale set; a reload rebuilds the lot from an empty disk, `loadOnboarding`
+   * finds no history, and the app comes up on onboarding exactly as a fresh install does.
+   */
+  const runReset = useCallback(async () => {
+    setResetting(true);
+    try {
+      await api.resetApp();
+      window.location.reload();
+    } catch (e) {
+      lib.setError(String(e));
+      setResetting(false);
+      setResetOpen(false);
+    }
+  }, [lib]);
+
+  /**
+   * Onboarding's step 05: fill the library before letting anyone in.
+   *
+   * The catalogue first, then every paper for the subjects just chosen — question papers only,
+   * because Rust brings each mark scheme along on a task of its own. Subjects are re-read from
+   * Rust rather than taken from `lib.subjects`, which is a render behind the sync that just ran.
+   *
+   * `preparing` is what holds the flow on step 05: it stands in for the whole pass, so the
+   * existing "advance when busy drops with no error" rule needs no rewriting.
+   */
+  const prepareLibrary = useCallback(async () => {
+    setPreparing(true);
+    try {
+      await lib.runSync();
+      const chosen = new Set(onboarding.subjects);
+      if (chosen.size === 0) return;
+
+      const subjects = await api.listSubjects(null);
+      const jobs: { paperId: number; kind: 'qp' }[] = [];
+      for (const subject of subjects) {
+        if (!chosen.has(subject.code)) continue;
+        const papers = await api.listPapers({ subjectId: subject.id });
+        for (const paper of papers) {
+          // Skip what is already here, so a retry after a failure resumes rather than restarts.
+          if (!paper.qpPath) jobs.push({ paperId: paper.id, kind: 'qp' });
+        }
+      }
+      await lib.downloadAll(jobs);
+    } finally {
+      setPreparing(false);
+    }
+  }, [lib, onboarding.subjects]);
 
   const pickSubject = useCallback(
     (id: number | null) => {
@@ -162,7 +304,20 @@ export default function App() {
 
   /* ---- derived ------------------------------------------------------------ */
 
-  const shown = useMemo(() => study.rows(lib.papers), [study, lib.papers]);
+  /**
+   * What the Library lists.
+   *
+   * Narrowed to the subjects you sit, for the same reason the sidebar is: the catalogue holds every
+   * paper Cambridge publishes for twenty-three subjects, and opening on somebody else's Accounting
+   * papers is not a library. A marked list is left alone — a bookmark you set before changing your
+   * subjects should still be reachable from Bookmarks, rather than silently disappearing.
+   */
+  const shown = useMemo(() => {
+    const rows = study.rows(lib.papers);
+    const chosen = new Set(onboarding.subjects);
+    if (chosen.size === 0 || study.markFilter !== null) return rows;
+    return rows.filter((p) => chosen.has(p.subjectCode));
+  }, [study, lib.papers, onboarding.subjects]);
 
   /**
    * The sittings onboarding's step 04 offers. Dates come from `lib/sessions.ts`; `firstPaper` stays
@@ -180,6 +335,7 @@ export default function App() {
     const list = screenCommands(
       {
         onLibrary: () => go('library'),
+        onNotebooks: () => go('notebooks'),
         onDashboard: () => go('dashboard'),
         onBookmarks: () => go('bookmarks'),
         onRecent: () => go('recent'),
@@ -188,9 +344,10 @@ export default function App() {
         onCheckUpdates: UPDATES_CONFIGURED ? () => void up.check() : undefined,
       },
       {
-        docs: lib.stats?.docs,
+        docs: lib.stats?.papers,
         bookmarks: study.marks.bookmarks.size,
         recent: study.recentCount,
+        notebooks: notebooks.list?.length ?? null,
       },
     );
     if (study.marks.revision.size) {
@@ -212,20 +369,37 @@ export default function App() {
         run: toggleTone,
       },
       {
-        id: 'reindex',
-        label: 'Rebuild the library index',
-        hint: lib.busy ? 'Already running' : 'Walk the library again',
+        id: 'reset',
+        label: 'Reset Bell…',
+        hint: 'Erase everything and start over',
+        /* No trash glyph in the shipped sprite; `warn` is the honest stand-in and reads
+           correctly for the one command in the palette that destroys something. */
+        icon: 'warn',
+        keywords: 'erase wipe clear start over factory',
+        run: () => setResetOpen(true),
+      },
+      {
+        id: 'sync',
+        label: 'Sync the catalogue',
+        hint: lib.busy ? 'Already running' : 'Check ShinyPapers for new papers',
         icon: 'folder',
-        keywords: 'ingest scan refresh',
-        run: () => void lib.runIngest(),
+        keywords: 'catalogue refresh update fetch',
+        run: () => void lib.runSync(),
       },
     );
     return list;
-  }, [go, lib, showMarked, study, toggleTone, tone, up]);
+  }, [go, lib, showMarked, study, toggleTone, tone, up, notebooks.list]);
 
   /* ---- render -------------------------------------------------------------- */
 
   const inReader = view === 'reader' && openPaper != null;
+  /**
+   * The open spread. Its row comes from the shelf's list rather than being carried in the route,
+   * because `pages` and `bytes` are derived from the filesystem — a clip that just spilled onto a new
+   * page has to be reflected, and a stale copy would open a spread the notebook does not have.
+   */
+  const openNb = openNotebook ? notebooks.find(openNotebook.id) : null;
+  const inNotebook = view === 'notebook' && openNotebook != null;
   const libraryMode = view === 'bookmarks' ? 'bookmarks' : view === 'recent' ? 'recent' : 'library';
   const isLibraryRoute = view === 'library' || view === 'bookmarks' || view === 'recent';
   /** The motion gate, read by Mr. Bell's rig and by the tone crossfade. */
@@ -258,15 +432,88 @@ export default function App() {
             subjects={lib.subjects}
             levels={lib.stats?.levels ?? []}
             sessions={planSessions}
-            busy={lib.busy}
+            busy={preparing || lib.busy}
             progress={lib.progress}
-            indexedPapers={lib.stats?.docs ?? null}
+            indexedPapers={lib.stats?.papers ?? null}
+            download={lib.bulk}
             error={lib.error}
-            onBuild={() => void lib.runIngest()}
+            onBuild={() => void prepareLibrary()}
             onFinish={() => {
               prefs.answerOnboarding('done', true);
               go('library');
             }}
+          />
+        </div>
+        {startup}
+      </>
+    );
+  }
+
+  /**
+   * The open notebook is its own shell too, and for the same kind of reason: `screen-notebooks.md` §5
+   * puts the window lights inside the notebook's own 1320-wide top bar, which is only possible if
+   * there is no sidebar to hold them. The spread, the 64px dock and the 268px inspector then divide
+   * the whole window, exactly as the file draws it. Getting back is the `back` button at x 78.
+   *
+   * The palette stays mounted, because jumping to a paper from a notebook is the same gesture in
+   * reverse as clipping one into it — and it has to sit inside `.app`, where the tone vars live.
+   */
+  if (inNotebook && openNotebook) {
+    return (
+      <>
+        <Sprite />
+        <div
+          className="app app-bare"
+          data-view="notebook"
+          data-tone={tone}
+          data-motion={motion}
+          data-focus={focusMode ? 'on' : 'off'}
+        >
+          <AppBackground />
+          {openNb ? (
+            <NotebookView
+              notebook={openNb}
+              startPage={openNotebook.page}
+              subjects={lib.subjects}
+              tone={tone}
+              onTone={toggleTone}
+              focus={focusMode}
+              onToggleFocus={() => setFocusMode((f) => !f)}
+              onSearch={() => setPalette(true)}
+              onSaveMeta={(meta) => notebooks.save(openNotebook.id, meta)}
+              onDelete={async () => {
+                await notebooks.remove(openNotebook.id);
+                setOpenNotebook(null);
+                go('notebooks');
+              }}
+              onBack={() => {
+                setOpenNotebook(null);
+                setFocusMode(false);
+                go('notebooks');
+              }}
+            />
+          ) : (
+            /* The shelf is still being read, or the notebook has gone. Both are momentary and both
+               look the same from here, so say the honest thing rather than guessing which. */
+            <div className="view">
+              <div className="stub">
+                <div className="stub-inner">
+                  <h2>{notebooks.list == null ? 'Opening…' : 'That notebook is not here'}</h2>
+                  <p>
+                    {notebooks.list == null
+                      ? 'Reading it off this device.'
+                      : 'It may have been deleted. The shelf has the rest.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <CommandPalette
+            open={palette}
+            onClose={() => setPalette(false)}
+            onOpenPaper={openPaperAt}
+            commands={commands}
           />
         </div>
         {startup}
@@ -289,12 +536,13 @@ export default function App() {
         <Sidebar
           view={view}
           onView={go}
-          subjects={lib.subjects}
+          subjects={mySubjects}
           activeSubject={lib.subjectId}
           onSubject={pickSubject}
-          paperCount={lib.stats?.docs ?? null}
+          paperCount={lib.stats ? visiblePapers : null}
           bookmarkCount={study.marks.bookmarks.size}
           recentCount={loadRecent().length}
+          notebookCount={notebooks.list?.length ?? null}
           mascot={mascot.mood}
           onPokeMascot={mascot.poke}
           update={
@@ -316,6 +564,38 @@ export default function App() {
           onOpenPaper={openPaperAt}
           commands={commands}
         />
+
+        <Dialog
+          open={resetOpen}
+          onClose={() => (resetting ? undefined : setResetOpen(false))}
+          title="Reset Bell?"
+          art={<MrBell size={96} mood="alarm" />}
+          actions={
+            <>
+              {/* Cancel first in DOM order, so Tab and the panel's initial focus reach the safe
+                  choice before the destructive one. */}
+              <Button label="Cancel" onClick={() => setResetOpen(false)} />
+              <Button
+                variant="primary"
+                className="dlg-danger"
+                label={resetting ? 'Resetting…' : 'Reset everything'}
+                onClick={() => void runReset()}
+                /* aria-disabled rather than disabled: a real `disabled` drops focus to <body>,
+                   where Dialog's scrim-bound key handler can no longer hold Tab inside the
+                   modal. Focusable and inert keeps the trap, and with no handler attached a
+                   second press cannot fire a second reset. */
+                aria-disabled={resetting ? 'true' : undefined}
+                aria-busy={resetting ? true : undefined}
+              />
+            </>
+          }
+        >
+          Every bookmark, every mark, your focused minutes, your annotations and your settings go,
+          and you start again at the welcome screen. This cannot be undone.
+          <br />
+          <br />
+          The papers you have downloaded stay where they are, in your downloads folder.
+        </Dialog>
 
         <UpdateDialog
           open={up.dialogOpen}
@@ -344,9 +624,16 @@ export default function App() {
         tone={tone}
         onTone={toggleTone}
         busy={lib.busy}
-        onReindex={() => void lib.runIngest()}
+        onReindex={() => void lib.runSync()}
         onSearch={() => setPalette(true)}
+        onDownload={lib.download}
         questions={null}
+        notebooks={notebooks.list}
+        onNewNotebook={() => {
+          setNewNotebook(true);
+          go('notebooks');
+        }}
+        onOpenNotebook={(id, page) => openNotebookAt(id, page)}
       />
     );
   }
@@ -361,7 +648,7 @@ export default function App() {
           tone={tone}
           onTone={toggleTone}
           busy={lib.busy}
-          onReindex={() => void lib.runIngest()}
+          onReindex={() => void lib.runSync()}
           onSearch={() => setPalette(true)}
         />
 
@@ -377,12 +664,33 @@ export default function App() {
             onSeason={lib.setSeason}
             subjectId={lib.subjectId}
             onSubject={lib.setSubjectId}
+            downloadedOnly={lib.downloadedOnly}
+            onDownloadedOnly={lib.setDownloadedOnly}
             marks={study.marks}
             onMark={study.toggleMark}
             markFilter={study.markFilter}
             onMarkFilter={showMarked}
             error={lib.error}
             onOpen={openPaperAt}
+          />
+        )}
+
+        {view === 'notebooks' && (
+          <NotebooksView
+            notebooks={notebooks.list}
+            error={notebooks.error}
+            subjects={lib.subjects}
+            openNew={newNotebook}
+            onNewHandled={() => setNewNotebook(false)}
+            onOpen={(id) => openNotebookAt(id)}
+            onCreate={async (meta) => {
+              const entry = await notebooks.create(meta);
+              // Straight into it. A notebook you just named and gave a cover is one you intended to
+              // write in, and the shelf you would land back on is the screen you were already on.
+              if (entry) openNotebookAt(entry.id);
+              return entry;
+            }}
+            onDelete={notebooks.remove}
           />
         )}
 
@@ -403,17 +711,21 @@ export default function App() {
           <SettingsView
             settings={settings}
             onChange={prefs.patchSettings}
-            root={lib.stats?.root ?? api.DEFAULT_ROOT}
+            root={lib.downloadRoot ?? 'Resolving…'}
             stats={lib.stats}
             busy={lib.busy}
             progress={lib.progress}
             report={lib.report}
-            onIngest={() => void lib.runIngest()}
-            diffBusy={lib.diffBusy}
-            diffProgress={lib.diffProgress}
-            diffResult={lib.diffResult}
-            onBuildDifficulty={() => void lib.runDifficulty()}
+            onSync={() => void lib.runSync()}
+            onRepair={() => void lib.repair()}
+            onRevealDownloads={() => void lib.revealDownloads()}
+            repairReport={lib.repairReport}
             error={lib.error}
+            subjects={lib.subjects}
+            board={onboarding.board}
+            onBoard={(board) => prefs.answerOnboarding('board', board)}
+            chosenSubjects={onboarding.subjects}
+            onToggleSubject={toggleSubject}
             version="0.1.0"
             build="dev"
             onCheckUpdates={() => void up.check()}

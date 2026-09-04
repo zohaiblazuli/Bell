@@ -139,6 +139,11 @@ change tone."  **Both counts are wrong — see TRAPS T1.**
 
 Measured tally: **22 retone, 8 identical** (paper x4 + iris x4).
 
+Since Notebooks the Colour collection holds **45** semantic tokens, not 30. The 15 additions are in
+section 2.4; none of them is swatched on `9:2`, so the page blurb and this table both still describe
+the original 30. Counting only what section 2.1 covers: 22 retone, 8 identical. Counting the whole
+collection: **25 retone, 20 identical** — the cover family alone adds 12 mode-invariant tokens.
+
 ### 2.2 Variables that exist in the file but are NOT on this page
 
 | Figma variable | Code Syntax emitted | value(s) | note |
@@ -149,6 +154,61 @@ Measured tally: **22 retone, 8 identical** (paper x4 + iris x4).
 | window/close · minimize · zoom | `--traffic-close` `--traffic-minimize` `--traffic-zoom` | `#ff736a` `#febc2e` `#19c332` | |
 | radius/window·panel·card·button·chip·pill | `--r-win` `--r-panel` `--r-card` `--r-btn` `--r-chip` `--r-pill` | 15 / 16 / 13 / 10 / 9 / 999 | |
 | ground/veil (`--ground-veil`) | — | — | **not found anywhere in the file** |
+
+### 2.4 Tokens added for Notebooks — 15 semantic, 16 primitive
+
+`screen-notebooks.md` section 8 is the authority; this is the foundations-side record. **None of the
+15 is swatched on `9:2` Foundations — Colour.** That is a known gap, not a decision: the swatch page
+was not extended in the same pass. Everything else about them is complete — Code Syntax is set, the
+`GROUPS` table in `scripts/tokens.mjs` carries them, and `npm run tokens` emits them.
+
+| Figma variable | CSS var | Day | Night | retones? |
+|---|---|---|---|---|
+| cover/1 | `--cover-1` | `#1436c8` | `#1436c8` | no |
+| cover/2 | `--cover-2` | `#0f6b6b` | `#0f6b6b` | no |
+| cover/3 | `--cover-3` | `#1f6b3a` | `#1f6b3a` | no |
+| cover/4 | `--cover-4` | `#8a5a00` | `#8a5a00` | no |
+| cover/5 | `--cover-5` | `#9e1239` | `#9e1239` | no |
+| cover/6 | `--cover-6` | `#3d4457` | `#3d4457` | no |
+| cover/7 | `--cover-7` | `#1a1c24` | `#1a1c24` | no |
+| cover/8 | `--cover-8` | `#8f3312` | `#8f3312` | no |
+| cover/shade | `--cover-shade` | `#00000029` | `#00000029` | no |
+| cover/label | `--cover-label` | `#ffffff` | `#ffffff` | no |
+| cover/label-2 | `--cover-label-2` | `#ffffffd6` | `#ffffffd6` | no |
+| cover/wire | `--cover-wire` | `#ffffff94` | `#ffffff94` | no |
+| ground/scrim | `--scrim` | `#181a3447` | `#05060c8c` | **yes** |
+| state/danger | `--danger` | `#b3261e` | `#ff6b6b` | **yes** |
+| state/danger-soft | `--danger-soft` | `#b3261e1f` | `#ff6b6b29` | **yes** |
+
+Scopes, all set explicitly (never `ALL_SCOPES`): `cover/1..8` and `cover/shade` and `ground/scrim`
+and `state/danger-soft` = `FRAME_FILL, SHAPE_FILL`; `cover/label` and `cover/label-2` = `TEXT_FILL`;
+`cover/wire` = `STROKE_COLOR`; `state/danger` = `SHAPE_FILL, TEXT_FILL, STROKE_COLOR`.
+
+The 16 new primitives, all in the `Primitives` collection with **scopes `[]`** per the file
+convention, so they never appear in a property picker:
+
+| primitive | value | feeds |
+|---|---|---|
+| `cover/1 … cover/8` | `#1436C8` `#0F6B6B` `#1F6B3A` `#8A5A00` `#9E1239` `#3D4457` `#1A1C24` `#8F3312` | `Color/cover/1..8`, both modes |
+| `cover/shade` | `#000000` @16% | `Color/cover/shade`, both modes |
+| `alpha/white-84` | `#FFFFFF` @84% | `Color/cover/label-2`, both modes |
+| `alpha/scrim-day` / `alpha/scrim-night` | `#181A34` @28% / `#05060C` @55% | `Color/ground/scrim` |
+| `danger/day` / `danger/night` | `#B3261E` / `#FF6B6B` | `Color/state/danger` |
+| `alpha/danger-day-12` / `alpha/danger-night-16` | `#B3261E` @12% / `#FF6B6B` @16% | `Color/state/danger-soft` |
+
+`Color/cover/label` and `Color/cover/wire` reuse the existing `Primitives/white` `3:16` and
+`Primitives/alpha/white-58` `3:31`; nothing new was needed for those two.
+
+**Why the cover family does not retone.** A cover is an object, like `paper/*` and the iris ramp —
+it must not invert when the tone flips, any more than a physical notebook changes colour when you
+turn the lights on. All eight are chosen so `--cover-label` (white) clears 4.5:1: measured
+**8.9 / 6.4 / 6.6 / 5.93 / 8.2 / 9.6 / 17.0 / 8.0**. `--cover-label-2` is **84%, not 74%** — at 74%
+the ratio falls to 4.26 / 4.40 / 4.05 on covers 2, 3 and 4, below AA. No purple anywhere.
+
+**Why `state/danger*` exists.** The file had no danger token, which is why error styling once
+hand-converted `--d5`. Borrowing the difficulty heat ramp for state is exactly what rule 3 forbids,
+and `type.md` and the Getting Started page both already flagged the gap. The only consumer today is
+the "Delete notebook" row in the notebook inspector tab.
 
 ### 2.3 Contrast block (`30:2`, 748x834)
 
@@ -320,7 +380,9 @@ Edge gradients are 1px strokes; in CSS use `border: 1px solid transparent` +
 
 ## 6. Text styles — definitive census
 
-**16 local text styles exist. All 16 are in active use. The "19" in the notes is stale.**
+**19 local text styles exist. 17 are in active use.** An earlier pass here said 16 and called three
+of them deleted — that was wrong, and section 6.1 now records why. `getLocalTextStylesAsync()` is the
+only reliable census; a sweep of *applied* styles cannot see a style that nothing applies yet.
 Every style: line height AUTO (`line-height: normal`), `fontVariationSettings: "wdth" 100` on the
 SF Pro ones. `letterSpacing` is percent in Figma; the px column is the value at the style's own size.
 
@@ -342,23 +404,45 @@ SF Pro ones. `letterSpacing` is percent in Figma; the px column is the value at 
 | Mono/Timer | Geist Mono | Regular 400 | 15 | 0 | 0 | Settings `530:873` only |
 | Mono/Meta | Geist Mono | Regular 400 | 12 | 0 | 0 | Paper Card, Library |
 | Mono/Small | Geist Mono | Regular 400 | 11 | 0 | 0 | swatch var labels, Session Code `15:8`, Chip code |
+| **Ink/Annotation** | Caveat | Regular 400 | 18 | 0 | 0 | the six 18px working lines on `Notebook — Night` / `— Day` |
 
-### 6.1 The three questioned styles — all three are GONE
+### 6.1 The three questioned styles — all three still EXIST. Corrected.
 
-| Style | Verdict | Evidence |
+| Style | Verdict | Detail |
 |---|---|---|
-| Title/Wordmark | **Deleted.** | Wordmark set `383:57` and Lockups apply no text style at all — the wordmark is outlined vector bound to `bell/cap-lo` / `bell/cap-hi`. No node in the file references it. |
-| Mono/Paper Code | **Deleted.** | Session Code set `15:8` uses **Mono/Small** for the code; Paper Card `66:359` uses Mono/Meta + Body/Meta. No node references it. |
-| Ink/Annotation (Caveat) | **Deleted.** | Caveat does not appear as a font family on any node swept (both Foundations frames, Getting Started, Library, Dashboard, Settings, Onboarding, Startup, Update, Brand, Icon set). No node references it. |
+| Title/Wordmark | **Exists, unused.** SF Pro Bold 17 / -1.4% | Wordmark set `383:57` and the Lockups apply no text style at all — the wordmark is outlined vector bound to `bell/cap-lo` / `bell/cap-hi`. Nothing references the style, but the style is in the file. |
+| Mono/Paper Code | **Exists, unused.** Geist Mono SemiBold 15 / -1.2% | Session Code set `15:8` uses **Mono/Small** for the code; Paper Card `66:359` uses Mono/Meta + Body/Meta. Nothing references it. |
+| Ink/Annotation | **Exists and is now USED.** Caveat Regular 18 / 0% | The six 18px working lines on `Notebook — Night` / `— Day` are bound to it (`screen-notebooks.md` section 5d). Caveat stays in the font payload. |
 
-Sweep method: `get_variable_defs` (which returns applied text styles) on `9:2`, `9:128`, `11:2`,
-`12:2`, `40:1080`, `202:236`, `530:873`, `494:7520`, `391:3`, `437:7`, `383:57`, `374:77`, `363:5`,
-`66:359`, `24:5`, `15:8`, `17:119`, plus `get_design_context` on `21:20`, `22:47`, `25:24`,
-`42:111`, `532:7`. Union = exactly the 16 above.
+**Why the earlier verdict was wrong, and the lesson.** The sweep used `get_variable_defs` and
+`get_design_context`, both of which report the styles a node *applies*. A style that no node applies
+is invisible to that method, so "nothing references it" was read as "it does not exist". It is a
+false negative by construction. **Census text styles with `getLocalTextStylesAsync()`**, then use the
+applied-style sweep only to answer the separate question of which ones are in use.
+
+Sweep method for *usage* (unchanged, and still correct for that question): `get_variable_defs` on
+`9:2`, `9:128`, `11:2`, `12:2`, `40:1080`, `202:236`, `530:873`, `494:7520`, `391:3`, `437:7`,
+`383:57`, `374:77`, `363:5`, `66:359`, `24:5`, `15:8`, `17:119`, plus `get_design_context` on
+`21:20`, `22:47`, `25:24`, `42:111`, `532:7`. Union = the 16 tabled above; `Ink/Annotation` becomes
+the 17th with the Notebooks spread.
 
 ---
 
 ## 7. TRAPS
+
+### Added with the Notebooks tokens
+
+- **The Foundations — Colour page is now 15 tokens behind the collection.** `9:2` swatches 30; the
+  collection holds 45. Read the collection, not the page, when you need the whole list.
+- **A primitive binding passes every audit and still breaks the contrast contract.** The Notebook
+  Cover shipped `title` / `meta` / coils bound to `Primitives/white`, `alpha/white-74` and
+  `alpha/white-58` directly. Nothing flags it — a bound variable is a bound variable — but white at
+  74% fails 4.5:1 on three of the eight covers. Bind to a semantic, and put the contrast reasoning in
+  the semantic's description where the next person will find it.
+- **New primitives must be created with `scopes: []`.** The first Notebooks pass gave them real scopes
+  (`FRAME_FILL` and friends), which polluted every colour picker with raw cover hexes alongside the
+  semantics. Corrected — but `createVariable` defaults to `ALL_SCOPES`, so it will happen again unless
+  the scope is set in the same breath.
 
 **T1 — The Colour page's own arithmetic is wrong, and Rule 3 is factually false.**
 The blurb claims "17 retone / 13 identical" and Rule 3 says difficulty "never retones between Day

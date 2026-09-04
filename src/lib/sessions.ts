@@ -17,7 +17,7 @@
  * reading it.
  */
 
-/** Feb/March, May/June, Oct/Nov — the leading letter of every `scode` under `G:`. */
+/** Feb/Mar, May/June, Oct/Nov — the leading letter of every session code. */
 export type Season = 'm' | 's' | 'w';
 
 export interface ExamWindow {
@@ -26,7 +26,7 @@ export interface ExamWindow {
   year: number;
   /** The `scode` the index stores on a `PaperRow`, so `w.code === row.scode` selects a sitting. */
   code: string;
-  /** `Feb/March 2026` — the same string `sessionLabel(w.code)` in `difficulty.ts` builds. */
+  /** `Feb/Mar 2026` — the same string `sessionLabel(w.code)` in `difficulty.ts` builds. */
   label: string;
   /** First day of the sitting window, local midnight. */
   start: Date;
@@ -54,7 +54,7 @@ const SERIES: { season: Season; from: [number, number]; to: [number, number] }[]
 ];
 
 /** Kept identical to the map inside `sessionLabel` (`difficulty.ts`) — one sitting, one spelling. */
-const SEASON_NAME: Record<Season, string> = { m: 'Feb/March', s: 'May/June', w: 'Oct/Nov' };
+const SEASON_NAME: Record<Season, string> = { m: 'Feb/Mar', s: 'May/June', w: 'Oct/Nov' };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

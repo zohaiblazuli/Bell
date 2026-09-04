@@ -1,9 +1,9 @@
 # Bell — engineering & design contract
 
-> A downloadable **Windows desktop app** for focused, **offline** studying of Cambridge (CAIE)
-> exam papers. Based on the ShinyPapers web app (`C:\scambridge`) but re-focused: it opens a real
-> paper from the local library, lets you annotate and time yourself, and tracks focus — all
-> offline. An AI answer-checker drops in later at a clean seam.
+> A downloadable **Windows desktop app** for focused studying of Cambridge (CAIE) exam papers.
+> It reads its catalogue from the ShinyPapers web app (`C:\scambridge`), downloads the papers you
+> ask for onto your own machine, and then lets you annotate, time yourself and track focus — all of
+> which works with the network unplugged. An AI answer-checker drops in later at a clean seam.
 
 **Read this before writing any UI.** It is the locked design system and the anti-slop contract.
 
@@ -22,8 +22,9 @@ Foolscap. Do not treat it as a reference.
 
 ## Stack & layout
 - **Tauri v2 + React 19 + Vite + TypeScript + Tailwind v4.** Small premium exe, native feel.
-- **Local-first:** a Rust ingest walks `G:\CambridgeDatabase` into a local **SQLite** index.
-  Difficulty computed locally. No server, no network, no Supabase/Next/Vercel.
+- **Catalogue from ShinyPapers, files on this machine:** Rust fetches one catalogue snapshot from
+  the web app into a local **SQLite** cache, then downloads individual PDFs on request. Difficulty
+  is read from the catalogue, never recomputed here. Two endpoints, no Supabase key, no accounts.
 - **Papers rendered in-app** with `pdfjs-dist` in the webview + a `<canvas>` annotation overlay.
 - Repo root = app root. `demos/` and `idea/` are design provenance, kept in-repo.
 
@@ -35,7 +36,7 @@ C:\ShinyPapersDesktop\
     styles/       generated: tokens.css, theme.css, type.css, fonts.css · hand: app.css, background.css
     components/   app shell pieces (sidebar, topbar, palette, canvas)
     views/        one per screen
-  src-tauri/      Rust (ingest, SQLite, file access to G:, study state, the rename migration)
+  src-tauri/      Rust (catalogue sync, downloads, SQLite, study state, the rename migration)
   design/specs/   the measured Figma specs — the implementation contract
   demos/ idea/    provenance
   CLAUDE.md  TASKS.md
@@ -47,30 +48,46 @@ Import via the aliases: `@/lib/store`, `@ui/Button`. There is no deep relative p
 - `npm run tauri dev` — dev window (hot-reload frontend; Rust recompiles on change)
 - `npm run tauri build` — Windows installer
 - `npm run build` — frontend typecheck + bundle only
+- `npm test` — unit tests. Node's own `node:test`, with esbuild bundling the TypeScript, so it adds
+  no dependency. Covers the two pure things Phase 6 added: the stroke engine (`src/lib/ink.ts`) and
+  the page arithmetic (`src/lib/notebooks.ts`). `npm run build` is still the typecheck.
 - `npm run tokens` — regenerate `tokens.css`, `theme.css`, `type.css` from `scripts/tokens.mjs`
 - `npm run fonts` — re-vendor the woff2 faces (the only step that needs network)
 - `npm run icon` — re-render the app icon from `MrBellMark`'s geometry and fan out every size
-- `npm run verify:index` / `:thresholds` / `:difficulty` / `:papers` — data-layer checks
-- `cargo test --lib` (from `src-tauri`) — 13 tests: path parsing, the walk, the SQL, the read
-  sandbox, state keys, and the Foolscap→Bell state migration
+- `npm run verify:papers` — end-to-end check of the catalogue API and the download redirect
+  (`BELL_API_BASE=http://localhost:3000` to point it at a local web app)
+- `cargo test --lib` (from `src-tauri`) — path parsing, the walk, the SQL, the read sandbox, state
+  keys, the Foolscap→Bell state migration, and notebook storage (id validation, the derived page
+  count, and a resync leaving `notebooks\` untouched)
 
-## Offline is a hard requirement
-The app must run with the network unplugged. **No runtime CDN, no font `@import`, no remote
-asset.** The CSP enforces it: `font-src 'self' data:` permits no remote font origin. The three
-type families are vendored as woff2 under `src/assets/fonts/`, declared in the generated
-`src/styles/fonts.css`; regenerate with `npm run fonts`, never re-add an `@import`. The background
-art is vendored as WebP under `src/assets/bg/`.
+## Offline still matters, and the CSP is still closed
+The app reaches the network for exactly two things: the catalogue snapshot and a paper download.
+Everything else — browsing, searching, reading, annotating, timing — works with the network
+unplugged, off the cached catalogue and the files already on disk.
+
+**The webview is as network-isolated as it was when the app had no network at all.** All HTTP lives
+in Rust (`src-tauri/src/catalog.rs`, `src-tauri/src/downloads.rs`), so `connect-src 'self' data:
+blob: ipc: http://ipc.localhost` in `tauri.conf.json` is unchanged and must stay that way. Do not
+move a fetch into the renderer: it would need a CSP hole, and then CORS, which the web app does not
+send. `capabilities/default.json` likewise needs no HTTP permission, because raw `reqwest` in Rust
+is not gated by one.
+
+**No runtime CDN, no font `@import`, no remote asset.** `font-src 'self' data:` permits no remote
+font origin. The three type families are vendored as woff2 under `src/assets/fonts/`, declared in
+the generated `src/styles/fonts.css`; regenerate with `npm run fonts`, never re-add an `@import`.
+The background art is vendored as WebP under `src/assets/bg/`.
 
 ## Where each piece runs
-- **Rust** owns the file system and SQLite: the walk of `G:`, the index, the read queries, the
-  study-state files, and the one-time state migration from the app's previous identifier.
-- **The webview** owns PDF work, because that is where `pdfjs-dist` lives. Grade-threshold parsing
-  and difficulty scoring run there — which is also what let the existing scambridge TypeScript be
-  reused nearly verbatim — and write back through Tauri commands (`save_thresholds`,
-  `save_difficulty`).
-- PDFs reach the webview through **`read_document`**, which refuses any path that is not in the
-  index. Since the index only ever holds files found under the three level directories of the
-  library root, that check *is* the sandbox — there is no path glob to get subtly wrong. Don't
+- **Rust** owns the network, the file system and SQLite: the catalogue sync, downloads, the read
+  queries, the study-state files, and the one-time state migration from the app's previous
+  identifier.
+- **The webview** owns PDF work, because that is where `pdfjs-dist` lives — rendering and the
+  annotation overlay. It no longer parses grade thresholds or scores difficulty: both come from the
+  catalogue already computed, which is why `buildDifficulty`/`thresholdRows`/`scoreSittings`/
+  `difficultyFormula` are gone rather than merely unused.
+- PDFs reach the webview through **`read_document`**, which refuses any path not recorded in the
+  `download` table. Since that table only ever names files this app fetched and magic-byte
+  validated itself, that check *is* the sandbox — there is no path glob to get subtly wrong. Don't
   swap it back for the asset protocol.
 - pdf.js **standard fonts and CMaps are vendored** under `public/pdfjs/` and wired up in
   `src/lib/pdf.ts`. Without them, rendering silently degrades the moment a paper uses a
@@ -100,7 +117,7 @@ individually, and `scripts/ui-css.mjs` emits `src/ui/styles.ts` — a TypeScript
 
 ## Study state (`src/lib/store.ts`)
 Bookmarks, done/revision, focus minutes and annotation ink live in **one JSON file per key** in
-the app's state dir — not in SQLite (a reindex wipes that, and none of this is derived from `G:`)
+the app's state dir — not in SQLite (a catalogue resync replaces those tables wholesale)
 and not in localStorage (ink would blow the cap). It is hydrated once in `main.tsx` before the
 first render, which is what keeps every accessor synchronous. Rust restricts key names so a key
 can never escape the state dir.
@@ -109,6 +126,38 @@ can never escape the state dir.
 `src-tauri/src/migrate.rs` carries the old directory over on first launch — copying, never moving,
 never overwriting, and marking itself so it runs exactly once. If the identifier ever changes
 again, extend that module rather than writing a new one.
+
+## Notebooks (`src-tauri/src/notebooks.rs`, `src/lib/notebooks.ts`)
+Notebooks are deliberately **not** study state, and the reason is `state_load`: it slurps every
+`*.json` in the state dir into memory before the first render, which is exactly what makes
+`store.ts`'s accessors synchronous. One measured ink file on this machine is 66,673 bytes for a
+single page, and `state_save` is text-only, so images would have to be base64 inside JSON. So
+notebooks get their own directory, their own commands and lazy per-page loading:
+
+```
+<app_data_dir>\notebooks\
+  index.json            the shelf, a rebuildable CACHE
+  <id>\meta.json        the authored fields — the source of truth
+  <id>\history.json     the undo stack, so Ctrl+Z survives a relaunch
+  <id>\pages\NNNN.json  written only once the page has content
+  <id>\assets\<sha>.png content-addressed
+```
+
+Three invariants:
+- **`<id>` is app-generated, `^[a-z0-9]{16}$`.** The name the student types never reaches a path;
+  it lives inside JSON only. That is the same guarantee `key_path` gives the state dir, without
+  reusing it.
+- **`index.json` is a cache and `nb_list` self-heals it** — a directory with a readable `meta.json`
+  but no index row is adopted, a row whose directory has gone is dropped. Same posture as
+  `downloads::repair`: losing the cache costs a directory walk, not a notebook.
+- **Page count is derived, never stored** — `1 + max(page file stem)`, rounded up to a whole spread
+  and floored at one. That is what makes "infinite pages, never ask the student" true rather than
+  merely claimed, and `spreadLabel` never prints a total.
+
+Geometry in a saved page is **fractions of the page box, quantised to 4 dp**, never pixels, so a
+page renders identically at any zoom, window size or DPR. Stroke points are a flat
+`[x, y, pressure, …]` stream at roughly 7 bytes a point, where the Reader's `{x,y}` objects cost
+about 48.
 
 ## Annotation ink
 Points and stroke widths are stored as **fractions of the page box**, never pixels, so ink stays
@@ -168,14 +217,22 @@ The names are not ours to invent — **Figma's own Code Syntax declares them** (
 Groups: `--ground --ground-2 --ground-veil` · `--ambient-a/-b` · `--paper --page-ink --page-ink-2
 --page-line` · `--white --plate --scrim` · `--ink --ink-2 --ink-3` · `--glass --glass-strong
 --glass-brd --glass-hi` · `--hair --hair-2` · `--card --card-brd` · `--accent --accent-soft` ·
-`--iris-1..4` · `--bell-cap-hi/-mid/-lo/-deep --bell-gold-* --bell-blush` · `--grad-line
---grad-btn` · `--d1..--d5` · `--activity-0..4` · `--traffic-*` · `--danger --danger-soft` ·
-`--shadow-*` · `--r-win --r-panel --r-card --r-btn --r-chip --r-pill`.
+`--iris-1..4` · `--cover-1..8 --cover-shade --cover-label --cover-label-2 --cover-wire` ·
+`--bell-cap-hi/-mid/-lo/-deep --bell-gold-* --bell-blush` · `--grad-line --grad-btn` · `--d1..--d5` ·
+`--activity-0..4` · `--traffic-*` · `--danger --danger-soft` · `--shadow-*` ·
+`--r-win --r-panel --r-card --r-btn --r-chip --r-pill`.
 
 Three things worth knowing:
-- **`--danger` is an app addition, not in Figma.** The design system has no success/danger/warning
-  token, and error styling used to hand-convert `--d5` — borrowing the difficulty axis for
-  something that is not difficulty, which rule 3 forbids. Use `--danger`, never `--d5`, for state.
+- **`--danger` was an app addition and Figma has since adopted it.** The design system had no
+  success/danger/warning token, error styling used to hand-convert `--d5` — borrowing the difficulty
+  axis for something that is not difficulty, which rule 3 forbids — and the app added `--danger` /
+  `--danger-soft` by hand. The Notebooks pass added `state/danger` and `state/danger-soft` to the
+  file, so both now carry Figma's values (`#b3261e` / `#ff6b6b`) rather than the guessed ones, and
+  `ground/scrim` did the same for `--scrim`. Use `--danger`, never `--d5`, for state.
+- **The `--cover-*` family is mode-invariant on purpose.** A cover is an object, like `--paper` and
+  `--page-ink`: it must not invert when the tone flips, any more than a physical notebook changes
+  colour when you turn the lights on. All eight are picked so `--cover-label` (white) clears 4.5:1,
+  and `--cover-label-2` is 84% rather than 74% because at 74% covers 2, 3 and 4 fall below AA.
 - **`--hair` is used as both a fill and a stroke** — 1px rule elements and borders alike. One
   token; CSS does not care which property consumes it. Don't split it.
 - **The `iris/*` names now lie.** All four stops are blue. Figma still calls them that, so we do
@@ -337,8 +394,12 @@ a grey reads as "an empty slot".
 macOS-style rounded window, traffic-light dots at the top of the sidebar, translucent sidebar and
 toolbar. The OS window *is* the app (`decorations: false`), so there is no floating stage: the
 shell fills the viewport and the lights are wired to close / minimise / maximise. The top bar
-carries `data-tauri-drag-region`. Five nav rows under STUDY — Library, Dashboard, Bookmarks,
-Recent, Settings.
+carries `data-tauri-drag-region`. Six nav rows under STUDY — Library, **Notebooks**, Dashboard,
+Bookmarks, Recent, Settings.
+
+**Two routes have no sidebar at all**, and both because they draw their own window lights:
+onboarding, and the open notebook spread. Each renders in an `app app-bare` shell, which collapses
+the sidebar column. The Reader keeps the sidebar and recedes it under focus mode instead.
 
 ---
 
@@ -369,39 +430,61 @@ Recent, Settings.
 
 ---
 
-# DATA — G:\CambridgeDatabase (read-only)
-**Never move, rename, or modify anything under `G:`.** Read in place; write only to the local
-SQLite index and the app's own state dir.
+# DATA — the ShinyPapers catalogue
+The catalogue is the web app's, not ours. Bell caches it and never edits it; the only rows Bell
+owns are `download`, which record files it fetched onto this machine.
 
-Path pattern (parse everything from the path + filename):
+**Two endpoints, both public and unauthenticated:**
 ```
-<Level> \ <Subject> (<code>) \ <Year> \ <SeasonName> (<scode>) \ <DocType> \ <code>_<scode>_<type>[_<variant>].pdf
-A Level  \ Accounting (9706)   \ 2015   \ May-June (s15)          \ Grade Thresholds \ 9706_s15_gt.pdf
+GET /api/desktop/v1/catalog                    the whole catalogue, ~70 KB gzipped, ETag + 304
+GET /api/desktop/v1/file/{paperId}/{qp|ms}     302 to the real PDF, resolved server-side
 ```
-- **Valid Levels:** `A Level`, `IGCSE`, `O Level`. Ignore other root dirs (`caie`,
-  `cambridge-study-buddy`).
-- Season code `scode`: `s`=May/June, `w`=Oct/Nov, `m`=Feb/March + 2-digit year.
-- Filename `type`: `qp` question paper, `ms` mark scheme, `gt` grade thresholds, `er` examiner
-  report; optional `variant` (paper/variant, e.g. `12`, `42`).
-- Grade-threshold PDFs are all present → difficulty runs locally over the whole library.
+`BELL_API_BASE` overrides the host for development. Never ship a credential: the web app's
+`CRON_SECRET` grants full admin, and its Supabase anon key is deliberately in no client bundle.
 
-## Reuse map (from `C:\scambridge` — ignore the `.worktrees\` mirror)
-- `lib/difficulty-formula.ts` → **ported** to `src/lib/difficultyFormula.ts`, substance unchanged
-  so scores stay comparable. `src/lib/scoreSittings.ts` holds the batch pass.
-  `npm run verify:difficulty` diffs the two modules.
-- `pipeline/threshold-rows.ts` → **ported** to `src/lib/thresholdRows.ts`. One deliberate change:
-  the hand-maintained `ALL_COMPONENTS` allowlist is gone (it would reject valid rows now that the
-  whole library is indexed); the structural checks carry it.
-- `pipeline/parse-thresholds.ts` — its fetch layer is replaced by `src/lib/pdfText.ts`, which
-  rebuilds text lines from pdf.js glyph positions. **This was the flagged integration risk and it
-  is closed** — verified against the real `gt` PDFs. Keep the line reconstruction in that one file.
+**Catalogue shape** (`src-tauri/src/catalog.rs` holds the wire types):
+- `subjects` — id, code, name, slug, qualification (`a_level` | `igcse` | `o_level`), board.
+- `sessions` — id, code (`s15` | `w20` | `m16`), year, season (`may_june` | `oct_nov` | `feb_mar`).
+- `papers` — id, subject/session ids, `component` (`"12"`), paper number, variant, the A–E grade
+  thresholds, `a_pct`/`curve_mean_pct`/`span_pct`, `hardness_score` 0–100, `difficulty`
+  (`easy`|`medium`|`hard`), `difficulty_basis`, `difficulty_note`, `has_ms`.
+- **No URLs.** A download is addressed by paper id, so a moved file needs no new desktop build.
+- **Unscored papers are listed** with a null rating. Six currently are. They must never be filtered
+  out — a paper that exists and is downloadable should not vanish for want of a rating.
 
-## The five difficulty bands
-The formula emits a 0–100 score and its own three bands (easy < 34, medium, hard ≥ 67). The UI's
-five heat bands in `src/lib/difficulty.ts` **nest inside** those cutoffs (34 / 50 / 67 / 84), so the
-finer label can never contradict the coarse one. A paper with no parsed thresholds reads
-"Unrated" with an empty meter — never a guessed score. The meter is **five pips**, 14×5 at a 3px
-gap; the fill count is the band index. Import the band model, never restate it.
+**Field additions are safe; removals and renames are not.** Serde ignores unknown fields, so the
+server may add columns freely. `src/catalog.rs`'s ignored `parses_the_live_catalogue_into_sqlite`
+test is what catches a breaking change:
+```
+cd src-tauri && BELL_API_BASE=http://localhost:3000 cargo test -- --ignored --nocapture
+```
+
+**Downloads** land under `Documents\ShinyPapers`, in a human-browsable tree, with the upstream
+basename so `downloads::repair` can rebuild the table from disk:
+```
+A Level\Mathematics (9709)6\Feb-Mar (m16)\9709_m16_qp_62.pdf
+```
+There is deliberately no folder picker; the root is one constant in `src-tauri/src/downloads.rs`.
+
+**The one invariant not to break:** a catalogue resync replaces `catalog_*` and must never touch
+`download`. `db::clear_catalog` is scoped for exactly that reason, and
+`library::tests::a_resync_keeps_downloads` pins it. The old `clear_index` wiped everything, which
+was safe only while every table was rebuildable from a folder scan.
+
+## Difficulty: three labels, the website's three
+The catalogue carries a 0–100 `hardness_score` and the label the website derives from it — easy
+below 34, hard at 67 and above, medium between. Bell shows **that** label, in the website's palette
+(sky `#0ea5e9` / amber `#f59e0b` / rose `#f43f5e`), through `DifficultyBadge`.
+
+The five heat bands (Gentle/Steady/Typical/Tough/Brutal) and the five-pip meter are **gone on
+purpose.** They were a second vocabulary for one number that existed only here, so the same paper
+could read "Tough" in Bell and "Medium" on the site. One number, one label, one palette.
+
+An unrated paper renders a plain em-dash in `--ink-3` — not the word "Unrated", not an empty box,
+and never a guessed score. `difficulty_note` is pre-rendered by the server precisely so its wording
+always matches the score that produced it: **show it verbatim, never re-derive it.** Import the band
+model from `src/lib/difficulty.ts`, never restate it; `difficultyForScore` exists only for
+aggregates the catalogue does not label, such as a subject mean.
 
 ## AI-checker seam (future)
 `src/lib/answerCheck.ts` holds the request/result/registry shape where scambridge's keyword checker

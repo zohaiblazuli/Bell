@@ -1,7 +1,8 @@
 # Bell — build tracker
 
 Name: **Bell** (was "Foolscap"; the rename lands in Phase 5.9 along with a state migration).
-Plan of record: `C:\Users\Evo\.claude\plans\claude-big-thing-up-encapsulated-rose.md`
+Plan of record: `C:\Users\Evo\.claude\plans\claude-need-you-to-eventual-pebble.md` (Phase 6 — Notebooks)
+Earlier plan (Phase 5): `C:\Users\Evo\.claude\plans\claude-big-thing-up-encapsulated-rose.md`
 Earlier plan (Phases 1–4): `C:\Users\Evo\.claude\plans\hi-claude-i-wanna-foamy-kettle.md`
 Design contract: `./CLAUDE.md` — **being rewritten in Phase 5.9; the Figma file is ahead of it**
 Design source: [Foolscap — Design System](https://www.figma.com/design/GnDdYtn8SaQjgmA4SQRCn7) (`GnDdYtn8SaQjgmA4SQRCn7`)
@@ -26,12 +27,14 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` todo · `[?]` needs a call from
 - [x] **Fonts vendored** (`npm run fonts`) — a Google Fonts `@import` would have broken offline
 - [x] App shell: glass sidebar + topbar, Day/Night, aurora toggle, traffic lights wired to the
       real window (`decorations: false`)
-- [x] Rust ingest walks `G:\CambridgeDatabase` → SQLite. **G: is read-only — never written to.**
-      Verified: **13,447 docs · 34 subjects · 886 sessions · 0 skipped · 0.3s**
-- [x] Threshold parser ported; the pdf-parse → pdf.js line reconstruction risk is **closed**
-      (585/585 rows accepted, full A–E curves)
-- [x] Difficulty formula ported and verified against the original module over the whole library:
-      **6,134 sittings · 472/472 identical · p25 25 / median 50 / p75 75**
+- [x] ~~Rust ingest walks `G:\CambridgeDatabase` → SQLite~~ — **replaced.** The catalogue now comes
+      from the ShinyPapers API and papers are downloaded on request. `G:` is no longer read at all.
+- [x] ~~Threshold parser ported~~ / ~~difficulty formula ported~~ — **both deleted.** Difficulty is
+      computed once on the server and read from the catalogue, so there is no second implementation
+      left to drift. `buildDifficulty`/`thresholdRows`/`scoreSittings`/`difficultyFormula` are gone.
+- [x] Catalogue sync + download manager: `GET /api/desktop/v1/catalog` (2,605 papers, ~70 KB
+      gzipped, ETag → 304) and `GET /api/desktop/v1/file/{id}/{qp|ms}` (302 to the real PDF).
+      Verified end to end by `npm run verify:papers`.
 - [x] Library grid reads real papers + difficulty out of SQLite
 
 ## Phase 3 — Core screens (DONE ✅)
@@ -183,7 +186,8 @@ three screens the app has never had. Decisions locked: **all of it** · **SF Pro
       Stat · Meter · DifficultyMeter · DocBadge · SessionCode · Kbd · PaperCard · NavItem ·
       SectionLabel · SubjectRow · Card · CardRow · WindowLights · TonePill · SearchField ·
       UpdateNotice · Dialog · Ring · Notice · Rail · Field · ActivityGrid · CoverageMatrix, plus
-      brand (Wordmark, Lockup, MrBellMark, MrBell) and icons (Sprite 31 glyphs, SubjectIcon 17,
+      brand (Wordmark, Lockup, MrBellMark, MrBell) and icons (Sprite — 45 glyphs after Phase 6,
+      SubjectIcon 17,
       SeasonIcon 3, GitHubMark)
 - [x] `scripts/ui-css.mjs` + `npm run ui:css` generates `src/ui/ui.css`, imported after `app.css`
       so a primitive's rules win over the block it supersedes while the port is in flight
@@ -445,13 +449,226 @@ three screens the app has never had. Decisions locked: **all of it** · **SF Pro
 
 ---
 
+## Phase 6 — Notebooks (BUILT — verification below, a few open calls)
+
+A student writes their own working, not just annotations on somebody else's paper. Named notebooks
+with a chosen cover, opening on two facing pages that turn forever, saved locally as you write, able
+to hold clipped screenshots of the papers you were just reading — and a tool surface that answers
+Zohaib's *"i do not like the reader page at all... we have very basic and poor tools available in
+reader"*. Decisions locked: **64px left dock + 268px 3-tab inspector** · **spiral bound** ·
+**new mode-invariant `cover/1..8`** · **both screens + dialog + icons + spec + motion, no Reader
+retrofit in this pass**.
+
+### 6.0 Design in Figma — done, measured, audited
+- [x] **15 new semantic tokens on 16 new primitives** — `cover/1..8`, `cover/shade`, `cover/label`,
+      `cover/label-2`, `cover/wire`, `ground/scrim`, `state/danger`, `state/danger-soft`. Mode-pinned,
+      scoped explicitly, Code Syntax set. `state/danger*` finally closes the gap that forced error
+      styling to borrow `--d5`, which rule 3 forbids
+- [x] **14 new icons** into `Icon` `17:119` — pencil, lasso, shapes, text, image, clip, sticky,
+      ruler, pan, redo, right, plus, trash, dots. Sheet 430x210 to **430x302**, 31 to **45** glyphs
+- [x] **4 new components** — `Notebook Cover` `606:50` (16 variants), `Panel Tabs` `618:24`,
+      `Slider` `613:3`, `Text Field` `619:11`; plus `Icon Button` `20:12` gains `State=Active`.
+      Slider and Text Field close two long-standing gaps: the file had no draggable control and
+      no input at all
+- [x] **`Screen — Notebooks` `620:2`** — Night `620:507`, Day `620:1377`, Empty `629:859`.
+      Sidebar goes to five nav rows; eight real notebooks on a 4x2 shelf, no lorem
+- [x] **`Screen — Notebook` `631:2`** — Night `631:1045` (Tool tab), Day `631:1144` (Pages tab),
+      `inspector — notebook tab` `649:172`, plus the `New Notebook` dialog in both tones
+      (`653:1263` / `653:1362`). Both pages carry real 9702 working, including a clipped exam
+      question and a **live lasso selection over a stroke group** — the object model, drawn
+- [x] **`Motion — Notebook` `662:1217`** — `cover open` 1.1s / 21 tracks, `page turn` 0.45s /
+      8 tracks. No page curl: every track is transform or opacity, so both port 1:1 to CSS
+- [x] **Audit clean** — zero unbound paints and zero raw text-segment fills on all ten frames;
+      Colour mode pinned and verified on every one
+- [x] **`design/specs/screen-notebooks.md` — 712 lines**, plus five spec files updated:
+      `icons.md`, `icons-paths.md` (14 `<symbol>` blocks), `components-controls.md`,
+      `components-data.md`, `foundations.md`
+- [x] Four design bugs found and fixed while speccing: the cover bound raw Primitives and its meta
+      line **failed 4.5:1 on covers 2/3/4** (white 74% to a new `alpha/white-84`); the dock's `pen`
+      button rendered the `search` glyph; the new primitives carried picker scopes; and
+      `Ink/Annotation` was recorded as deleted when it had never been deleted
+- [ ] Follow-up, small: the 15 new tokens are not swatched on `9:2` Foundations — Colour
+- [x] **Design sign-off from Zohaib** — cleared. Everything below is code; the Figma file was not
+      touched again
+
+### 6.1 Storage — `src-tauri/src/notebooks.rs` (new module, NOT the state dir) — DONE
+- [x] `<app_data_dir>\notebooks\index.json` + `<id>\meta.json` + `<id>\history.json` +
+      `pages\NNNN.json` + `assets\<sha256>.png`; id is app-generated `^[a-z0-9]{16}$` so a typed name
+      never reaches a path. `.tmp` then rename on every write, as `state_save` already does
+- [x] Why not `state.rs`: `state_load` slurps **every** `*.json` in the state dir into memory before
+      first render, and one measured ink file is already 66,673 bytes for a single page
+- [x] **13 commands** — the eleven planned plus `nb_history_load` / `nb_history_save`, which 6.2's
+      "persisted command stack" needs somewhere to live. `history.json` is a fifth file kind, not in
+      the original layout; recorded here rather than folded into `meta.json`, because mixing the
+      authored config with a churny undo log in one file is how both end up rewritten on every stroke
+- [x] `index.json` is a **rebuildable cache**, not a second source of truth. `nb_list` reads it, then
+      overlays `pages` and `bytes` from the filesystem and reconciles both ways — a directory with a
+      readable `meta.json` and no index row is adopted, a row whose directory has gone is dropped.
+      Same posture as `downloads::repair`; losing the cache costs a walk, not a notebook
+- [x] Infinite pages = `1 + max(page file stem)`, **rounded up to a whole spread and floored at 2**
+      (a notebook always has one leaf, and a page count must be even or the last spread is half a
+      leaf). A new spread reaches disk on its first stroke
+- [x] Save policy: per-page dirty flag, 400ms debounce, flushed on page turn, blur and unmount, in
+      `src/state/useNotebook.ts`. An emptied page is **deleted** rather than written as an empty
+      record — the count is `1 + max(stem)`, so an empty file would keep claiming a page
+- [x] Assets are magic-byte validated as PNG before they are stored, the way `downloads.rs` validates
+      a PDF; `src/lib/clip.ts` re-encodes any pasted JPEG/WebP through a canvas so that holds
+- [x] `cargo test --lib` — **26 passing, 2 ignored** (was 20/2). Six new: id validation, the derived
+      page count, index self-heal, a full round trip, and **a catalogue resync plus `reset_app`
+      leaving `notebooks\` untouched byte for byte**
+- [?] `nb_export` copies the notebook (meta, pages, assets) into `<app data>\exports\<name>`. It is
+      **not a PDF**, and §6c's button says "Export PDF". A real PDF means a new Rust crate or a
+      hand-assembled file over rasterised pages; the honest half ships and the button says what it
+      does. Say if the PDF matters and it becomes its own task
+
+### 6.2 Stroke engine — `src/lib/ink.ts` — DONE
+- [x] Three canvases per page (`paper` / `static` / `live`), rAF-coalesced through `createInkLoop`,
+      `getCoalescedEvents()` so a 240 Hz pen is not decimated to compositor rate
+- [x] `e.pressure` normalised (a mouse reports a constant 0.5, and several pens report a literal 0 on
+      their first event — `perfect-freehand` treats 0 as valid and lands a zero-width nib), plus
+      `e.pointerType` and an `e.isPrimary` / pen-owns-the-surface guard for palm rejection
+- [x] `perfect-freehand@1.2.3`, exact, MIT, **no dependencies** — the offline audit stays green
+- [x] Object model with an id-keyed bbox cache and real hit-testing: point-to-polyline for strokes,
+      even-odd point-in-polygon for the lasso. Lasso can move / scale / recolour / duplicate / delete
+- [x] Eraser gets two modes: `stroke` (a real edit, and the bytes go) and `paint` (today's
+      `destination-out`, kept for highlighter clean-up). `stroke` is the default, because paint-only
+      erasing never reclaims ink — the erased strokes stay AND the eraser strokes pile on top
+- [x] Command stack — six commands, notebook-wide, **persisted** to `history.json`, depth 200, a pure
+      reducer so StrictMode's double-invoked updater cannot double-push. `transform` keeps the records
+      as they *were* plus the affine rather than inverting it, because geometry is quantised on write
+      and an inverted scale drifts
+- [x] Geometry as fractions of the page box, 4 dp, never pixels. `x`/`w`/`sw` are width-fractions and
+      `y`/`h` height-fractions, so every distance runs in an isotropic space — without that correction
+      a hit tolerance is 1.4x tighter vertically
+- [x] **A test runner, since there was none.** `npm test` → `scripts/test.mjs`: Node's own `node:test`
+      with esbuild bundling the TypeScript, so it adds no dependency and the `@/` alias works.
+      **115 assertions across `tests/ink.test.ts`**
+
+### 6.3 Screens and routing — DONE
+- [x] `View` union gains `notebooks` + `notebook`; **six** sidebar rows, Notebooks inserted second per
+      §4a. Mr. Bell is not cut — the column is flexbox with the mascot slot as the flex spacer and he
+      is bottom-pinned, so a sixth 38px row shrinks the slot rather than moving him (TRAP 16)
+- [x] The open spread is its own `app-bare` shell with **no sidebar**, because §5a puts the window
+      lights inside the notebook's own 1320-wide topbar — which is only possible if nothing else owns
+      them. Onboarding is the precedent
+- [x] `src/views/NotebooksView.tsx` (`nb-`) + `src/views/NotebookView.tsx` (`nbs-`)
+- [x] `ToolDock.tsx` · `Inspector.tsx` (`nbi-`) · `NotebookPage.tsx` · `NewNotebookDialog.tsx` ·
+      `ClipPicker.tsx` · `src/ui/NotebookCover.tsx` · `src/lib/notebooks.ts` ·
+      `src/state/useNotebook.ts` + `useNotebooks.ts`
+- [x] `src/ui/Slider.tsx` + `src/ui/PanelTabs.tsx`, then `npm run ui:css`. The Slider is a native
+      `<input type="range">` painted through its `::-webkit-slider-*` pseudo-elements, so keyboard,
+      pointer capture and the accessibility tree come for free
+- [x] `Icon Button` gained the real `State=Active`, and **the Reader's hand-fill is retired** — its
+      active tool now inherits `--accent-soft` plus the 1px inset `--accent` ring from the component,
+      and its glyph stops being forced to `--accent` (§5: an accent fill and an accent glyph and an
+      accent line is three signals for one state)
+- [x] 14 glyphs + `sun` and `moon` into `src/components/Sprite.tsx` and the `IconName` union — **45
+      names**. `src/ui/icons/Sprite.tsx` was imported by nothing and is **deleted**; the duplicate
+      sun/moon paths inlined in `TonePill.tsx` and `SettingsView.tsx` are gone with it
+- [x] 15 tokens into `scripts/tokens.mjs`, then `npm run tokens` — **106 tokens, 36 mode-paired**.
+      The twelve `--cover-*` are emitted once, in `:root`, because a cover is an object and must not
+      invert. `scripts/audit.mjs` grew 17 pairs and every one passes
+- [x] **`--scrim`, `--danger` and `--danger-soft` were app guesses and now carry Figma's values.**
+      The visible change is `--danger`: a ~35° hue shift, rose-crimson to brick red in Day and pink to
+      coral in Night, across every `Notice`, the destructive dialog button and `.set-danger`. Contrast
+      on `--card` goes 7.18 → **6.11** in Day and 4.70 → **5.46** in Night, so both still clear 4.5
+- [?] **The spread's page numbers carry a +2 display offset**, and that is what makes every figure the
+      file draws come out right: Figma shows `pages 12-13`, lists `Spreads 2-3 … 18-19` and prints
+      `48 pages`, so a left page is always even and the first leaf is pages 2 and 3 — as a bound
+      notebook whose cover is leaf one behaves. Disk indices stay 0-based. Say if the first spread
+      should read `1-2` instead; it is one constant
+
+### 6.4 Images and the Reader clip — DONE, and built first
+- [x] Ctrl+V a screenshot — needed nothing; the CSP already allows `img-src 'self' data: blob:`
+- [x] Drag-and-drop — `dragDropEnabled` flipped false → **true** at `tauri.conf.json:25`
+- [x] **Clip a region of a paper** — a marquee over the already-rendered pdf.js canvas, `drawImage`
+      the crop, `toBlob`, `nb_asset_put`. No OS capture API, no new plugin, no new permission. Both
+      layers are composited, so a clip keeps the highlight that is half the reason for keeping it
+- [x] "Clip to notebook" in the Reader topbar (the new `clip` glyph) + a destination picker. The
+      picker asks for a notebook and nothing else: a clip goes where your working goes, and
+      `placeImage` puts it under whatever is already on that page, spilling to the next one if there
+      is no room — which is the infinite-pages promise doing something useful rather than merely being
+      true. The armed mode stays armed for several clips, then says where each one landed with a
+      "Go there" that opens the notebook at that page
+- [x] Clips are capped at 1600px on the long edge — a full page at 2.1x zoom on a 2x display is
+      ~3000px and several MB of PNG for something drawn 340px wide
+
+### 6.5 Motion port — DONE, with one divergence
+- [x] `page turn` — all 8 tracks, 0.45s, every percentage `t ÷ 0.45`. **The coils never move**: they
+      are the pivot. The file pairs `SCALE_X 1 → 0.02` with `TRANSLATION_X -222.95` and its own note
+      explains that the translate exists only to undo Figma's centre-origin, so the CSS says it
+      directly with `transform-origin` on the binding edge — exact rather than compensated. The
+      outgoing leaf stays mounted for the turn, because the timeline crossfades one page into the next
+- [x] `cover open` — ported **from 0.45s onward**, all 13 of the tracks that live inside this route,
+      including the save dot popping last on a back-out curve
+- [?] **The hero cover's flight across the shelf (0 → 0.55s: +170.5 / +149.5, scale 1 → 1.9) is not
+      ported.** It is a shared-element transition between two routes and needs the pressed tile's rect
+      threaded through the router; the file has the cover cross-dissolving into the spread at 0.55
+      anyway, so what the eye follows from 0.45 is intact and the spread's own entrance stands in for
+      the dissolve. Say if the flight matters
+- [x] Both timelines gated by `prefers-reduced-motion` **and** `[data-motion='off']`, so the Settings
+      switch works too — `npm run audit`'s motion pass fails the build otherwise
+- [?] **Focus mode does not give the spread all 1320**, as §5a says it should. The dock and the
+      inspector recede on transform and opacity and the spread holds its place, because widening the
+      stage means animating `grid-template`, which the design system forbids. Precedented: the
+      Reader's focus mode made the same call for the same reason and it is documented there
+- [?] **The spread's handwriting is not Caveat.** §5d draws the pages in `Ink/Annotation` (Caveat 18),
+      and in the app the strokes ARE handwriting — they are the student's own pen. What is not is the
+      `text` tool and the sticky note, which render in `--font-ui`, because Caveat was dropped from the
+      font payload in 5.1 and re-vendoring it is 104 KB plus a network step. Say if the sticky should
+      be handwritten and `npm run fonts` picks it back up
+
+### 6.6 Verification
+- [x] `npm run build` green · `npx tsc --noEmit` clean · `cargo check --bins` clean
+- [x] `npm run audit` — **all blocking passes green.** Offline: 6 bundled files, every remote string
+      allowlisted, so `perfect-freehand` changed nothing. Contrast: the 17 new pairs all pass, and the
+      only two below threshold are the pre-existing `--white on --bell-cap-mid` rows the Figma file
+      already defers. Motion: 13 animating stylesheets, every one gated
+- [x] `npm run dead:css` — 0 new dead classes. The 17 still reported in `app.css` are the pre-existing
+      ones that share a selector list or sit behind a pseudo, which a script must not decide
+- [x] `cargo test --lib` 26 pass / 2 ignored · `npm test` **136 pass** across `ink.test.ts` and
+      `notebooks.test.ts`
+- [x] **The whole loop driven end to end in headless Chrome against the real dev server**, with the
+      notebook commands stubbed by an in-memory store that derives `pages` and `bytes` the way Rust
+      does — so a wire-shape mismatch would have failed there. Verified by doing rather than reading:
+      six sidebar rows with Mr. Bell **160x160, ending 48px clear of the sidebar's bottom edge**
+      (TRAP 16, answered) · the empty state · the dialog at exactly **520x422** with its preview at
+      **160x203** (spec 202.5) · create → land in the spread at **936x644**, no sidebar, 12 dock
+      buttons, 3 tabs · draw on both pages → two page files, real 4 dp geometry with normalised
+      pressure, history depth 3 · Ctrl+Z deletes the emptied page file and Ctrl+Shift+Z restores it ·
+      turn three spreads past the end → `pages 8-9`, `next` still enabled, **no prompt of any kind**,
+      and a stroke there writes `pages/0007.json` · Ctrl+V an image → `nb_asset_put` then the object on
+      the page · all three inspector tabs · the tone crossfade · back to a shelf whose subline reads
+      "1 notebook · 2 pages written · stored on this device", every figure measured
+- [x] Two defects the run caught, both now fixed: the topbar's `back` sat 12px right of §5a's x 78
+      (flex gap, cancelled once on the lights), and **a paste that could not be decoded was silently
+      swallowed** — a no-op indistinguishable from a press that was never noticed. It now says so
+- [?] **`npm run tauri dev`, and the physical quit-and-relaunch, are yours.** The storage layer's
+      persistence is covered by `notebooks::tests::a_notebook_round_trips_through_the_filesystem`
+      (write, then re-read every field including the derived ones) and the frontend's use of those same
+      commands by the headless run above — but the two have not been joined by an actual process
+      restart, because `scripts/shot.ps1` grabs the screen rather than the window and cannot drive the
+      Tauri build reliably. Same posture as Phase 4's "pull the network and confirm"
+- [x] **A documented fact corrected while porting.** `WorkspaceView.css`'s header and the Phase 6 plan
+      (§2.5 trap 1) both state that a view's stylesheet loads BEFORE `app.css` and `src/ui`. Measured
+      off the built bundle, the byte offsets run chrome.css → app.css → ui/styles → **view CSS last**,
+      in the dev server and the production build alike. So a view sheet wins a tie, and the couple of
+      rules written extra-specific to "beat a later sheet" never needed to be. The `rd-` / `nb-` /
+      `nbs-` / `nbi-` prefixes stay regardless — they are what stops the question arising
+
+---
+
 ## Verification commands
 - `npm run verify:index` — walk G: and report the index shape (Rust, throwaway DB)
 - `npm run verify:thresholds [code] [cap]` — parse real `gt` PDFs, show accepted/rejected rows
 - `npm run verify:difficulty [code|all]` — ported formula vs. the original, plus the distribution
 - `npm run verify:papers [code|all] [cap]` — open real question papers, check page counts
-- `cargo test --lib` (in `src-tauri`) — 9 tests: path parsing, three-levels-only walk, the paper,
-  search and difficulty SQL, the read sandbox, state-key safety
+- `cargo test --lib` (in `src-tauri`) — 26 tests, 2 ignored: path parsing, three-levels-only walk,
+  the paper, search and difficulty SQL, the read sandbox, state-key safety, the Foolscap→Bell state
+  migration, and notebook storage (id validation, the derived page count, index self-heal, a round
+  trip, and a resync leaving `notebooks\` untouched)
+- `npm test` — the JS unit tests. `node:test` + esbuild, no new dependency. `src/lib/ink.ts` and the
+  page arithmetic in `src/lib/notebooks.ts`
 - `npm run fonts` — re-vendor the woff2 faces (the only step that needs network)
 - `npm run icon` — re-render the app icon and regenerate every size
 

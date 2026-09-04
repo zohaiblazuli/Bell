@@ -1,0 +1,689 @@
+/* The open notebook — `design/specs/screen-notebooks.md` §5 and §6.
+ *
+ * This sheet also carries `ToolDock` and `NotebookPage`, because both are the spread's own pieces and
+ * are mounted nowhere else — the same arrangement `WorkspaceView.css` has with `PaperCanvas`.
+ *
+ * THREE THINGS TO KNOW BEFORE EDITING.
+ *
+ * 1. Every name here is prefixed `nbs-`, and that is a discipline rather than a workaround. The order
+ *    the layers actually land in, measured off the built bundle, is chrome.css → app.css → ui/styles
+ *    → view CSS — so a view sheet loads LAST and would win a tie. `WorkspaceView.css`'s header and
+ *    `TASKS.md` both state the reverse; the byte offsets in `dist/assets/*.css` say otherwise. Either
+ *    way, a bare `.page` or `.top` here would be a collision waiting for someone to rename something,
+ *    so nothing in this file is unprefixed.
+ * 2. THE SPREAD IS A FIXED 936x644 BOX THAT SCALES AS ONE, through `--nbs-scale` on a `transform`.
+ *    That is what lets every number below be the spec's own literal — 455, 644, 26, 34, 30, the 26
+ *    ruling pitch, the 48 coil pitch — instead of a fraction nobody can check against the file. The
+ *    view measures the stage and sets the scale; `NotebookPage` multiplies it into its canvas backing
+ *    store so a scaled page is still sharp. Animating `transform` is also the only thing the design
+ *    system permits.
+ * 3. §5a says focus mode gives the spread all 1320. It does not, and that is deliberate and
+ *    precedented: the Reader's focus mode recedes its rail and panel with a transform and does NOT
+ *    widen the well, because widening would mean animating `grid-template`. Same call, same reason —
+ *    the dock and the inspector slide out and stop competing, and the spread holds its place.
+ */
+
+/* ---------- the shell ---------- */
+
+/* No sidebar: `App` renders this route in an `app-bare` shell, because §5a puts the window lights
+   inside the notebook's own top bar, which is only possible if nothing else owns them. */
+.nbs {
+  position: relative;
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 268px;
+  grid-template-rows: 52px minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ---------- §5a topbar 1320x52 ---------- */
+
+/* 1px `--hair` on ALL FOUR sides, not a border-bottom: §5a is explicit, the Reader's topbar is the
+   precedent, and reusing the app's `.topbar` block would drop three edges. */
+.nbs-top {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  border: 1px solid var(--hair);
+  background: var(--glass);
+  backdrop-filter: blur(26px) saturate(165%);
+  overflow: hidden;
+  transition: var(--tone-chrome);
+}
+/* The bar is the window's drag handle, as it is on every other screen: `data-tauri-drag-region` sits
+   on this element, exactly as `components/TopBar` does it, and the buttons inside still get their
+   clicks. Worth knowing for `scripts/drive.ps1` — a SYNTHETIC press on the bar moves the window. */
+
+/* §5a's children are absolutely positioned in Figma; here they are a flex row, which lands every x
+   correctly EXCEPT the first gap: the file puts the lights at 16..78 and `back` at exactly 78, with no
+   space between them, and then the title at 124. Cancelling the row's gap once, on the lights, is what
+   reproduces all three — 16 + 62 = 78, 78 + 34 + 12 = 124. */
+.nbs-top > .wlights {
+  margin-right: -12px;
+}
+
+/* §5a `title` at x 124: four styles in one row at gap 9. */
+.nbs-title {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  min-width: 0;
+}
+.nbs-title-name {
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nbs-title-code {
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.nbs-title-sep,
+.nbs-title-pages {
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+/* §5a `save` — 6px dot + a 10px Medium label, lifted verbatim from the Reader's running-timer
+   indicator. This is the ONLY place the product admits it is writing to disk, which is the whole of
+   requirement 3 ("always saved locally") made visible. */
+.nbs-save {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-3);
+}
+.nbs-save-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.nbs-save-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 500;
+}
+/* While a flush is in flight the label joins the dot in the accent — the one state change here. */
+.nbs-save[data-state='saving'] {
+  color: var(--accent);
+}
+
+.nbs-top-gap {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* ---------- §5b tool dock 64x808 ---------- */
+
+.nbs-dock {
+  grid-column: 1;
+  grid-row: 2;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 15px;
+  border: 1px solid var(--hair);
+  border-top: 0;
+  background: var(--glass);
+  backdrop-filter: blur(26px) saturate(165%);
+  overflow: hidden;
+  transition: var(--tone-chrome), transform 0.4s cubic-bezier(0.4, 0, 0.1, 1), opacity 0.3s;
+}
+.nbs-dock-grp {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+/* §5b's `sep`, 24x1. The dock's own 6px gap either side of it reproduces the file's 175 → 182 step. */
+.nbs-dock-sep {
+  flex: none;
+  width: 24px;
+  height: 1px;
+  background: var(--hair);
+}
+.nbs-dock-gap {
+  flex: 1 1 auto;
+}
+
+/* ---------- the stage and §5c the spread ---------- */
+
+.nbs-stage {
+  position: relative;
+  grid-column: 2;
+  grid-row: 2;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 936x644 at (90,134) in the file. Fixed here, scaled as one — see note 2 at the head. `--nbs-scale`
+   is set by the view from a measurement, and 1 is the design size. */
+.nbs-spread {
+  --nbs-scale: 1;
+  position: relative;
+  width: 936px;
+  height: 644px;
+  transform: scale(var(--nbs-scale));
+  /* §13 TRAP 12: the paper shadow reaches well outside the box and a clipping ancestor slices it. */
+  overflow: visible;
+}
+
+/* §5c: two 455x644 pages either side of a 26-wide binding at 455..481 local. Radius is a literal 3 —
+   a page is not a card, the same call the Reader's `.rd-paper` makes. */
+.nbs-page {
+  position: absolute;
+  top: 0;
+  width: 455px;
+  height: 644px;
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--page-ink);
+  box-shadow: var(--shadow-paper);
+  overflow: hidden;
+}
+.nbs-page[data-side='l'] {
+  left: 0;
+}
+.nbs-page[data-side='r'] {
+  left: 481px;
+}
+
+/* The three stacked canvases, all filling the page. `paper` repaints only when the style or the box
+   changes, `static` on a commit or a page change, and `live` carries the stroke in flight — which is
+   what stops a long stroke re-rasterising the ruling underneath it on every pointermove. */
+.nbs-layer {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.nbs-layer[data-layer='live'] {
+  /* The one documented `cursor` exception, as on the Reader's armed ink layer. */
+  cursor: crosshair;
+  touch-action: none;
+}
+.nbs-page[data-armed='false'] .nbs-layer[data-layer='live'] {
+  cursor: default;
+}
+
+/* §5c `fold` — a 22-wide gradient against the binding, pointing AWAY from the spine, so the two
+   pages read as a single sheet of paper bending into the gutter. */
+.nbs-fold {
+  position: absolute;
+  top: 0;
+  width: 22px;
+  height: 644px;
+  pointer-events: none;
+}
+.nbs-page[data-side='l'] .nbs-fold {
+  left: 433px;
+  background: linear-gradient(
+    to left,
+    color-mix(in srgb, var(--page-ink) 7%, transparent),
+    transparent
+  );
+}
+.nbs-page[data-side='r'] .nbs-fold {
+  left: 0;
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--page-ink) 7%, transparent),
+    transparent
+  );
+}
+
+/* §5c `rings` — 26x644 at local x 455, the LAST child so the wire paints over both pages. 13 coils,
+   22x13 ellipses at x 2, stroke 2 `--page-ink-2`, node opacity 0.75, first centre y 34, pitch 48.
+   Level, not rotated: an earlier draft called for -6deg, the file ships them flat, and flat is what
+   the motion frames were built against. `--page-ink-2` is mode-invariant, so the wire reads as steel
+   in both tones. */
+.nbs-rings {
+  position: absolute;
+  top: 0;
+  left: 455px;
+  width: 26px;
+  height: 644px;
+  background: color-mix(in srgb, var(--page-ink) 16%, transparent);
+  pointer-events: none;
+}
+.nbs-rings svg {
+  display: block;
+  width: 26px;
+  height: 644px;
+  opacity: 0.75;
+}
+
+/* ---------- §5e spread nav 325x50 ---------- */
+
+/* Floating, centred in the stage, 14 above the bottom edge — §5e's own y of 796 in an 860 frame. It
+   uses the named `Shadow/Popover` style rather than the Reader's hand-rolled shadow in the same slot;
+   the spec notes that divergence and this is the side that follows the system. */
+.nbs-nav {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 14px;
+  z-index: 6;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.nbs-nav-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-pill);
+  background: var(--glass-strong);
+  backdrop-filter: blur(26px) saturate(165%);
+  box-shadow: var(--shadow-pop);
+  pointer-events: auto;
+}
+/* TRAP 15: `pages 12-13`, never `12 of 40`, and `next` is never disabled. The whole of "infinite
+   pages, never ask the student" is in this one readout. */
+.nbs-nav-read {
+  min-width: 84px;
+  text-align: center;
+  color: var(--ink-2);
+}
+.nbs-nav-sep {
+  flex: none;
+  width: 1px;
+  height: 20px;
+  background: var(--hair);
+}
+.nbs-nav-zoom {
+  min-width: 40px;
+  text-align: center;
+  color: var(--ink-3);
+}
+
+/* ---------- the transient notice over the stage ---------- */
+
+/* One line, over the spread rather than beside it, so it cannot be missed and cannot push the paper
+   down. `--danger` because the only thing that writes to it is a failure — and `--danger`, never
+   `--d5`: rule 3 forbids borrowing the difficulty ramp for state. */
+.nbs-notice {
+  position: absolute;
+  inset-inline: 0;
+  top: 14px;
+  z-index: 7;
+  display: flex;
+  justify-content: center;
+  padding: 0 20px;
+  pointer-events: none;
+}
+.nbs-notice-pill {
+  max-width: 100%;
+  padding: 7px 14px;
+  border: 1px solid var(--danger);
+  border-radius: var(--r-pill);
+  background: var(--glass-strong);
+  backdrop-filter: blur(26px) saturate(165%);
+  box-shadow: var(--shadow-card);
+  color: var(--danger);
+}
+
+/* ---------- §6 inspector 268x808 ---------- */
+
+.nbs-inspector {
+  grid-column: 3;
+  grid-row: 2;
+  z-index: 4;
+  min-height: 0;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.1, 1), opacity 0.3s;
+}
+
+/* ---------- focus mode ---------- */
+
+/* Transform and opacity only. Each surface leaves by exactly its own width, which is the same rule
+   the `cover open` timeline uses — nothing crosses the stage on its way out. */
+.app[data-focus='on'] .nbs-dock {
+  transform: translateX(-64px);
+  opacity: 0;
+  pointer-events: none;
+}
+.app[data-focus='on'] .nbs-inspector {
+  transform: translateX(268px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---------- paste / drop target ---------- */
+/* Dragging an image over the spread. `--accent-soft` is the one permitted wash and the dashed accent
+   line is rule 2 — the same treatment the Reader's clip marquee gets, because it is the same gesture
+   arriving from the other end. */
+.nbs-stage[data-drop='over']::after {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border: 1.5px dashed var(--accent);
+  border-radius: var(--r-card);
+  background: var(--accent-soft);
+  pointer-events: none;
+}
+
+/* ---------- the inline editor for text and sticky notes ---------- */
+
+/* Positioned in page fractions over the live canvas, so what you type sits where you pressed. It is a
+   real `<textarea>` rather than a canvas-drawn caret: IME, selection, undo inside the field and every
+   keyboard the OS offers come for free, and none of that is worth reimplementing on a canvas. */
+.nbs-typing {
+  position: absolute;
+  z-index: 4;
+  width: 240px;
+  min-height: 44px;
+  padding: 6px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--paper);
+  color: var(--page-ink);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: normal;
+  resize: none;
+}
+/* §5d's sticky is `--bell-gold` paper with `--page-ink` on it, and both are mode-invariant — correct,
+   because it is an object on the page rather than chrome. */
+.nbs-typing[data-kind='note'] {
+  width: 116px;
+  height: 104px;
+  background: var(--bell-gold);
+}
+
+/* ---------- §11 motion ---------- */
+
+/* Both timelines are ported from `Motion — Notebook` `662:1217`, every percentage `t ÷ duration` off
+   the measured tracks. NO PAGE CURL anywhere: Figma's manual keyframes offer no 3D rotation, so every
+   track in the file is already transform or opacity and both port 1:1 — which is also why they collapse
+   honestly to a cut under reduced motion rather than needing a different design.
+ *
+ * `cover open` is ported from 0.45s onward — the half that happens inside this route. The hero cover's
+ * flight across the shelf (0 → 0.55s: +170.5 / +149.5, scale 1 → 1.9) is a shared-element transition
+ * between two routes, and the file has the cover cross-dissolving into the spread at 0.55 anyway, so
+ * what the eye follows from 0.45 is intact. The spread's own entrance stands in for the dissolve.
+ * Recorded as a divergence rather than quietly dropped.
+ */
+
+/* 1.1s total; the tracks below start at 0.45 (40.9%) and finish at 1.10. */
+.nbs[data-enter='on'] .nbs-spread {
+  animation: nbs-spread-in 1.1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.nbs[data-enter='on'] .nbs-page[data-side='l'] {
+  animation: nbs-page-l-in 1.1s cubic-bezier(0.4, 0, 0.1, 1) both;
+}
+.nbs[data-enter='on'] .nbs-page[data-side='r'] {
+  animation: nbs-page-r-in 1.1s cubic-bezier(0.4, 0, 0.1, 1) both;
+}
+.nbs[data-enter='on'] .nbs-rings {
+  animation: nbs-rings-in 1.1s ease-out both;
+}
+.nbs[data-enter='on'] .nbs-top {
+  animation: nbs-top-in 1.1s ease-out both;
+}
+.nbs[data-enter='on'] .nbs-dock {
+  animation: nbs-dock-in 1.1s ease-out both;
+}
+.nbs[data-enter='on'] .nbs-inspector {
+  animation: nbs-inspector-in 1.1s ease-out both;
+}
+.nbs[data-enter='on'] .nbs-nav {
+  animation: nbs-nav-in 1.1s ease-out both;
+}
+/* The save dot pops LAST, on a back-out curve — 0.98 → 1.10. The only moment the app admits it is
+   writing to disk, and the file gives it the one overshoot in either timeline. */
+.nbs[data-enter='on'] .nbs-save-dot {
+  animation: nbs-dot-in 1.1s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes nbs-spread-in {
+  0%,
+  40.9% {
+    opacity: 0;
+  }
+  63.6%,
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes nbs-page-l-in {
+  0%,
+  40.9% {
+    transform: translateX(12px);
+  }
+  65.5%,
+  100% {
+    transform: translateX(0);
+  }
+}
+@keyframes nbs-page-r-in {
+  0%,
+  40.9% {
+    transform: translateX(-12px);
+  }
+  65.5%,
+  100% {
+    transform: translateX(0);
+  }
+}
+@keyframes nbs-rings-in {
+  0%,
+  50% {
+    opacity: 0;
+  }
+  72.7%,
+  100% {
+    opacity: 0.75; /* its resting node opacity, not 1 */
+  }
+}
+/* Each surface leaves by exactly its own dimension — the topbar by -52, the dock by -64, the
+   inspector by +268 — so nothing crosses the stage on its way in. */
+@keyframes nbs-top-in {
+  0%,
+  56.4% {
+    opacity: 0;
+    transform: translateY(-52px);
+  }
+  81.8%,
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes nbs-dock-in {
+  0%,
+  56.4% {
+    opacity: 0;
+    transform: translateX(-64px);
+  }
+  81.8%,
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes nbs-inspector-in {
+  0%,
+  56.4% {
+    opacity: 0;
+    transform: translateX(268px);
+  }
+  81.8%,
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes nbs-nav-in {
+  0%,
+  63.6% {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  86.4%,
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes nbs-dot-in {
+  0%,
+  89.1% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  96.4% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* `page turn` `666:1217` — 0.45s, 8 tracks.
+ *
+ * THE COILS NEVER MOVE. They are the pivot, and that is the mechanical argument for spiral binding
+ * over stitched: a page hinged on the wire, not a page shrinking in place.
+ *
+ * The file pairs SCALE_X 1 → 0.02 with TRANSLATION_X -222.95, and its own note explains why that
+ * number is not magic: Figma scales about the node centre, so squeezing a 455-wide page to 0.02 pulls
+ * its left edge inward by (455 − 9.1) / 2 = 222.95, and the translate exists only to put the edge back
+ * on the binding. CSS can say that directly — `transform-origin` on the binding edge — so the translate
+ * is dropped and the intent is exact rather than compensated. */
+.nbs[data-turn] .nbs-page {
+  transform-origin: left center;
+}
+.nbs[data-turn='fwd'] .nbs-page[data-side='r'][data-turn='out'] {
+  animation: nbs-turn-out 0.45s cubic-bezier(0.4, 0, 1, 1) both;
+}
+.nbs[data-turn='fwd'] .nbs-page[data-side='r'][data-turn='in'] {
+  animation: nbs-turn-in 0.45s cubic-bezier(0, 0, 0.2, 1) both;
+}
+/* Backwards, the leaf hinges the other way: the LEFT page is the one that folds, about its right edge
+   against the binding. Not in the file — the file only draws the forward turn — so it is the forward
+   timeline mirrored, which is the only reading consistent with the coils being the pivot. */
+.nbs[data-turn='back'] .nbs-page[data-side='l'] {
+  transform-origin: right center;
+}
+.nbs[data-turn='back'] .nbs-page[data-side='l'][data-turn='out'] {
+  animation: nbs-turn-out 0.45s cubic-bezier(0.4, 0, 1, 1) both;
+}
+.nbs[data-turn='back'] .nbs-page[data-side='l'][data-turn='in'] {
+  animation: nbs-turn-in 0.45s cubic-bezier(0, 0, 0.2, 1) both;
+}
+/* The facing page's content crossfades rather than moving — it is the same sheet, differently written
+   on, so sliding it would say the wrong thing. */
+.nbs[data-turn] .nbs-page[data-turn='out'] .nbs-layer[data-layer='static'] {
+  animation: nbs-ink-out 0.45s ease-out both;
+}
+.nbs[data-turn] .nbs-page[data-turn='in'] .nbs-layer[data-layer='static'] {
+  animation: nbs-ink-in 0.45s ease-out both;
+}
+
+@keyframes nbs-turn-out {
+  0% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  44.4% {
+    opacity: 1;
+  }
+  53.3% {
+    transform: scaleX(0.02);
+  }
+  57.8%,
+  100% {
+    transform: scaleX(0.02);
+    opacity: 0;
+  }
+}
+@keyframes nbs-turn-in {
+  0%,
+  44.4% {
+    transform: scaleX(0.02);
+    opacity: 0;
+  }
+  53.3% {
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+@keyframes nbs-ink-out {
+  0%,
+  22.2% {
+    opacity: 1;
+  }
+  57.8%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes nbs-ink-in {
+  0%,
+  57.8% {
+    opacity: 0;
+  }
+  93.3%,
+  100% {
+    opacity: 1;
+  }
+}
+
+/* ---------- reduced motion ---------- */
+
+/* Both timelines collapse to a cut. `npm run audit`'s motion pass FAILS THE BUILD if a `@keyframes`
+   in a stylesheet is not reachable behind a gate, so this block is not optional — and the OS query and
+   the Settings switch have to be honoured separately, because the switch is a product preference the
+   media query knows nothing about. */
+@media (prefers-reduced-motion: reduce) {
+  .nbs-dock,
+  .nbs-inspector,
+  .nbs-top {
+    transition: none;
+  }
+  .nbs[data-enter='on'] .nbs-spread,
+  .nbs[data-enter='on'] .nbs-page,
+  .nbs[data-enter='on'] .nbs-rings,
+  .nbs[data-enter='on'] .nbs-top,
+  .nbs[data-enter='on'] .nbs-dock,
+  .nbs[data-enter='on'] .nbs-inspector,
+  .nbs[data-enter='on'] .nbs-nav,
+  .nbs[data-enter='on'] .nbs-save-dot,
+  .nbs[data-turn] .nbs-page,
+  .nbs[data-turn] .nbs-layer[data-layer='static'] {
+    animation: none !important;
+  }
+}
+.app[data-motion='off'] .nbs-dock,
+.app[data-motion='off'] .nbs-inspector,
+.app[data-motion='off'] .nbs-top {
+  transition: none;
+}
+.app[data-motion='off'] .nbs[data-enter='on'] .nbs-spread,
+.app[data-motion='off'] .nbs[data-enter='on'] .nbs-page,
+.app[data-motion='off'] .nbs[data-enter='on'] .nbs-rings,
+.app[data-motion='off'] .nbs[data-enter='on'] .nbs-top,
+.app[data-motion='off'] .nbs[data-enter='on'] .nbs-dock,
+.app[data-motion='off'] .nbs[data-enter='on'] .nbs-inspector,
+.app[data-motion='off'] .nbs[data-enter='on'] .nbs-nav,
+.app[data-motion='off'] .nbs[data-enter='on'] .nbs-save-dot,
+.app[data-motion='off'] .nbs[data-turn] .nbs-page,
+.app[data-motion='off'] .nbs[data-turn] .nbs-layer[data-layer='static'] {
+  animation: none !important;
+}

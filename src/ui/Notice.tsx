@@ -46,7 +46,7 @@ export default function Notice({ tone = 'warn', children, className }: NoticePro
       role={tone === 'warn' ? 'alert' : 'status'}
     >
       {/* The sprite is mounted once at the app root and a `<use>` clone takes its paint from the
-          use site (icons/Sprite.tsx). Both tones clone `warn`: the 31-glyph set has no `info`
+          use site (components/Sprite.tsx). Both tones clone `warn`: the 45-glyph set has no `info`
           glyph, so the tone is carried by colour alone. If one is ever drawn, it belongs here. */}
       <svg className="bell-notice__glyph" aria-hidden="true">
         <use href="#i-warn" />

@@ -1,0 +1,390 @@
+/* New Notebook — `design/specs/screen-notebooks.md` §7 (`653:1263` / `653:1362`). Why this sheet is
+   not `@ui/Dialog`, the two deviations from the measured form, and the `rescale` → `scale()` mapping
+   are all argued in NewNotebookDialog.tsx.
+
+   Everything below is §7's own arithmetic. The sheet is 520 x 422 — `24 + 374 + 24` tall and
+   `24 + 160 + 24 + 288 + 24` wide — and only the two column widths are stated, because the height is
+   a hug of the form's six rows. */
+
+/* Verbatim from Dialog.css: the `--scrim` token over a 6px blur, above app.css's ⌘K palette at 50 so
+   a sheet raised from the palette is not buried. §7 measures the scrim at paint opacity 0.55 in
+   Night and 0.28 in Day — which is the token, in both modes, so nothing here branches. */
+.nnd-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: var(--scrim);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+/* `dialog` 520 x 422 @(400,219) — exactly centred, HORIZONTAL gap 24, pad 24, radius `--r-panel`
+   (16), `Shadow/Popover/*`.
+
+   **`--card`, not glass**, which is §7's own call: a sheet this size in chrome glass reads muddy and
+   gives text no stable ground. The blur is the file's and stays: `--card` is opaque in Day so it does
+   nothing there, and 90% in Night where it softens what shows through.
+
+   The hairline is an inset ring rather than a border, the same trade Dialog.css takes and for the
+   same arithmetic: 520 − 2 x 24 = 472 is exactly 160 + 24 + 288, so a real 1px border would shrink
+   the content box to 470 and squeeze 2px out of the form. Figma's INSIDE stroke consumes no layout
+   and neither does this. */
+.nnd-sheet {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start; /* counter MIN — `preview` sits at the pad's own y 24 */
+  gap: 24px;
+  width: 520px;
+  max-width: calc(100vw - 48px);
+  padding: 24px;
+  border-radius: var(--r-panel);
+  background: var(--card);
+  -webkit-backdrop-filter: blur(26px) saturate(165%);
+  backdrop-filter: blur(26px) saturate(165%);
+  box-shadow: inset 0 0 0 1px var(--card-brd), var(--shadow-pop);
+  color: var(--ink);
+}
+
+/* The panel is only a focus anchor — tabIndex −1, so a press on its own padding keeps focus inside
+   the modal instead of dropping it on <body> and breaking Escape. */
+.nnd-sheet:focus-visible {
+  outline: none;
+}
+
+/* `preview` 160 x 202. Both numbers are the cover master's own (§4e: 237 wide, a FIXED 300 book)
+   times the one scale §7 applies, so the box and the transform can never disagree. The tile is
+   absolute inside it: `scale` does not affect layout, and without this the un-scaled 237 would set
+   the column width. */
+.nnd-preview {
+  position: relative;
+  flex: none;
+  width: calc(237px * var(--nnd-scale));
+  height: calc(300px * var(--nnd-scale));
+}
+
+/* `transform: scale()` IS `rescale()` — it takes `font-size`, the radius and the inner gap with it,
+   which is why §7 measures the preview's book radius at 8.775 (13 x 0.675) and its gap at 5.4
+   (8 x 0.675). Scaling geometry alone is `resize()`, and TRAP 7 records what that does: the cover's
+   title wraps and clips. */
+.nnd-preview-tile {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 237px;
+  transform: scale(var(--nnd-scale));
+  transform-origin: top left;
+}
+
+/* `form` 288 x 374 — VERTICAL gap 16. FIXED, so it neither grows nor shrinks: every row below is
+   measured against 288. */
+.nnd-form {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  gap: 16px;
+  width: 288px;
+  min-width: 0;
+}
+
+/* A labelled row: `sec-label` then its control, gap 0. That is not a missing gap — Section Label
+   carries 5px above and below its own 13px line, so 23 + 28 = 51 for `cover`, 23 + 34 = 57 for
+   `sticker` and 23 + 59 = 82 for `paper`, which are §7's three measured heights exactly. */
+.nnd-row {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- the name field ---------- */
+
+/* §7's `name` row is a `Text Field` `State=Focus`, and §9 gives that component's recipe: 34 tall,
+   radius `--r-pill`, `--glass-strong`, 1px `--hair`, pad 0 / 12, Body/Default, the hairline swapping
+   to `--accent` on focus. `@ui/Field` is the code side of that gap and already ships all of the
+   behaviour — the caret colour, the border-swap focus ring, the hint wiring, `aria-describedby` — so
+   it is reused and re-skinned here rather than forked. Four properties move, and they are the four
+   that differ between onboarding's 420 x 48 input and this 288 x 34 one.
+
+   Every override below out-specifies the rule it replaces rather than relying on main.tsx's sheet
+   order, which puts `ui/styles` first and would otherwise decide two of these on a tie. */
+.bell-field.nnd-name {
+  width: 100%;
+}
+.nnd-name .bell-field__input {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  background: var(--glass-strong);
+}
+/* §9's Text Field swaps the hairline to `--accent` at the same 1px, where Field — onboarding's
+   420 x 48 input — thickens it to 2px and then shaves a pixel off its padding to stop the value
+   jogging. At 1px there is nothing to compensate for. */
+.nnd-name .bell-field__input:focus {
+  border-width: 1px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+}
+/* Field squares its own focus ring back to `--r-btn` here, at the same specificity as the rule
+   above; this states the pill so neither the tie nor the sheet order decides it. */
+.nnd-name .bell-field__input:focus-visible {
+  border-radius: var(--r-pill);
+}
+
+/* ---------- COVER ---------- */
+
+/* Eight 28 x 28 swatches at pitch 37 — 8 x 28 + 7 x 9 = 287 in 288. `space-between` rather than
+   `gap: 9px` for that last pixel: the row then fills 288 exactly at 9.14 apart, and it still fills
+   if the sheet is ever narrower than the design width. */
+.nnd-covers {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* The selection marker is §6a's, the file's own for a colour swatch: a **1.5px `--ink` ring on the
+   box**, with the colour inset inside it. §6a rings a 22px disc in a 26px box; 24 in 28 is the same
+   2px of air. `calc(--r-chip − 2px)` is the concentric radius that 2px implies, not a picked number. */
+.nnd-swatch {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-chip);
+}
+.nnd-swatch-chip {
+  width: 24px;
+  height: 24px;
+  border-radius: calc(var(--r-chip) - 2px);
+}
+.nnd-swatch[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+
+/* ---------- STICKER ---------- */
+
+/* Seven 34 x 34 tiles at pitch 42 — 7 x 34 + 6 x 8 = 286 in 288, so `space-between` again. §7 warns
+   that these are laid out by the auto-layout cell and never by an absolute x: an earlier build set
+   `glyph.x = cell.x + 8` and clipped glyphs 2-6 out of frame (TRAP 13). Centring the glyph in the
+   cell is the fix, and in CSS that is `place-items: center` — there is no coordinate to get wrong. */
+.nnd-stickers {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Same ring as the cover swatches above, for the same reason: both rows are swatches, and one
+   selected-marker per kind of control is what keeps the form readable. The tile's own hairline is
+   `--hair`, the resting stroke §6a gives an unselected tile. */
+.nnd-sticker {
+  display: grid;
+  place-items: center;
+  flex: none;
+  box-sizing: border-box;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-btn);
+  color: var(--ink-2);
+  transition: background-color 0.16s, color 0.16s;
+}
+.nnd-sticker:hover {
+  background-color: var(--hair-2);
+  color: var(--ink);
+}
+.nnd-sticker[aria-pressed='true'] {
+  border-color: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+  color: var(--ink);
+}
+.nnd-sticker > svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* The Mr. Bell tile. index.css strokes every `svg` in `currentColor`, which inherits into the mark's
+   15 rects and outlines each one — the failure mr-bell TRAPS 12 records, and the reason `.bell rect`
+   and `.splash-mark rect` both carry this reset. `rect` only: the five subject tiles beside it are
+   stroked line art. */
+.nnd-sticker rect {
+  stroke: none;
+}
+
+/* The seventh slot — "No sticker" where the file draws `browse`. A ghost tile, the same vocabulary
+   §6b's trailing `new spread` uses: a 1.5px `--hair` outline over nothing. */
+.nnd-sticker--none {
+  border: 1.5px dashed var(--hair);
+  color: var(--ink-3);
+}
+.nnd-sticker--none > svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ---------- PAPER ---------- */
+
+/* Four FILL columns at pitch 76 — 4 x 60 + 3 x 16 = 288 exactly, so this one is a real grid rather
+   than a `space-between` row. Each column is a 32 x 40 mini page above its label: 40 + 5 + 14 = 59,
+   which is §7's measured column height. */
+.nnd-papers {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+.nnd-paper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+/* The page itself. `--paper` on a 1px `--hair-2` at radius 3 is the file's own recipe for a small
+   sheet of paper sitting on a card — §5d's `clipping` frame, and §6b's page minis at the same
+   radius. 3 is below the smallest radius token and measured, exactly as the meter pip's 2 and the
+   Doc Badge's 5 are (components-data TRAP 3): do not substitute `--r-chip`. */
+.nnd-page {
+  position: relative;
+  box-sizing: border-box;
+  width: 32px;
+  height: 40px;
+  border: 1px solid var(--hair-2);
+  border-radius: 3px;
+  background: var(--paper);
+  overflow: hidden;
+}
+
+/* The ruling, in the same `--page-line` the real page rules with — mode-invariant 14%, so a mini
+   page is identical in Day and Night, which is correct: it is an object, not chrome. `stroke-width`
+   and the dot fill are restated because index.css paints every `svg` at 1.75 with no fill. */
+.nnd-mini {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--page-line);
+  stroke-width: 1;
+}
+.nnd-mini circle {
+  fill: currentColor;
+  stroke: none;
+}
+
+.nnd-paper-label {
+  color: var(--ink-2);
+}
+
+/* Selected is §6b's treatment for the current spread, which is the same shape of control: a 1.5px
+   `--accent` ring on the sheet and the label in `--accent`. An outer ring rather than a border swap,
+   so the 32 x 40 page cannot shift by a pixel as the selection moves. */
+.nnd-paper[aria-pressed='true'] .nnd-page {
+  box-shadow: 0 0 0 1.5px var(--accent);
+}
+.nnd-paper[aria-pressed='true'] .nnd-paper-label {
+  color: var(--accent);
+}
+
+/* ---------- link a subject ---------- */
+
+/* `Chip` `State=Default, Palette=Neutral` — 32 tall, pad 0 / 12, gap 7, radius `--r-pill`,
+   `--glass-strong` on a 1px `--hair` with an `--ink-2` label. Chip.css draws that stroke as a masked
+   `::after` because Figma's INSIDE stroke is already inside the measured 66; here the height is
+   pinned and the width hugs a `<select>`, so a plain border costs nothing and reads the same.
+   `align-self: flex-start` because the row is HUG in a FILL column. */
+.nnd-link {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 7px;
+  max-width: 100%;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-pill);
+  background-color: var(--glass-strong);
+  color: var(--ink-2);
+  transition: background-color 0.16s, color 0.16s;
+}
+
+/* Chip's `State=Filled` on Neutral is the flat one: `--accent-soft`, no stroke — the single wash rule
+   2 permits, and this sheet spends it exactly once. */
+.nnd-link[data-filled] {
+  border-color: transparent;
+  background-color: var(--accent-soft);
+  color: var(--ink);
+}
+
+/* Chip's 18px leading slot. */
+.nnd-link-glyph {
+  display: flex;
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+.nnd-link-glyph svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* The pill's label IS the select. Stripped to text so the wrapper draws the whole control; the
+   dropdown itself stays the OS's, which is the point of using one inside a focus-trapped modal. */
+.nnd-link-select {
+  appearance: none;
+  -webkit-appearance: none;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-overflow: ellipsis;
+}
+.nnd-link-select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: var(--r-pill);
+}
+
+/* ---------- actions ---------- */
+
+/* `actions` — H gap 10, align **MAX / CENTER**. Centred, not stretched: Primary is 38 tall and
+   Secondary 34 by design, so centring lands them on one optical centre line. Equalising the heights
+   destroys the intended look, which is why §7 states the alignment at all. */
+.nnd-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Timings and curve from Dialog.css, which took them from `Motion — Update` `448:102`: the scrim
+   leads the panel by 20ms, which is what stops the sheet appearing to punch a hole in nothing. The
+   0.94 start is the file's own — at 520 x 422 a 1.5% scale reads as a straight fade. Both are gated,
+   which is also what keeps `npm run audit`'s motion pass green. */
+@media (prefers-reduced-motion: no-preference) {
+  .nnd-scrim {
+    animation: nnd-fade 0.22s ease-out 0.08s both;
+  }
+  .nnd-sheet {
+    animation: nnd-pop 0.22s ease-out 0.1s both;
+  }
+}
+
+@keyframes nnd-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* No translate: the file scales from the centre and does not lift, and on a sheet this size the two
+   together read as a wobble. */
+@keyframes nnd-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+
+
+

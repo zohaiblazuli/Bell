@@ -1,0 +1,377 @@
+/* Notebooks — the shelf's content region only. Spec: `design/specs/screen-notebooks.md` §4c (the
+   1020 x 730 `content` frame at 269,82), §4d, §4e and §4f. Rationale for the three compositions the
+   file does not draw is in NotebooksView.tsx.
+
+   Nothing here moves. The only transitions are `background-color` on a row and `opacity` on the
+   overflow control — colour and one of the two properties this project animates — and chrome.css's
+   `*` sweep under `prefers-reduced-motion: reduce` flattens both, so this sheet holds no gate and no
+   `@keyframes` of its own. */
+
+/* `content` is 1020 wide at x 269 inside a region that starts at x 238, so the gutter is 31 either
+   side and 26 above; 1020 + 2 x 31 = 1082, which is the main column at the design width, so the
+   max-width only bites on a wider window. The 48 below is §2's own bottom inset.
+
+   THE SIDE GUTTER IS ALSO THE SHADOW GUTTER, and on this screen it is load-bearing rather than
+   tidy. TRAP 12: `Shadow/Card/*` reaches 12px below a cover and 8px to the sides, and `.view` is the
+   scroll container, so it clips at its own padding box — 31px outboard of every tile and 48px below
+   the last row. This is the CSS answer to the `clipsContent = false` the file had to set on
+   `content`, `shelf` and both rows, and to the 8 grid frames, 18 rows and 10 content regions it
+   cost on Library alone. Nothing in this file declares `overflow`. */
+.nb {
+  max-width: 1082px;
+  margin: 0 auto;
+  padding: 26px 31px 48px;
+}
+
+/* §4f turns `content` into CENTER / CENTER around one block. `min-height: 100%` of the scroll
+   container plus `justify-content: center` is that: the file's block sits at y 173 in a 730-tall
+   region, and (730 − 384) / 2 = 173 exactly. */
+.nb[data-empty] {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100%;
+}
+
+/* Notice brings no outer margin of its own; whatever it sits above owns the gap down to it. */
+.nb-error {
+  margin: 0 0 18px;
+}
+
+.nb-status {
+  margin: 0;
+  color: var(--ink-3);
+}
+
+/* ---------- header (§4c) ---------- */
+
+/* `header` 1020 x 44 — HORIZONTAL gap 12, align CENTER. The 44 is a hug result (greeting 24 + 6 +
+   14) and the row is centred because the Primary button is 38 tall and the segmented control 36, so
+   nothing here states a height. The 20 is `content`'s own VERTICAL gap down to the shelf. */
+.nb-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 20px;
+}
+
+/* `greeting` — V gap 6, HUG. */
+.nb-greeting {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* `.t-greeting` is the documented 20px off-ramp, not a named Figma text style (§4c). */
+.nb-greeting-title {
+  margin: 0;
+  color: var(--ink);
+}
+
+/* SF Pro Regular 12 `--ink-3` — `.t-body-small` is that exactly. Every figure in it is computed:
+   the count is the shelf's length and the pages are summed off what Rust measured on disk. */
+.nb-subline {
+  margin: 0;
+  color: var(--ink-3);
+}
+
+/* A 1px-tall FILL strut, the same idiom as the top bar's `spacer` — not a margin. */
+.nb-strut {
+  flex: 1 0 0;
+  height: 1px;
+}
+
+/* ---------- the shelf (§4c / §4d) ---------- */
+
+/* Two `row` frames of four FILL children at gap 24 become one CSS grid, exactly as LibraryView
+   collapses its own rows. A column resolves to (1020 − 3 x 24) / 4 = 237 at the design width, which
+   is the cover's master width and a 3-column span on the file's 12 x 63 / 24 grid — and neither
+   number is written down here.
+
+   `auto-fill` rather than a fixed `repeat(4, …)`: the window's minimum is 1040 wide, which leaves
+   this region 740, and four columns there would squeeze each tile to 167 while the book stayed 300
+   tall. 196 is the threshold that keeps four columns from 1082 up (4 x 196 + 72 = 856 ≤ 1020, and a
+   fifth needs 1076) and drops to three near the minimum, at ~231 each — closer to the master than
+   four ever would be. */
+.nb-shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+  gap: 24px;
+}
+
+/* ---------- the list composition ---------- */
+
+/* `<Card padding={0}>`, not `<Card rows>`, and the difference is the clip. `rows` sets
+   `overflow: hidden` so full-bleed rows corner-clip against the 13px radius; the overflow menu opens
+   below its trigger and a clip would slice it. So the card stays open and the two end rows round
+   their own hover wash instead, which is the same trick LibraryView plays with its focus rings. */
+.nb-row {
+  position: relative;
+}
+
+/* Figma models list separators as 1px `--hair-2` rects between rows, which is what makes them
+   full-bleed; an adjacent-sibling border is the same picture with no extra elements. */
+.nb-row + .nb-row {
+  border-top: 1px solid var(--hair-2);
+}
+
+/* 12 + 28 + 12 = 52 tall, with the cover swatch setting the height. The right padding is the room
+   the overflow control sits in — it is an absolute sibling, so it reserves nothing of its own. */
+.nb-row-open {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 48px 12px 16px;
+  text-align: left;
+  color: inherit;
+  transition: background-color 0.16s;
+}
+
+.nb-row-open:hover {
+  background-color: var(--hair-2);
+}
+
+/* The card does not clip, so the end rows have to round themselves or a hover wash would square off
+   the corners it sits in. */
+.nb-row:first-child .nb-row-open {
+  border-radius: var(--r-card) var(--r-card) 0 0;
+}
+.nb-row:last-child .nb-row-open {
+  border-radius: 0 0 var(--r-card) var(--r-card);
+}
+
+/* Drawn just inside the row: index.css's ring is offset 2px outward with a 6px radius, which on a
+   full-bleed row shows as a gap at both ends and a rounded box inside a square one. Same treatment
+   CardRow.css and LibraryView's rows already take. */
+.nb-row-open:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+  border-radius: 0;
+}
+.nb-row:first-child .nb-row-open:focus-visible {
+  border-radius: var(--r-card) var(--r-card) 0 0;
+}
+.nb-row:last-child .nb-row-open:focus-visible {
+  border-radius: 0 0 var(--r-card) var(--r-card);
+}
+
+/* §4e's tile at the smallest size that still reads as a book rather than a colour chip: the spine is
+   the whole tell, so it stays. ClipPicker's swatch, at ClipPicker's 22 x 28 and its raw 4px radius,
+   because the same notebook should look the same in the Reader's picker and in this list. */
+.nb-swatch {
+  position: relative;
+  flex: none;
+  width: 22px;
+  height: 28px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.nb-swatch::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--cover-shade);
+}
+
+/* The name is the one slot that gives way; everything after it is a fixed rail, so the counts and
+   the edit times line up down the list the way §6's Recent rows do. */
+.nb-row-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ink);
+}
+
+.nb-row-subject {
+  flex: none;
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+
+.nb-row-strut {
+  flex: 1 0 0;
+  height: 1px;
+}
+
+.nb-row-pages {
+  flex: 0 0 64px;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--ink-3);
+}
+
+/* 118 holds the longest string `editedAgo` produces — "edited 3 days ago" — with room to spare. */
+.nb-row-edited {
+  flex: 0 0 118px;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--ink-3);
+}
+
+/* ---------- the overflow control ---------- */
+
+/* Rest hidden, revealed by the pointer or the keyboard, and held open while its menu is. The tile's
+   root class is the only handle a cover offers for "the pointer is on this tile"; the alternative is
+   a wrapper element that exists purely to be hovered. */
+.nb-more {
+  position: relative;
+  opacity: 0;
+  transition: opacity 0.16s;
+}
+.notebook-cover:hover .nb-more,
+.notebook-cover:focus-within .nb-more,
+.nb-row:hover .nb-more,
+.nb-row:focus-within .nb-more,
+.nb-more[data-open] {
+  opacity: 1;
+}
+
+/* Above the tiles that follow it in the grid, and above the rows below it in the list. */
+.nb-more[data-open] {
+  z-index: 5;
+}
+
+/* In a row the control is centred in the 52: (52 − 24) / 2 = 14. On a cover the slot itself is
+   placed by `.nbc-actions`. */
+.nb-row > .nb-more {
+  position: absolute;
+  top: 14px;
+  right: 12px;
+}
+
+/* 24px, not the Icon Button's 34: that is the top bar and tool dock metric, and it is far too heavy
+   over a 13px `edited` line. 24 is the smallest comfortable pointer target (WCAG 2.5.8 asks for 24)
+   and it is the size Paper Card already settled on for a control living inside a tile. */
+.nb-dots {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-chip);
+  transition: background-color 0.16s, color 0.16s;
+}
+.nb-dots svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Which surface it is sitting on. `--cover-label` is the cover's own text token and clears 4.5:1 on
+   all eight fills; `--cover-shade` is the spine's, so the wash reads as a pressed area of the cover
+   rather than a grey card artefact. Carrying the surface on the element means neither this sheet nor
+   NotebookCover.css has to reach into the other's classes for a paint. */
+.nb-dots[data-on='cover'] {
+  color: var(--cover-label);
+}
+.nb-dots[data-on='cover']:hover {
+  background-color: var(--cover-shade);
+}
+.nb-dots[data-on='row'] {
+  color: var(--ink-3);
+}
+.nb-dots[data-on='row']:hover {
+  background-color: var(--hair-2);
+  color: var(--ink);
+}
+
+/* A popover over content, so chrome glass — rule 1, and the recipe is ClipPicker's, which is the
+   palette's and the mark-scheme sheet's: `--glass-strong`, a hairline, a real blur, `--shadow-pop`.
+   `--r-btn` rather than ClipPicker's `--r-panel`: that is a 268-wide panel and this is one row. */
+.nb-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  padding: 6px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-btn);
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: blur(26px) saturate(165%);
+  backdrop-filter: blur(26px) saturate(165%);
+  box-shadow: var(--shadow-pop);
+}
+
+/* §6c's `Delete notebook` row, verbatim: 34 tall, radius `--r-btn`, fill `--danger-soft`, the trash
+   glyph and a Body/Small label both in `--danger`, both centred. That row is the only use of either
+   token in the file and the reason both exist — borrowing `--d5` for a destructive state would take
+   the difficulty heat ramp for something that is not difficulty, which rule 3 forbids outright. */
+.nb-del {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 156px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: var(--r-btn);
+  background-color: var(--danger-soft);
+  color: var(--danger);
+  white-space: nowrap;
+  transition: background-color 0.16s;
+}
+.nb-del svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+/* One step up from the token's own 12 / 16 %, mixed rather than picked so it deepens correctly in
+   both tones. */
+.nb-del:hover {
+  background-color: color-mix(in srgb, var(--danger) 22%, transparent);
+}
+
+/* ---------- the empty composition (§4f) ---------- */
+
+/* `empty state` 430 x 384, V gap 22, counter CENTER. 226 + 22 + 76 + 22 + 38 = 384, so the height is
+   a hug result and only the width is stated. */
+.nb-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  width: 430px;
+  max-width: 100%;
+  margin: 0 auto;
+  text-align: center;
+}
+
+/* `ghost cover` 178 x 226 — radius `--r-card`, a 1.5px `--hair` border, no fill, a 30px `plus`
+   centred. It is the book at ~0.75 and it earns the space Mr. Bell is deliberately not taking: it
+   teaches the affordance the button names. */
+.nb-ghost {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 178px;
+  height: 226px;
+  border: 1.5px solid var(--hair);
+  border-radius: var(--r-card);
+  color: var(--ink-3);
+}
+.nb-ghost svg {
+  width: 30px;
+  height: 30px;
+}
+
+/* `words` 430 x 76 — V gap 10, both lines centred. */
+.nb-words {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nb-empty-head {
+  margin: 0;
+  color: var(--ink);
+}
+
+.nb-empty-copy {
+  margin: 0;
+  color: var(--ink-2);
+}
