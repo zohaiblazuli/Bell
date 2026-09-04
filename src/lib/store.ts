@@ -29,6 +29,32 @@ export async function hydrate(): Promise<void> {
     // No state yet, or the command is unavailable — everything falls back to defaults.
   }
   hydrated = true;
+  migrate();
+}
+
+/**
+ * One-shot cleanups after the move from a local folder library to the ShinyPapers
+ * catalogue.
+ *
+ * The mark sets, recents, focus log and ink all survive untouched: they are keyed by
+ * `paperKey(code, scode, component)`, which maps one-to-one onto the catalogue's
+ * (subject code, session code, component) — so every mark a user has made still
+ * resolves. Two things do not survive:
+ *
+ *   * `rows` holds fully serialised `PaperRow` snapshots including absolute file
+ *     paths, and `loadRows` validates nothing. After the row shape changed those
+ *     snapshots are quietly wrong, so the key is dropped once and repopulates from
+ *     the catalogue as papers are opened.
+ *   * `aurora` was orphaned when its toggle was retired; it is swept up here.
+ */
+function migrate() {
+  const MARKER = 'migrated.catalog.v1';
+  if (read<boolean>(MARKER, false)) return;
+  for (const key of ['rows', 'aurora']) {
+    cache.delete(key);
+    void invoke('state_delete', { key }).catch(() => {});
+  }
+  write(MARKER, true);
 }
 
 function read<T>(key: string, fallback: T): T {
@@ -43,9 +69,15 @@ function write(key: string, value: unknown) {
 
 // --- paper identity ---------------------------------------------------------
 
-/** Stable id for a paper: `9709/s15/12`. */
-export const paperKey = (code: string, scode: string, variant: string | null) =>
-  `${code}/${scode}/${variant ?? '-'}`;
+/**
+ * Stable id for a paper: `9709/s15/12`.
+ *
+ * Deliberately the subject code, session code and component rather than any integer
+ * id: this triple is exactly the catalogue's natural key, so every mark survives a
+ * resync — and it survived the move off the local folder library for the same reason.
+ */
+export const paperKey = (code: string, scode: string, component: string | null) =>
+  `${code}/${scode}/${component ?? '-'}`;
 
 /** The same paper as a state key — file-name safe. */
 export const inkKey = (paper: string) => `ink.${paper.replace(/[^A-Za-z0-9]+/g, '-')}`;
@@ -100,10 +132,10 @@ export function addFocusSeconds(paper: string, seconds: number) {
 /**
  * Marks and recents are keys (`9709/s15/12`), but the dashboard, the Bookmarks list and the
  * palette's resting state all need to *render* those papers — and a paper marked months ago
- * won't be in whatever 600 rows the current library query happens to hold. So the row that
+ * won't be in whatever rows the current catalogue query happens to hold. So the row that
  * opened or marked a paper is kept alongside: a local convenience copy, never a second source
- * of truth. Paths still go through `read_document`, which only serves files in the index, so a
- * stale snapshot fails loudly instead of reading something unexpected.
+ * of truth. Paths still go through `read_document`, which only serves files recorded as
+ * downloaded, so a stale snapshot fails loudly instead of reading something unexpected.
  */
 export interface RecentEntry {
   key: string;
@@ -135,13 +167,13 @@ function writeRows(rows: Record<string, PaperRow>, keep: Iterable<string>) {
 
 /** Remember a paper's row so a mark on it can still be rendered later. */
 export function rememberPaper(row: PaperRow) {
-  const key = paperKey(row.subjectCode, row.scode, row.variant);
+  const key = paperKey(row.subjectCode, row.scode, row.component);
   writeRows({ ...loadRows(), [key]: row }, [key, ...loadRecent().map((r) => r.key)]);
 }
 
 /** Opening a paper moves it to the front of Recent and refreshes its snapshot. */
 export function noteOpened(row: PaperRow) {
-  const key = paperKey(row.subjectCode, row.scode, row.variant);
+  const key = paperKey(row.subjectCode, row.scode, row.component);
   const recent = [{ key, at: Date.now() }, ...loadRecent().filter((r) => r.key !== key)].slice(
     0,
     RECENT_CAP,
