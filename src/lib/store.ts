@@ -117,6 +117,21 @@ export interface FocusLog {
 
 export const loadFocus = (): FocusLog => read<FocusLog>('focus', { days: {}, papers: {} });
 
+/**
+ * Zero this paper's stopwatch — the Reader's reset button.
+ *
+ * `days` is deliberately left alone. Those minutes were genuinely studied, and the activity grid,
+ * the week total and the streak all read that log; subtracting them to tidy up a stopwatch would
+ * falsify the record. So reset means "start timing this paper again", not "un-study it".
+ */
+export function resetPaperFocus(paper: string) {
+  const log = loadFocus();
+  if (!(paper in log.papers)) return;
+  const papers = { ...log.papers };
+  delete papers[paper];
+  write('focus', { days: log.days, papers });
+}
+
 /** Add elapsed seconds to today's total and to this paper's running total. */
 export function addFocusSeconds(paper: string, seconds: number) {
   if (seconds <= 0) return;
@@ -217,8 +232,11 @@ export interface Settings {
   /** Focused minutes in a day for it to count towards the streak. Stated in the UI. */
   streakMinutes: number;
   /**
-   * Off by default, and that is load-bearing: offline is a hard requirement, so nothing checks for
-   * an update unless the user has asked for it here or pressed Check now.
+   * On by default, at Zohaib's instruction (2026-09-06). The reasoning that kept it off — offline is
+   * a hard requirement, so nothing should reach the network unasked — still holds for everything
+   * else, and still holds here in the sense that matters: a check is one HEAD-sized request a day
+   * from RUST, the app keeps working with the network unplugged whether it succeeds or not, and the
+   * user can turn it off in Settings. The Figma file also draws this switch On (`536:451`).
    */
   updateAuto: boolean;
 }
@@ -230,7 +248,7 @@ export const SETTINGS_DEFAULTS: Settings = {
   focusMinutes: 90,
   focusAutostart: true,
   streakMinutes: 10,
-  updateAuto: false,
+  updateAuto: true,
 };
 
 export function loadSettings(): Settings {

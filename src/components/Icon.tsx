@@ -23,6 +23,7 @@ export type IconName =
   | 'doc'
   | 'folder'
   | 'sync'
+  | 'reset'
   | 'warn'
   | 'min'
   | 'max'
