@@ -5,6 +5,7 @@ pub mod library;
 pub mod migrate;
 pub mod notebooks;
 pub mod paths;
+pub mod pets;
 pub mod state;
 
 use tauri::Manager;
@@ -60,6 +61,14 @@ pub fn run() {
             let notebook_dir = dir.join("notebooks");
             std::fs::create_dir_all(&notebook_dir)?;
             app.manage(notebooks::NotebookDir(notebook_dir));
+
+            // Pets are their own directory for the same reason, and a stronger one: a spritesheet is
+            // 1.7 MB of image, and `state_save` is text-only. Nothing in here is needed on a fresh
+            // install — no pet selected is Mr. Bell — so the directory is only ever a cache of
+            // downloads the student chose.
+            let pet_dir = dir.join("pets");
+            std::fs::create_dir_all(&pet_dir)?;
+            app.manage(pets::PetDir(pet_dir));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -89,6 +98,12 @@ pub fn run() {
             notebooks::nb_asset_load,
             notebooks::nb_stat,
             notebooks::nb_export,
+            pets::pet_list,
+            pets::pet_install,
+            pets::pet_delete,
+            pets::pet_sheet,
+            pets::pet_registry,
+            pets::pet_preview,
             state::state_load,
             state::state_save,
             state::state_delete,
