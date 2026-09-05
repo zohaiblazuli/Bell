@@ -1,29 +1,26 @@
 /**
- * The update seam.
+ * The update seam — now wired to the Tauri updater.
  *
- * `UpdateFlow.tsx` draws the whole flow — the sidebar pill in its three states and the 420x280
- * dialog — and `App` owns the state machine. This module is the one place that would talk to a
- * server, and today it deliberately does not: **the updater plugin is not installed**, and it
- * cannot be until two things exist that are not ours to invent.
+ * `UpdateFlow.tsx` draws the flow (the sidebar pill and the 420x280 dialog) and `useUpdates.ts`
+ * owns the state machine; this module is the one place that talks to the release feed. It reaches
+ * the network only from Rust — `tauri-plugin-updater` runs the HTTP itself — so the webview's CSP
+ * stays closed, exactly as `catalog.rs` and `downloads.rs` do. Offline is still a hard requirement:
+ * nothing here runs on mount unless the user opted into automatic checks (see `useUpdates.ts`).
  *
- *   1. A signing key pair. `tauri-plugin-updater` verifies every downloaded bundle against a public
- *      key baked into `tauri.conf.json`; the private half is a secret Zohaib generates once with
- *      `npm run tauri signer generate` and never commits.
- *   2. A release feed to point `endpoints` at — a `latest.json` on a host, or GitHub Releases.
+ * The feed and the key live in `plugins.updater` in `tauri.conf.json` — the `latest.json` endpoint
+ * and the public key — while `TAURI_SIGNING_PRIVATE_KEY` (a GitHub Actions secret) signs each
+ * release. `check()` fetches the manifest, compares its version to this build's by semver, and
+ * verifies the bundle's signature against that public key before a single byte is installed.
  *
- * Adding the dependency before both exist buys a plugin that fails at init, so instead this returns
- * an honest `not-configured` and every caller renders that rather than a spinner that resolves to
- * nothing. Offline is a hard requirement in `CLAUDE.md`, and this is what keeps it true by
- * construction: there is no code path here that reaches the network at all.
- *
- * ## Wiring it up later
- * `npm i @tauri-apps/plugin-updater`, `cargo add tauri-plugin-updater`, register it in `lib.rs`,
- * put the pubkey and endpoints in `tauri.conf.json`, then replace the body of `checkForUpdate`
- * with `check()` from the plugin and `downloadAndInstall` with its `downloadAndInstall(onEvent)`.
- * Nothing outside this file changes: the shapes below are already what the plugin reports.
+ * Why download and install are two calls rather than `downloadAndInstall`: the UI has a `ready`
+ * phase — the bytes are fetched and the student presses "Restart now" when they choose. So `check`
+ * keeps the `Update` in module scope, `downloadUpdate` stages it, and `installUpdate` applies it and
+ * relaunches.
  */
+import { check } from '@tauri-apps/plugin-updater';
+import { relaunch } from '@tauri-apps/plugin-process';
 
-/** What a check found. `not-configured` is a real answer, not an error — see the header. */
+/** What a check found. `not-configured` cannot arise now the feed exists, but the caller still handles it. */
 export type UpdateCheck =
   | { status: 'not-configured' }
   | { status: 'current' }
@@ -35,31 +32,52 @@ export interface DownloadProgress {
   total: number | null;
 }
 
-/** True once a signing key and a release feed exist. Settings reads it to explain itself. */
-export const UPDATES_CONFIGURED = false;
+/** True now that a signing key and a release feed exist. Settings reads it to explain itself. */
+export const UPDATES_CONFIGURED = true;
 
 /**
- * Ask whether a newer build exists. Reaches the network only once the plugin is wired; until then
- * it answers immediately and touches nothing.
+ * The pending update, held between `checkForUpdate` and `downloadUpdate`/`installUpdate`. The plugin
+ * carries the downloaded bytes on this object, so the same instance must see all three steps.
  */
+let pending: Awaited<ReturnType<typeof check>> = null;
+
+/** Ask the feed whether a newer, correctly-signed build exists. */
 export async function checkForUpdate(): Promise<UpdateCheck> {
-  return { status: 'not-configured' };
+  const update = await check();
+  pending = update;
+  if (!update) return { status: 'current' };
+  return { status: 'available', version: update.version, notes: update.body ?? null };
 }
 
 /**
- * Download the pending update, reporting progress, then stage it for install.
- *
- * Throws while unconfigured rather than resolving, because a silent success here would leave the
- * pill sitting in `ready` with nothing behind it — and the next press would claim to restart into a
- * build that was never fetched.
+ * Download the pending update, reporting bytes as they arrive. Resolves once the bytes are staged;
+ * it does NOT install — the `ready` phase waits for the student to confirm the restart.
  */
 export async function downloadUpdate(
-  _onProgress: (p: DownloadProgress) => void,
+  onProgress: (p: DownloadProgress) => void,
 ): Promise<void> {
-  throw new Error('Updates are not configured for this build.');
+  if (!pending) throw new Error('No update is pending — check first.');
+  let downloaded = 0;
+  let total: number | null = null;
+  await pending.download((event) => {
+    switch (event.event) {
+      case 'Started':
+        total = event.data.contentLength ?? null;
+        onProgress({ downloaded, total });
+        break;
+      case 'Progress':
+        downloaded += event.data.chunkLength;
+        onProgress({ downloaded, total });
+        break;
+      case 'Finished':
+        break;
+    }
+  });
 }
 
-/** Restart into the staged update. Same reasoning as `downloadUpdate`. */
+/** Install the staged update and restart into it. */
 export async function installUpdate(): Promise<void> {
-  throw new Error('Updates are not configured for this build.');
+  if (!pending) throw new Error('No update is staged — download first.');
+  await pending.install();
+  await relaunch();
 }
