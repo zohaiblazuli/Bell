@@ -104,17 +104,17 @@ div.nbi-name {
   align-self: center;
 }
 
-/* ---------- §6a `nib` — 2 x 2 of 96 x 56 ---------- */
+/* ---------- the Shapes tool's `shape` picker — 2 x 2 tiles, shown only for that tool ---------- */
 
-.nbi-nibs {
-  /* 200 x 120: two rows of two, gap 8 / 8. A grid rather than two flex rows, so the four tiles are
-     equal without either row hugging its own content. */
+.nbi-shapes {
+  /* Two rows of two, gap 8. A grid rather than two flex rows, so the four tiles stay equal without
+     either row hugging its own content. */
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
-button.nbi-nib {
+button.nbi-shape {
   box-sizing: border-box;
   height: 56px;
   padding: 7px 8px;
@@ -124,50 +124,34 @@ button.nbi-nib {
   justify-content: center;
   gap: 3px;
   border-radius: var(--r-btn);
-  /* The rest: 1px `--hair`, no fill. An inset ring rather than a border, so selecting a tile cannot
-     move the sample inside it — the same reason every stroke in this file is INSIDE. */
+  /* An inset ring rather than a border, so selecting a tile cannot move the sample inside it — the
+     same reason every stroke in this file is INSIDE. */
   box-shadow: inset 0 0 0 1px var(--hair);
 }
 
 /* Selected = `--accent-soft` + 1px `--accent`. `aria-pressed` is the CSS hook as well as the
-   announced state, so the painted state and the read state cannot drift — NavItem's trick. */
-button.nbi-nib[aria-pressed='true'] {
+   announced state, so the painted state and the read state cannot drift. */
+button.nbi-shape[aria-pressed='true'] {
   background: var(--accent-soft);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
-/* Not in the file, which measures no hover here. It is Button/Secondary's own hover — a 1px
-   `--accent` edge and nothing else — rather than a new gesture. */
-button.nbi-nib:not([aria-pressed='true']):hover {
+button.nbi-shape:not([aria-pressed='true']):hover {
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
-.nbi-nib-ink {
+/* The tile draws the shape it makes. A STROKED sample — it keeps index.css's global
+   `svg { fill: none; stroke: currentColor }`, unlike the old nib ribbons which opted into a fill. */
+.nbi-shape-ink {
   display: block;
   width: 100%;
   height: 24px;
-  /* Painted ink, never the live colour: `--page-ink` on `--card` is all but invisible in Night. */
   color: var(--ink-2);
-}
-/* The sample is a filled ribbon, so it has to opt out of index.css's global `svg { fill: none;
-   stroke: currentColor }` — which exists because sprite glyphs are strokes. `.nbi-nib-ink path`
-   beats a bare element selector without needing an order guarantee. */
-.nbi-nib-ink path {
-  fill: currentColor;
-  stroke: none;
-}
-/* Graphite lays down grey, and a marker is translucent where it crosses itself. Both are properties
-   of the nib, which is what this card is for. */
-.nbi-nib-ink[data-nib='pencil'] path {
-  fill-opacity: 0.78;
-}
-.nbi-nib-ink[data-nib='marker'] path {
-  fill-opacity: 0.5;
 }
 
-.nbi-nib-name {
+.nbi-shape-name {
   color: var(--ink-2);
 }
-button.nbi-nib[aria-pressed='true'] .nbi-nib-name {
+button.nbi-shape[aria-pressed='true'] .nbi-shape-name {
   color: var(--ink);
 }
 
@@ -288,41 +272,24 @@ button.nbi-disc[aria-pressed='true'] {
   display: none;
 }
 
-/* ---------- §6a `stroke` — the three dots, then two slider rows ---------- */
+/* ---------- `stroke` — a live preview, then the Size and Opacity sliders ---------- */
 
-.nbi-strokes {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-}
-/* The file draws bare 5 / 8 / 12 px dots. Each sits in a 22px button here, because a 5px hit target
-   is not operable — the Reader made the same correction to the same row. */
-button.nbi-stroke {
-  flex: none;
-  width: 22px;
-  height: 22px;
-  padding: 0;
+/* The real brush size, previewed at 1:1 in the page's own px on a `--paper` ground — so the dot reads
+   exactly as it will land on the page. Fixed height so the row does not jog as the dot grows; the dot
+   is centred and drawn in the live ink, so Size, Ink and Opacity all read on it at once. */
+.nbi-preview {
   display: grid;
   place-items: center;
-  border-radius: 50%;
+  height: 48px;
+  border-radius: var(--r-btn);
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1px var(--hair);
 }
-.nbi-stroke-dot {
+/* Size is inline (the true px); no width/height transition here, so the dot tracks the slider in real
+   time. Colour and opacity may ease — the motion block below adds that. */
+.nbi-preview-dot {
   display: block;
   border-radius: 50%;
-  background: var(--ink-3);
-}
-button.nbi-stroke:hover .nbi-stroke-dot {
-  background: var(--ink-2);
-}
-/* §6a lights the selected dot `--accent`. Size is the other cue, and it is the load-bearing one:
-   these three differ by 5 / 8 / 12 px before any colour is applied. */
-button.nbi-stroke[aria-pressed='true'] .nbi-stroke-dot {
-  background: var(--accent);
-}
-.nbi-strokes-read {
-  flex: none;
-  color: var(--ink-3);
-  white-space: nowrap;
 }
 
 .nbi-slide {
@@ -341,18 +308,12 @@ button.nbi-stroke[aria-pressed='true'] .nbi-stroke-dot {
   flex: none;
   width: 32px;
   text-align: right;
+  white-space: nowrap;
   color: var(--ink-3);
 }
 
-/* ---------- §6a `behaviour` — three rows at pitch 36 ---------- */
+/* ---------- the switch rows — §6c's `Margin rule` ---------- */
 
-.nbi-switches {
-  display: flex;
-  flex-direction: column;
-  /* Pitch 36 is the 24px switch plus this. It is a group inside the card rather than three children
-     of it, because the card's own gap is 13 and these rows are not on that rhythm. */
-  gap: 12px;
-}
 .nbi-swrow {
   display: flex;
   align-items: center;
@@ -754,7 +715,7 @@ button.nbi-keep:hover {
    nor a compositing surprise. Wrapped rather than declared, so "Reduce motion" is a cut. */
 
 @media (prefers-reduced-motion: no-preference) {
-  button.nbi-nib,
+  button.nbi-shape,
   .nbi-style-page,
   .nbi-ghost,
   .nbi-link,
@@ -765,10 +726,10 @@ button.nbi-keep:hover {
       cubic-bezier(0.2, 0.7, 0.2, 1);
   }
   .nbi-swatch-disc,
-  .nbi-stroke-dot,
+  .nbi-preview-dot,
   .nbi-spread-label,
   .nbi-style-name,
-  .nbi-nib-name {
+  .nbi-shape-name {
     transition: background-color 0.16s, color 0.16s, transform 0.16s
       cubic-bezier(0.2, 0.7, 0.2, 1);
   }
