@@ -4,7 +4,8 @@ import Lockup from '@ui/brand/Lockup';
 import NavItem from '@ui/NavItem';
 import SubjectRow from '@ui/SubjectRow';
 import SubjectIcon from '@ui/icons/SubjectIcon';
-import MrBell, { type BellMood } from '@ui/brand/MrBell';
+import type { BellMood } from '@ui/brand/MrBell';
+import Mascot from './Mascot';
 import GitHubMark from '@ui/icons/GitHubMark';
 import type { Subject } from '@/lib/types';
 
@@ -179,7 +180,7 @@ export default function Sidebar({
           the dev footer pinned to the bottom. He is bottom-pinned inside it, which is why adding a
           fifth nav row above shrinks the slot without moving him. */}
       <div className="mascot" aria-hidden="true" onPointerDown={onPokeMascot}>
-        <MrBell size={160} mood={mascot} />
+        <Mascot size={160} mood={mascot} />
       </div>
 
       {/* The dev footer, from `screen-library-settings.md` §3.4. The version line is a placeholder

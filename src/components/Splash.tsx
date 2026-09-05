@@ -24,9 +24,9 @@
  * cross-fade that reduced motion gets.
  */
 import { useLayoutEffect, useRef, type AnimationEvent, type CSSProperties } from 'react';
-import MrBell from '@ui/brand/MrBell';
 import MrBellMark, { MARK_BOX } from '@ui/brand/MrBellMark';
 import { WORDMARK_BOX, WordmarkShapes } from '@ui/brand/Wordmark';
+import Mascot from './Mascot';
 import './Splash.css';
 
 export type SplashPhase = 'splash' | 'handoff' | 'done';
@@ -201,7 +201,9 @@ export default function Splash({ phase, onFinished, targets = null, reduceMotion
 
       <div className="splash-art">
         <div className="splash-crab">
-          <MrBell size={CRAB} />
+          {/* The mascot, not necessarily the crab: the handoff hides `.mascot` and travels this box
+              into that slot, so the two have to be the same animal or the landing reads as a swap. */}
+          <Mascot size={CRAB} />
         </div>
 
         <div className="splash-word">
