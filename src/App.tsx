@@ -731,8 +731,8 @@ export default function App() {
             onBoard={(board) => prefs.answerOnboarding('board', board)}
             chosenSubjects={onboarding.subjects}
             onToggleSubject={toggleSubject}
-            version="0.1.0"
-            build="dev"
+            version={__APP_VERSION__}
+            build={__APP_BUILD__}
             onCheckUpdates={() => void up.check()}
             checkingUpdates={up.state.phase === 'checking'}
             statePath={up.statePath}

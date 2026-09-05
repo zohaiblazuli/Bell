@@ -13,6 +13,11 @@ use tauri::Manager;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        // The auto-updater and the restart it needs. Both reach the network from RUST, not the
+        // webview, so the closed CSP in tauri.conf.json is untouched — same posture as catalog.rs
+        // and downloads.rs. The updater reads its pubkey + endpoints from `plugins.updater`.
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             // The index and the study state live beside the app's own data, never next to the
             // source library.

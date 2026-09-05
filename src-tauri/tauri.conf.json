@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Bell",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "identifier": "com.bell.study",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -31,6 +31,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": ["nsis", "msi"],
     "icon": [
       "icons/32x32.png",
@@ -39,5 +40,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/zohaiblazuli/Bell/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMyN0I3QkRGRThENkJEREEKUldUYXZkYm8zM3Q3TXE1Qk5qeml5bHQrM2RnOGlKcnN6T05kMCttcVdSTnJtT051YXRRZGRsOWcK"
+    }
   }
 }

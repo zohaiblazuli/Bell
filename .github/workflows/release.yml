@@ -1,0 +1,55 @@
+# Cut a release from a version tag: `git tag v0.1.1 && git push --tags` builds the Windows
+# installers and attaches them to a GitHub Release (as a draft, to review before publishing).
+#
+# This is the distribution pipeline. It already works for MANUAL updates — a user downloads the new
+# installer and runs it over the old one, keeping their data (which lives in AppData, not Program
+# Files). It is ALSO the seam the auto-updater slots into: once `src/lib/updates.ts` is wired and
+# `plugins.updater` is set in `tauri.conf.json`, tauri-action signs each bundle and uploads a
+# `latest.json` feed here, and installed copies update themselves. Until then the two signing
+# secrets below may be absent — the installer still builds and uploads.
+#
+# Required repo secrets for the auto-updater (Settings -> Secrets and variables -> Actions):
+#   TAURI_SIGNING_PRIVATE_KEY           the private key from `npm run tauri signer generate`
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD  the password chosen when generating it
+# GITHUB_TOKEN is provided by Actions automatically.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch: {}
+
+permissions:
+  contents: write # create the Release and upload the installers
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # so `git describe` in vite.config.ts sees tags for the build stamp
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Bell ${{ github.ref_name }}
+          releaseDraft: true
+          prerelease: false
