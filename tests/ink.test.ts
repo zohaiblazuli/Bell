@@ -472,6 +472,25 @@ describe('bounding boxes', () => {
     assert.equal(objectBBox(one).w, 0.5);
   });
 
+  test('a text object with a negative width normalises rather than becoming unhittable', () => {
+    // A page written before the width was clamped can hold one. `inRect` can never contain a point in a
+    // negative rectangle, so an un-normalised box would make the object impossible to select or delete.
+    const back: NbObject = {
+      id: 't3',
+      k: 'text',
+      s: 'v = u + at',
+      x: 0.9,
+      y: 0.2,
+      w: -0.2,
+      size: widthFraction(16),
+      c: INK,
+    };
+    const box = objectBBox(back);
+    assert.equal(q4(box.x), 0.7);
+    assert.equal(q4(box.w), 0.2);
+    assert.ok(hitTest({ ...emptyPage(), objects: [back] }, { x: 0.8, y: 0.21 }, 0.01));
+  });
+
   test('a rotated image bounds the rotated quad, in isotropic space', () => {
     const turned = { ...img, id: 'turned', rot: 45 };
     const box = objectBBox(turned);
@@ -947,6 +966,62 @@ describe('the eraser', () => {
     const command = deleteCmd(4, start, removed.map((entry) => entry.rec.id));
     const state: NbPages = { 4: start };
     assert.deepEqual(revert(apply(state, command), command), state);
+  });
+
+  /**
+   * A whole SWIPE, driven the way `NotebookPage.rub` drives it — because the way it used to be driven
+   * corrupted the page on undo, and neither half of that is visible from a single `eraseAt` call.
+   *
+   * Each sample must erase against the page as reduced by the samples before it, and the command must be
+   * built from the page as it stood when the rubber went down. Erasing against the untouched prop page
+   * instead collected the same record once per sample AND handed `deleteCmd` a `before` with those
+   * records appended to a list that already held them, so one rub produced two `Placed` entries for one
+   * id and `revert` spliced both back in.
+   */
+  const swipe = (start: NbPage, points: Pt[]) => {
+    let now = start;
+    let removed: ReturnType<typeof eraseAt>['removed'] = [];
+    const frames: string[][] = [];
+    for (const at of points) {
+      const result = eraseAt(now, at, 0.02);
+      if (result.removed.length === 0) continue;
+      now = result.page;
+      removed = [...removed, ...result.removed];
+      frames.push(now.strokes.map((s) => s.id));
+    }
+    return { removed, frames };
+  };
+
+  test('a swipe collects each record once, however many samples touch it', () => {
+    const start = page();
+    const { removed } = swipe(start, [
+      { x: 0.5, y: 0.5 },
+      { x: 0.502, y: 0.5 },
+      { x: 0.504, y: 0.5 },
+    ]);
+    assert.deepEqual(removed.map((entry) => entry.rec.id), ['line']);
+  });
+
+  test('nothing already rubbed out comes back mid-swipe', () => {
+    const { frames } = swipe(page(), [
+      { x: 0.5, y: 0.9 },
+      { x: 0.5, y: 0.5 },
+    ]);
+    assert.deepEqual(frames, [['line'], []], 'each frame is a subset of the one before it');
+  });
+
+  test('undoing a whole swipe restores the page exactly, not several copies of it', () => {
+    const start = page();
+    const { removed } = swipe(start, [
+      { x: 0.5, y: 0.5 },
+      { x: 0.502, y: 0.5 },
+      { x: 0.5, y: 0.9 },
+    ]);
+    const command = deleteCmd(4, start, removed.map((entry) => entry.rec.id));
+    const state: NbPages = { 4: start };
+    const after = apply(state, command);
+    assert.deepEqual(after[4].strokes, [], 'both strokes went');
+    assert.deepEqual(revert(after, command), state);
   });
 });
 
