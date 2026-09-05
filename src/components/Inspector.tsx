@@ -202,9 +202,10 @@ const fullDate = (ms: number) =>
   new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
 
 /**
- * The inverse of `pageLabel`. Pages are stored 0-indexed and DISPLAYED with an offset of 2, so a
- * page the student types has to come back through that offset before `spreadOf` can name a spread.
- * `pageLabel(0)` IS the offset, which is how this stays one definition rather than restating the 2.
+ * The inverse of `pageLabel`. Pages are stored 0-indexed and displayed with an offset, so a page the
+ * student types has to come back through that offset before `spreadOf` can name a spread.
+ * `pageLabel(0)` IS the offset, which is how this stays one definition rather than restating it —
+ * and why it needed no edit when the offset went from the file's 2 to the shipped 1.
  */
 const indexOfPage = (page: number) => page - pageLabel(0);
 

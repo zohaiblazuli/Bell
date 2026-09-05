@@ -71,32 +71,37 @@ describe('the four tools that lay ink down', () => {
   });
 });
 
-describe('the design file’s own numbers', () => {
-  test('the spread nav reads `pages 12-13` somewhere real', () => {
-    // Spread 5 is the sixth leaf. Under the offset its labels are 12 and 13, which is what §5e draws.
-    assert.equal(spreadLabel(5), 'pages 12-13');
+describe('the page labels, and where they leave the design file', () => {
+  /**
+   * Figma is the offset-2 model: `pages 12-13` in the spread nav, `Spreads 2-3 … 18-19` in the Pages
+   * tab, left page always even — correct bookbinding, with the cover as leaf one. Zohaib asked for the
+   * first leaf to read `1-2` instead, because opening a new notebook onto "page 2" reads as a bug. So
+   * these assertions are the app's numbers, one less than the file's, on purpose.
+   */
+  test('the first spread is 1-2, not the file’s 2-3', () => {
+    assert.equal(PAGE_LABEL_OFFSET, 1);
+    assert.equal(spreadLabel(0), 'pages 1-2');
+    assert.deepEqual(spreadPages(0), [0, 1]);
+    assert.equal(pageLabel(0), 1, 'the first page a student can write on is page 1');
+  });
+
+  test('every later spread follows from that, one below the file', () => {
+    assert.equal(spreadLabel(5), 'pages 11-12'); // §5e draws 12-13
     assert.deepEqual(spreadPages(5), [10, 11]);
+    assert.equal(spreadLabel(8), 'pages 17-18'); // §6b's ninth row draws 18-19
   });
 
-  test('the Pages tab’s list starts at `2-3` and its ninth row is `18-19`', () => {
-    // §6b: five rows of two tiles, nine spreads plus a trailing ghost. Spread 0 is the FIRST leaf, so
-    // the list starting at 2-3 is complete rather than scrolled.
-    assert.equal(spreadLabel(0), 'pages 2-3');
-    assert.equal(spreadLabel(8), 'pages 18-19');
-  });
-
-  test('a 48-page notebook’s last spread reads `48-49`', () => {
+  test('a 48-page notebook’s last spread reads `47-48`', () => {
     // §4d and §5a both say 48 pages. 48 pages is 24 spreads, indices 0..23.
     assert.equal(spreadCountFor(48), 24);
-    assert.equal(spreadLabel(23), 'pages 48-49');
+    assert.equal(spreadLabel(23), 'pages 47-48');
     assert.equal(pageCountFromMaxIndex(47), 48);
   });
 
-  test('the offset is 2, and a left page is therefore always even', () => {
-    assert.equal(PAGE_LABEL_OFFSET, 2);
+  test('a left page is therefore always ODD, and the two are consecutive', () => {
     for (let s = 0; s < 30; s++) {
       const [l, r] = spreadPages(s);
-      assert.equal(pageLabel(l) % 2, 0, `left page of spread ${s} must be even`);
+      assert.equal(pageLabel(l) % 2, 1, `left page of spread ${s} must be odd`);
       assert.equal(pageLabel(r), pageLabel(l) + 1);
     }
   });

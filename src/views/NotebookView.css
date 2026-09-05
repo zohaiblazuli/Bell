@@ -12,10 +12,13 @@
  *    way, a bare `.page` or `.top` here would be a collision waiting for someone to rename something,
  *    so nothing in this file is unprefixed.
  * 2. THE SPREAD IS A FIXED 936x644 BOX THAT SCALES AS ONE, through `--nbs-scale` on a `transform`.
- *    That is what lets every number below be the spec's own literal — 455, 644, 26, 34, 30, the 26
- *    ruling pitch, the 48 coil pitch — instead of a fraction nobody can check against the file. The
- *    view measures the stage and sets the scale; `NotebookPage` multiplies it into its canvas backing
- *    store so a scaled page is still sharp. Animating `transform` is also the only thing the design
+ *    That is what lets every number below be a literal — 644, 34, 30, the 26 ruling pitch — instead of
+ *    a fraction nobody can check against the file. The view measures the stage and sets the scale;
+ *    `NotebookPage` multiplies it into its canvas backing store so a scaled page is still sharp.
+ *    Animating `transform` is also the only thing the design
+ *    system permits. The one place the numbers are no longer §5c's: the spiral binding was removed at
+ *    Zohaib's instruction and its 26px went into the pages, so 455 + 26 + 455 became 466 + 4 + 466 and
+ *    the box is the same 936.
  *    system permits.
  * 3. §5a says focus mode gives the spread all 1320. It does not, and that is deliberate and
  *    precedented: the Reader's focus mode recedes its rail and panel with a transform and does NOT
@@ -224,12 +227,17 @@
   overflow: visible;
 }
 
-/* §5c: two 455x644 pages either side of a 26-wide binding at 455..481 local. Radius is a literal 3 —
-   a page is not a card, the same call the Reader's `.rd-paper` makes. */
+/* §5c gave each page 455 and put a 26-wide spiral binding between them. THE BINDING IS GONE, at
+   Zohaib's instruction, and its 26px went into the pages: 466 + 4 + 466 = 936, so the spread box is
+   unchanged and every page is 11px wider at the same zoom. Radius is a literal 3 — a page is not a
+   card, the same call the Reader's `.rd-paper` makes.
+   The 455 in `lib/ink.ts`'s `PAGE` deliberately did NOT move with this: it is the REFERENCE box every
+   stored fraction divides by, not a claim about the rendered width, so ink drawn before this change
+   lands in exactly the same place on the page it was drawn on. */
 .nbs-page {
   position: absolute;
   top: 0;
-  width: 455px;
+  width: 466px;
   height: 644px;
   border-radius: 3px;
   background: var(--paper);
@@ -241,7 +249,7 @@
   left: 0;
 }
 .nbs-page[data-side='r'] {
-  left: 481px;
+  left: 470px;
 }
 
 /* The three stacked canvases, all filling the page. `paper` repaints only when the style or the box
@@ -273,7 +281,7 @@
   pointer-events: none;
 }
 .nbs-page[data-side='l'] .nbs-fold {
-  left: 433px;
+  left: 444px;
   background: linear-gradient(
     to left,
     color-mix(in srgb, var(--page-ink) 7%, transparent),
@@ -289,25 +297,21 @@
   );
 }
 
-/* §5c `rings` — 26x644 at local x 455, the LAST child so the wire paints over both pages. 13 coils,
-   22x13 ellipses at x 2, stroke 2 `--page-ink-2`, node opacity 0.75, first centre y 34, pitch 48.
-   Level, not rotated: an earlier draft called for -6deg, the file ships them flat, and flat is what
-   the motion frames were built against. `--page-ink-2` is mode-invariant, so the wire reads as steel
-   in both tones. */
-.nbs-rings {
+/* What replaced §5c's `rings`. A 4px rule at local x 466, full height, the last child so it paints
+   over both pages — Zohaib asked for "a small thick black line to indicate this is a separate page",
+   and one rule does that where 26px of drawn spiral was charging both pages for the privilege.
+   `--page-ink` rather than a raw `#000`: raw colour is a bug by the design system's own rule, and the
+   paper's own ink is the token that means "black on this page" AND is mode-invariant, so the divider
+   does not invert when the tone flips any more than the paper does.
+   4px, not 1: at the 60-70% zoom a fitted spread usually sits at, a hairline is a smudge. */
+.nbs-gutter {
   position: absolute;
   top: 0;
-  left: 455px;
-  width: 26px;
+  left: 466px;
+  width: 4px;
   height: 644px;
-  background: color-mix(in srgb, var(--page-ink) 16%, transparent);
+  background: var(--page-ink);
   pointer-events: none;
-}
-.nbs-rings svg {
-  display: block;
-  width: 26px;
-  height: 644px;
-  opacity: 0.75;
 }
 
 /* ---------- §5e spread nav 325x50 ---------- */
@@ -478,8 +482,8 @@
 .nbs[data-enter='on'] .nbs-page[data-side='r'] {
   animation: nbs-page-r-in 1.1s cubic-bezier(0.4, 0, 0.1, 1) both;
 }
-.nbs[data-enter='on'] .nbs-rings {
-  animation: nbs-rings-in 1.1s ease-out both;
+.nbs[data-enter='on'] .nbs-gutter {
+  animation: nbs-gutter-in 1.1s ease-out both;
 }
 .nbs[data-enter='on'] .nbs-top {
   animation: nbs-top-in 1.1s ease-out both;
@@ -529,14 +533,16 @@
     transform: translateX(0);
   }
 }
-@keyframes nbs-rings-in {
+/* The rule arrives after both pages have settled, which is what the coils used to do. Opacity only —
+   a 4px line has nothing to travel. */
+@keyframes nbs-gutter-in {
   0%,
   50% {
     opacity: 0;
   }
   72.7%,
   100% {
-    opacity: 0.75; /* its resting node opacity, not 1 */
+    opacity: 1;
   }
 }
 /* Each surface leaves by exactly its own dimension — the topbar by -52, the dock by -64, the
@@ -606,14 +612,16 @@
 
 /* `page turn` `666:1217` — 0.45s, 8 tracks.
  *
- * THE COILS NEVER MOVE. They are the pivot, and that is the mechanical argument for spiral binding
- * over stitched: a page hinged on the wire, not a page shrinking in place.
+ * THE HINGE NEVER MOVES. The leaf folds about the gutter, not by shrinking in place — that was the
+ * mechanical argument for the drawn spiral, and it survives the binding's removal intact: the 4px rule
+ * sits exactly where the coils were and the fold still pivots on it.
  *
  * The file pairs SCALE_X 1 → 0.02 with TRANSLATION_X -222.95, and its own note explains why that
  * number is not magic: Figma scales about the node centre, so squeezing a 455-wide page to 0.02 pulls
  * its left edge inward by (455 − 9.1) / 2 = 222.95, and the translate exists only to put the edge back
- * on the binding. CSS can say that directly — `transform-origin` on the binding edge — so the translate
- * is dropped and the intent is exact rather than compensated. */
+ * on the binding. CSS can say that directly — `transform-origin` on the gutter edge — so the translate
+ * is dropped, the intent is exact rather than compensated, and the page being 466 wide now changes
+ * nothing here. */
 .nbs[data-turn] .nbs-page {
   transform-origin: left center;
   /* A leaf mid-fold is not a writing surface. Without this, `getBoundingClientRect` on a page squeezed
@@ -714,7 +722,7 @@
   }
   .nbs[data-enter='on'] .nbs-spread,
   .nbs[data-enter='on'] .nbs-page,
-  .nbs[data-enter='on'] .nbs-rings,
+  .nbs[data-enter='on'] .nbs-gutter,
   .nbs[data-enter='on'] .nbs-top,
   .nbs[data-enter='on'] .nbs-dock,
   .nbs[data-enter='on'] .nbs-inspector,
@@ -732,7 +740,7 @@
 }
 .app[data-motion='off'] .nbs[data-enter='on'] .nbs-spread,
 .app[data-motion='off'] .nbs[data-enter='on'] .nbs-page,
-.app[data-motion='off'] .nbs[data-enter='on'] .nbs-rings,
+.app[data-motion='off'] .nbs[data-enter='on'] .nbs-gutter,
 .app[data-motion='off'] .nbs[data-enter='on'] .nbs-top,
 .app[data-motion='off'] .nbs[data-enter='on'] .nbs-dock,
 .app[data-motion='off'] .nbs[data-enter='on'] .nbs-inspector,
