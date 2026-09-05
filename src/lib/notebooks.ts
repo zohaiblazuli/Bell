@@ -237,7 +237,13 @@ export function pageBottom(page: NbPage): number {
   return Math.min(1, bottom);
 }
 
-/** The page box the spread draws, from spec §5c. Used to keep an image's aspect honest. */
+/**
+ * The page's REFERENCE box, spec §5c. Not the rendered width any more: the spiral binding was removed
+ * and its 26px went into the pages, so a page now draws 466 wide (see `NotebookView.css`). This stays
+ * 455 deliberately — every stored coordinate is a FRACTION of the page box, and these two numbers are
+ * only what turns px into such a fraction and keeps an aspect honest. Moving them would silently
+ * reposition ink that is already on disk.
+ */
 export const PAGE_W = 455;
 export const PAGE_H = 644;
 /** Page padding, also §5c — the Reader's `doc` padding, deliberately the same. */
@@ -247,18 +253,18 @@ export const PAGE_PAD_Y = 30 / PAGE_H;
 /* ──────────────────────────────────────────────────────── the page arithmetic ─────────────────── */
 
 /**
- * Pages are stored 0-indexed and DISPLAYED with an offset of 2, and that offset is what makes every
- * number the design file draws come out right.
+ * Pages are stored 0-indexed and DISPLAYED with an offset of 1, so the first leaf of a notebook reads
+ * `pages 1-2`.
  *
- * Figma shows `pages 12-13` in the spread nav, lists `Spreads 2-3 … 18-19` in the Pages tab, and
- * prints `48 pages` in the topbar. A left page is therefore always EVEN, and the lowest spread the
- * Pages tab lists is `2-3` — so the first leaf of a notebook is pages 2 and 3, exactly as a bound
- * notebook whose cover is leaf one behaves. With the offset: disk indices 0 and 1 are the first
- * spread and read `2-3`; spread 5 reads `12-13`; a notebook whose highest written index is 47 has
- * 48 pages and its last spread reads `48-49`. Every drawn figure is consistent, which is the check
- * that says the model is the file's own rather than one invented next to it.
+ * **This is a deliberate divergence from the design file, at Zohaib's instruction.** Figma shows
+ * `Spreads 2-3 … 18-19` in the Pages tab and `pages 12-13` in the spread nav, which is the offset-2
+ * model: a left page is always EVEN and the first leaf is 2 and 3, exactly as a bound book behaves
+ * with its cover counted as leaf one. That is correct bookbinding and it is also confusing — opening a
+ * fresh notebook to be told you are on page 2 reads as a bug, which is precisely how it was reported.
+ * So the offset is 1, a left page is ODD, and the first spread reads `1-2`. The file's own figures no
+ * longer line up with the app's; that trade is the point rather than an oversight.
  */
-export const PAGE_LABEL_OFFSET = 2;
+export const PAGE_LABEL_OFFSET = 1;
 
 /** What the spread nav prints for a disk index. */
 export const pageLabel = (index: number) => index + PAGE_LABEL_OFFSET;

@@ -551,24 +551,12 @@ export default function NotebookView({
                 turn={nb.turning?.dir === 'fwd' ? 'in' : undefined}
               />
 
-              {/* §5c `rings` — the LAST child, so the wire paints over both pages. THE COILS NEVER
-                  MOVE: they are the pivot the leaf hinges on, which is the mechanical argument for
-                  spiral binding over stitched, and §11's `page turn` holds them perfectly still. */}
-              <div className="nbs-rings" aria-hidden="true">
-                <svg viewBox="0 0 26 644" fill="none">
-                  {Array.from({ length: 13 }, (_, i) => (
-                    <ellipse
-                      key={i}
-                      cx="13"
-                      cy={34 + i * 48}
-                      rx="11"
-                      ry="6.5"
-                      stroke="var(--page-ink-2)"
-                      strokeWidth="2"
-                    />
-                  ))}
-                </svg>
-              </div>
+              {/* Where §5c's `rings` were. THE SPIRAL BINDING IS GONE, at Zohaib's instruction: 26px
+                  of coils in the middle of the spread cost both pages the width, and a notebook that
+                  is a writing surface first does not need its hinge drawn. The 26 went into the pages
+                  (455 -> 466 each) and what marks the leaf now is one 4px rule in `--page-ink`.
+                  Still the LAST child, so it paints over both pages rather than under them. */}
+              <div className="nbs-gutter" aria-hidden="true" />
             </div>
           </div>
         </div>

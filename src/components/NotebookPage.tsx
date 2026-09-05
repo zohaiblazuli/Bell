@@ -10,9 +10,10 @@
  * canvas re-strokes every mark on the page on every pointermove, from a synchronous handler, after a
  * layout-forcing `getBoundingClientRect()` — which is the performance bug this split fixes.
  *
- * The page's CSS box is a fixed 455x644 and the whole spread is scaled by one transform, so the
- * backing store is sized by `devicePixelRatio x scale`: a scaled page stays sharp, and no geometry
- * anywhere has to know about zoom.
+ * The page's CSS box is a fixed 466x644 (455 before the spiral binding was removed and its 26px went
+ * into the pages) and the whole spread is scaled by one transform, so the backing store is sized by
+ * `devicePixelRatio x scale`: a scaled page stays sharp, and no geometry anywhere has to know about
+ * zoom. Nothing in this file reads either number — every coordinate is a fraction of the measured box.
  *
  * Its CSS lives in `src/views/NotebookView.css` with the rest of the spread.
  */
@@ -787,7 +788,7 @@ function shapeObject(
 ): NbObject | null {
   const w = box.to.x - box.from.x;
   const h = box.to.y - box.from.y;
-  // A click is not a shape. 4px on a 455-wide page, the same threshold the marquee uses.
+  // A click is not a shape. 4px against `PAGE`, the reference box, the same threshold the marquee uses.
   if (Math.abs(w) * PAGE.w < 4 && Math.abs(h) * PAGE.h < 4) return null;
   const kind = ink.shape;
   const line = kind === 'line' || kind === 'arrow';
