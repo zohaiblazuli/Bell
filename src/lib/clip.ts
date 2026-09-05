@@ -11,8 +11,10 @@
  * before the shelf rather than after the motion.
  *
  * The two other image routes are here too, because they end in the same place: Ctrl+V (which needs
- * nothing either) and drag-and-drop, which needed `dragDropEnabled` flipped to true in
- * `tauri.conf.json` — that setting is what disables webview drop.
+ * nothing either) and drag-and-drop. `dragDropEnabled` MUST be false in `tauri.conf.json`: when it is
+ * true, Tauri's webview swallows the OS drop and the DOM `drop` event never receives the file, so the
+ * handler in `NotebookView` gets an empty `dataTransfer` and nothing lands. False lets the standard
+ * HTML5 drop through to `imageFrom`, the same path Ctrl+V already uses.
  */
 
 import {
@@ -116,19 +118,25 @@ export interface Placed {
 }
 
 /**
- * Store an image and place it on a notebook page.
+ * Store an image, then decide which page it goes on and how big it is — WITHOUT writing the page.
  *
  * The placement rule is "below whatever is already there": the object is left-aligned to the page's
  * ink box, sized to 70% of the page width, and dropped under the lowest existing mark. If it will
  * not fit, it goes to the top of the NEXT page — which is the infinite-pages promise doing something
  * useful rather than merely being true. `page` is a disk index; the caller labels it.
+ *
+ * `read` answers what is already on a page. The open notebook passes a reader that prefers its own
+ * in-memory copy, because that copy can hold strokes the 400ms save debounce has not flushed yet, and
+ * placing against the file would put the image on top of them. `placeImage` passes a plain file read,
+ * which is right for its case: a Reader clip goes to a notebook nobody has open.
  */
-export async function placeImage(
+export async function planImage(
   notebook: string,
   page: number,
   blob: Blob,
+  read: (index: number) => Promise<NbPage>,
   opts: { widthFraction?: number } = {},
-): Promise<Placed> {
+): Promise<{ page: number; object: NbObject; sha: string }> {
   const bytes = new Uint8Array(await blob.arrayBuffer());
   const [sha, size] = await Promise.all([nbAssetPut(notebook, bytes), measure(blob)]);
 
@@ -138,37 +146,59 @@ export async function placeImage(
   // rendering as a portrait rectangle.
   const h = (w * (size.h / size.w) * PAGE_W) / PAGE_H;
 
-  const load = async (n: number): Promise<NbPage> => {
-    const json = await nbPageLoad(notebook, n);
-    if (!json) return emptyPage();
-    try {
-      return JSON.parse(json) as NbPage;
-    } catch {
-      // A page that will not parse must not swallow the clip. Better to leave the damaged file
-      // alone and put the clip on the next page than to overwrite whatever is in there.
-      return emptyPage();
-    }
-  };
-
   let target = page;
-  let doc = await load(target);
+  let doc = await read(target);
   let top = Math.max(PAGE_PAD_Y, pageBottom(doc) + 0.02);
   if (top + h > 1 - PAGE_PAD_Y) {
     target = page + 1;
-    doc = await load(target);
+    doc = await read(target);
     top = Math.max(PAGE_PAD_Y, pageBottom(doc) + 0.02);
   }
 
-  const object: NbObject = {
-    id: `img-${sha.slice(0, 8)}-${Date.now().toString(36)}`,
-    k: 'img',
+  return {
+    page: target,
     sha,
-    x: q4(PAGE_PAD_X),
-    y: q4(top),
-    w: q4(Math.min(w, 1 - 2 * PAGE_PAD_X)),
-    h: q4(Math.min(h, 1 - PAGE_PAD_Y - top)),
+    object: {
+      id: `img-${sha.slice(0, 8)}-${Date.now().toString(36)}`,
+      k: 'img',
+      sha,
+      x: q4(PAGE_PAD_X),
+      y: q4(top),
+      w: q4(Math.min(w, 1 - 2 * PAGE_PAD_X)),
+      h: q4(Math.min(h, 1 - PAGE_PAD_Y - top)),
+    },
   };
+}
 
+/** Read one page straight off disk. A file that will not parse reads as blank, so a damaged page is
+ *  left alone and the clip goes on the next one rather than overwriting whatever is in there. */
+async function readFromDisk(notebook: string, index: number): Promise<NbPage> {
+  const json = await nbPageLoad(notebook, index);
+  if (!json) return emptyPage();
+  try {
+    return JSON.parse(json) as NbPage;
+  } catch {
+    return emptyPage();
+  }
+}
+
+/**
+ * `planImage`, then write the page.
+ *
+ * The read-modify-write is why this one is only for a notebook that is NOT open: a page the student is
+ * drawing on has a copy in memory that this cannot see, and rereading the file afterwards to pick the
+ * object up would drop anything drawn in between. The Reader's clip is exactly that case — it targets
+ * a notebook on the shelf — and the open notebook uses `planImage` plus its own command stack instead.
+ */
+export async function placeImage(
+  notebook: string,
+  page: number,
+  blob: Blob,
+  opts: { widthFraction?: number } = {},
+): Promise<Placed> {
+  const read = (index: number) => readFromDisk(notebook, index);
+  const { page: target, object, sha } = await planImage(notebook, page, blob, read, opts);
+  const doc = await read(target);
   await nbPageSave(notebook, target, JSON.stringify({ ...doc, objects: [...doc.objects, object] }));
   return { page: target, sha };
 }
@@ -196,21 +226,32 @@ export function imageFrom(data: DataTransfer | null): File | null {
 }
 
 /**
- * Re-encode any image to PNG.
+ * Re-encode any image to PNG, and hold it to `MAX_CLIP_PX`.
  *
  * Rust stores assets under a `.png` name and magic-byte validates them, so a pasted JPEG or WebP has
  * to be converted rather than renamed. Doing it here keeps that guarantee cheap to hold: everything
  * on disk really is a PNG.
+ *
+ * **A PNG is measured too, not waved through.** Win+Shift+S puts a PNG on the clipboard, so the
+ * commonest paste in the product arrives already in the target format — and a 4K screenshot is several
+ * megabytes that would go out as a JSON number array (four bytes of IPC per byte of image) and be
+ * stored at full resolution to be drawn 320px wide. The cap applies to every route or it caps nothing.
  */
 export async function toPng(file: Blob): Promise<Blob> {
-  if (file.type === 'image/png') return file;
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, MAX_CLIP_PX / Math.max(bitmap.width, bitmap.height));
+  if (file.type === 'image/png' && scale === 1) {
+    bitmap.close();
+    return file;
+  }
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.round(bitmap.width * scale));
   canvas.height = Math.max(1, Math.round(bitmap.height * scale));
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('no 2d context');
+  if (!ctx) {
+    bitmap.close();
+    throw new Error('no 2d context');
+  }
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
   return await new Promise<Blob>((resolve, reject) => {
