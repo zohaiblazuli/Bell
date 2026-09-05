@@ -20,6 +20,7 @@ import './NotebookCover.css';
 import './Notice.css';
 import './PanelTabs.css';
 import './PaperCard.css';
+import './Pet.css';
 import './Rail.css';
 import './Ring.css';
 import './SearchField.css';

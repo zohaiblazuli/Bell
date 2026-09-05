@@ -1,0 +1,84 @@
+/* ══ Pet — the Codex pet spritesheet, one row at a time ═══════════════════════════════════════════
+   Component: src/ui/Pet.tsx, which sets every dimension inline because they all derive from `size`
+   and the atlas geometry in src/lib/pets.ts. What lives here is the part that does not: the clip, the
+   walk, and the two ways motion gets switched off.
+
+   `.pet` is the square box a mascot slot expects · `.pet__clip` is the window, one 192x208 cell wide ·
+   `.pet__row` is the whole sheet, parked on the row it wants · `.pet__strip` carries the image and
+   slides sideways one cell per frame.
+
+   THE TRAVEL IS A PERCENTAGE OF THE STRIP, WHICH IS WHY THE KEYFRAMES ARE STATIC. The strip is
+   exactly eight cells wide, so `-75%` is "six cells" at any size, on either atlas version, at any DPR
+   — no variable in a keyframe, and `steps()` stays a literal. The format only ever uses 4, 5, 6 or 8
+   frames in a row, so these four rules are the whole set there can be. `animation-duration` is the
+   one thing the component sets, because it is frames ÷ 8fps and only it knows the frame count.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* The square Mr. Bell would have occupied, so `<Pet>` swaps in for him without a slot anywhere
+   learning that a cell is taller than it is wide. The cell is centred in it. */
+.pet {
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+/* The window: exactly one cell. */
+.pet__clip {
+  position: relative;
+  overflow: hidden;
+}
+
+/* The sheet, sized past its parent on both axes and parked by a static translateY. Separate from the
+   strip on purpose: one element cannot hold a static Y and an animated X in the same property. */
+.pet__row {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.pet__strip {
+  width: 100%;
+  height: 100%;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  animation-name: pet-walk-8;
+  animation-timing-function: steps(8);
+  animation-iteration-count: infinite;
+}
+
+/* PIXELATED ONLY WHEN THE PET IS BIGGER THAN ITS ART, WHICH AT 160 AND 96 IT IS NOT.
+   Nearest-neighbour is what keeps hand-placed pixels crisp on the way UP; on the way down it drops
+   whole rows and columns instead of averaging them, which is how an 8px eye loses a pixel and starts
+   to squint. A 208-tall cell in a 160 slot is a 0.77 downscale, so the default filtering is the right
+   one there and this rule deliberately does not reach it. */
+.pet[data-upscaled] .pet__strip {
+  image-rendering: pixelated;
+}
+
+@keyframes pet-walk-4 { to { transform: translateX(-50%); } }
+@keyframes pet-walk-5 { to { transform: translateX(-62.5%); } }
+@keyframes pet-walk-6 { to { transform: translateX(-75%); } }
+@keyframes pet-walk-8 { to { transform: translateX(-100%); } }
+
+.pet__strip[data-frames='4'] { animation-name: pet-walk-4; animation-timing-function: steps(4); }
+.pet__strip[data-frames='5'] { animation-name: pet-walk-5; animation-timing-function: steps(5); }
+.pet__strip[data-frames='6'] { animation-name: pet-walk-6; animation-timing-function: steps(6); }
+
+/* ── reduced motion ────────────────────────────────────────────────────────────────────────────────
+   Both switches, as everywhere else: the OS preference and Settings' own (`[data-motion='off']` on
+   `.app`). `!important` and not a specificity race, which is exactly what MrBell.css does two files
+   over — the frame-count rules above set `animation-name` from an attribute selector, so anything
+   quieter than this would have to out-specify them and would break the moment a rule moved.
+
+   **The pose survives; only the walk stops.** The row stays wherever the mood put it, so a pet that is
+   alarmed still stands on its `failed` frame and a sleeping one on `waiting` — MrBell.css holds its
+   `slump` and `sleep` end poses for the same stated reason (motion §9): a mascot that snaps back to
+   neutral under reduced motion is telling the user something that is not true. */
+@media (prefers-reduced-motion: reduce) {
+  .pet__strip {
+    animation: none !important;
+  }
+}
+[data-motion='off'] .pet__strip {
+  animation: none !important;
+}
