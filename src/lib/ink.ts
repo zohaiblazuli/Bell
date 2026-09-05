@@ -402,8 +402,23 @@ export const NIB_FOR_TOOL: Record<InkTool, NibId> = {
  * What the inspector's Opacity slider starts at per tool — NOT a render fallback. `notebooks.ts` is
  * explicit that an absent `o` means 1, so `strokeOpacity` honours that and a highlighter writes its
  * 0.34 out. The number is the file's own: §5d measures the swipe on page 12 at node opacity 0.34.
+ *
+ * Read by `useNotebook.patchInk`, which remembers size and opacity PER ink tool. A single shared pair
+ * cannot serve all four: at the pen's 1.0 / 8px a highlighter is an opaque bar that obliterates the
+ * words it is meant to tint, which is the one thing a highlighter must not do.
  */
 export const DEFAULT_INK_OPACITY: Record<InkTool, number> = { pen: 1, pencil: 1, hl: 0.34, er: 1 };
+
+/**
+ * And the matching nib width, in the page's own px. §5d draws the highlighter swipe as a 196 x 14
+ * rect, so 14 is measured rather than chosen; the eraser's 18 is the floor `rub` already applies.
+ */
+export const DEFAULT_INK_WIDTH_PX: Record<InkTool, number> = {
+  pen: DEFAULT_STROKE_PX,
+  pencil: DEFAULT_STROKE_PX,
+  hl: 14,
+  er: 18,
+};
 
 export const strokeNib = (stroke: NbStroke): NibId => stroke.n ?? NIB_FOR_TOOL[stroke.t];
 export const strokeOpacity = (stroke: NbStroke): number => stroke.o ?? 1;
@@ -631,7 +646,10 @@ function computeStrokeBBox(stroke: NbStroke): Rect {
 }
 
 function computeObjectBBox(obj: NbObject): Rect {
-  if (obj.k === 'text') return { x: obj.x, y: obj.y, w: obj.w, h: textHeight(obj) };
+  // Normalised like every other kind: a text `w` can be negative in a page written before the width
+  // was clamped, and a negative rectangle can never contain a point — so the object would silently
+  // become unselectable and undeletable rather than merely oddly sized.
+  if (obj.k === 'text') return normalised(obj.x, obj.y, obj.w, textHeight(obj));
   const box = normalised(obj.x, obj.y, obj.w, obj.h);
   if (obj.k !== 'img' || !obj.rot) return box;
   // A rotation is only a rotation in the isotropic space, so the corners go out through `iso` and the
@@ -1602,12 +1620,13 @@ interface PaintInk {
 }
 
 function paintTokens(canvas: HTMLCanvasElement): PaintInk {
-  // The font is read directly rather than through `resolveInk`, whose fallback is a COLOUR: handing
-  // `ctx.font` a hex is a silently ignored assignment, which leaves the previous font in place and
-  // looks like the handwriting style was never applied.
-  const family = getComputedStyle(canvas).getPropertyValue('--font-ink').trim();
+  // Read directly rather than through `resolveInk`, whose fallback is a COLOUR: handing `ctx.font` a
+  // hex is a silently ignored assignment that leaves the previous font in place. `--font-ink` (a
+  // Caveat handwriting face) was deleted from the design system, so it resolved to '' and typed text
+  // fell back to the OS cursive face — `--font-ui` is the intended, always-defined UI stack.
+  const family = getComputedStyle(canvas).getPropertyValue('--font-ui').trim();
   return {
-    font: family || 'cursive',
+    font: family || 'system-ui, sans-serif',
     pageInk: resolveInk('--page-ink', canvas),
     hair: resolveInk('--hair-2', canvas),
   };
@@ -1785,6 +1804,22 @@ export function paintStatic(
   const ctx = surface(canvas, box, dpr);
   if (!ctx) return;
   ctx.clearRect(0, 0, box.w, box.h);
+  paintRecords(ctx, canvas, page, box, assets);
+}
+
+/**
+ * The two paint loops without the clear, so a caller that has already prepared a surface can draw a
+ * set of records onto it — which is what the live canvas needs to preview a selection being dragged
+ * or scaled. `canvas` is taken as well as `ctx` because `paintTokens` reads computed style off the
+ * element, once, rather than per object.
+ */
+export function paintRecords(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  page: NbPage,
+  box: PageBox,
+  assets?: ReadonlyMap<string, CanvasImageSource>,
+): void {
   for (const stroke of page.strokes) paintStroke(ctx, stroke, box, false);
   if (page.objects.length === 0) return;
   const ink = paintTokens(canvas);
