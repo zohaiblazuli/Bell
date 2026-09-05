@@ -19,7 +19,12 @@ export interface Updates {
   /** The dialog is raised by an act, never by a phase — nothing here opens itself. */
   dialogOpen: boolean;
   setDialogOpen: (open: boolean) => void;
-  check: () => Promise<void>;
+  /**
+   * Ask the feed. `manual` means a person pressed a button and is waiting for an answer, which is the
+   * only case that may raise a modal to report good news — the once-per-launch automatic check must
+   * never open a dialog to say nothing is wrong.
+   */
+  check: (manual?: boolean) => Promise<void>;
   download: () => Promise<void>;
   install: () => Promise<void>;
   /** Where the JSON keys live, for Settings' Data card. Empty until Rust answers. */
@@ -39,14 +44,23 @@ export function useUpdates(auto: boolean, onError: (message: string) => void): U
     void api.statePath().then(setStatePath).catch(() => {});
   }, []);
 
-  const check = useCallback(async () => {
+  const check = useCallback(async (manual = false) => {
     setState({ phase: 'checking' });
     try {
       const found = await updates.checkForUpdate();
       if (found.status === 'available') {
         setState({ phase: 'available', version: found.version, notes: found.notes });
+        // Asked for, so answered in the dialog. An AUTOMATIC check deliberately leaves only the
+        // sidebar pill: a modal appearing over someone's paper unbidden is what the flow's whole
+        // pill-then-dialog split exists to avoid.
+        if (manual) setDialogOpen(true);
       } else if (found.status === 'current') {
-        setState({ phase: 'idle' });
+        // Say so. This used to set `idle`, which draws no pill and no dialog — so pressing "Check
+        // now" on the newest build was indistinguishable from pressing a dead button. The dialog
+        // opens only for a check somebody asked for; the launch check just leaves the phase behind
+        // for the Settings card to read.
+        setState({ phase: 'current', version: __APP_VERSION__ });
+        if (manual) setDialogOpen(true);
       } else {
         // The pill has no face for this, so the dialog carries the explanation.
         setState({

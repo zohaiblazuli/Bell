@@ -35,7 +35,8 @@ import Dialog from '@ui/Dialog';
 import Button from '@ui/Button';
 import Notice from '@ui/Notice';
 import Meter from '@ui/Meter';
-import MrBell, { type BellMood } from '@ui/brand/MrBell';
+import type { BellMood } from '@ui/brand/MrBell';
+import Mascot from './Mascot';
 
 /* ── the state machine ─────────────────────────────────────────────────────────────────────── */
 
@@ -63,6 +64,12 @@ export type UpdateStep = 'check' | 'download' | 'install';
 export type UpdateState =
   | { phase: 'idle' }
   | { phase: 'checking' }
+  /**
+   * The check came back with nothing newer. A phase of its own, not a return to `idle`, and that is
+   * the whole point: "nothing happened" and "I asked, and the answer is you are current" are
+   * different things to a person who just pressed a button, and `idle` could only say the first.
+   */
+  | { phase: 'current'; version: string }
   /** Required and nullable on purpose: App has to state whether the build shipped any notes. */
   | { phase: 'available'; version: string; notes: string | null }
   | { phase: 'downloading'; version: string; progress: UpdateProgress | null }
@@ -94,11 +101,13 @@ export function UpdatePill({ state, onDownload, onRestart, className }: UpdatePi
   const cls = className ? `uflow-pill ${className}` : 'uflow-pill';
 
   switch (state.phase) {
-    /* Nothing is waiting, so nothing is indicated. `checking` gets no face either: Figma's axis is
-       Available / Downloading / Ready, and the button that starts a check lives on the Settings
-       UPDATES card, which owns the feedback for its own press. */
+    /* Nothing is waiting, so nothing is indicated. `checking` and `current` get no face either:
+       Figma's axis is Available / Downloading / Ready, and the button that starts a check lives on the
+       Settings UPDATES card, which owns the feedback for its own press. An "up to date" pill parked in
+       the sidebar for the rest of the session would be an indicator with nothing to indicate. */
     case 'idle':
     case 'checking':
+    case 'current':
       return null;
 
     case 'available':
@@ -223,9 +232,8 @@ function DownloadProgress({ progress }: { progress: UpdateProgress | null }) {
  */
 function faceFor(state: UpdateState, on: Record<UpdateStep, () => void>): Face | null {
   switch (state.phase) {
-    /* No update, so no restart moment: if App leaves the dialog open as the flow returns to idle it
-       simply closes, which is the honest end of "Later". Telling a user they are up to date is the
-       Settings card's job — it owns the button they pressed to find out. */
+    /* Nothing was asked, so there is nothing to answer: if App leaves the dialog open as the flow
+       returns to idle it simply closes, which is the honest end of "Later". */
     case 'idle':
       return null;
 
@@ -235,6 +243,22 @@ function faceFor(state: UpdateState, on: Record<UpdateStep, () => void>): Face |
         body: 'Bell is asking the update server for a newer build.',
         dismiss: 'Close',
         mood: 'idle',
+      };
+
+    /**
+     * The answer to a question somebody asked. This face exists because the flow used to fall silent
+     * here — a manual check that found nothing set `idle`, which draws no pill and no dialog, so
+     * pressing "Check now" on the latest build looked exactly like pressing a dead button.
+     *
+     * App raises the dialog for this ONLY on a check the user started; the once-per-launch automatic
+     * check must never open a modal to say nothing is wrong.
+     */
+    case 'current':
+      return {
+        title: 'Bell is up to date',
+        body: `You are running v${state.version}, which is the newest build.`,
+        dismiss: 'Close',
+        mood: 'specs-push-up',
       };
 
     case 'available':
@@ -339,7 +363,7 @@ export function UpdateDialog({
       open
       onClose={onDismiss}
       title={face.title}
-      art={<MrBell size={96} mood={face.mood} />}
+      art={<Mascot size={96} mood={face.mood} />}
       className={panelClass}
       actions={
         <>
