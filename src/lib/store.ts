@@ -121,7 +121,13 @@ export const loadFocus = (): FocusLog => read<FocusLog>('focus', { days: {}, pap
 export function addFocusSeconds(paper: string, seconds: number) {
   if (seconds <= 0) return;
   const log = loadFocus();
-  const today = new Date().toISOString().slice(0, 10);
+  // Local parts, deliberately NOT `toISOString()` — that goes through UTC and, near midnight in a
+  // non-UTC zone, files the minutes under tomorrow or yesterday. Every reader of this log keys it by
+  // local day and warns about exactly this (DashboardView, LibraryView, ActivityGrid), so the writer
+  // has to agree or a late-night session lands in the wrong day, skewing the week total and streak.
+  const now = new Date();
+  const p2 = (n: number) => String(n).padStart(2, '0');
+  const today = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`;
   const days = { ...log.days, [today]: (log.days[today] ?? 0) + seconds / 60 };
   const papers = { ...log.papers, [paper]: (log.papers[paper] ?? 0) + seconds };
   write('focus', { days, papers });
