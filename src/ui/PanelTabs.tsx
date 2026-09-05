@@ -61,6 +61,11 @@ export default function PanelTabs({
     else if (e.key === 'End') move(tabs.length - 1);
     else return;
     e.preventDefault();
+    // AND stopped, not merely defaulted. `preventDefault` does nothing to a listener further up, and the
+    // notebook screen turns the page on Left/Right from `window` — so one arrow moved the tab and the
+    // spread at once. The arrows belong to a tablist; saying so here is what keeps that true wherever
+    // this is mounted.
+    e.stopPropagation();
   };
 
   return (
