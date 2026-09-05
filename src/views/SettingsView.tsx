@@ -41,6 +41,9 @@ import Switch from '@ui/Switch';
 import GitHubMark from '@ui/icons/GitHubMark';
 import SeasonIcon from '@ui/icons/SeasonIcon';
 import Icon, { type IconName } from '@/components/Icon';
+import PetShelf from '@/components/PetShelf';
+import type { UpdateState } from '@/components/UpdateFlow';
+import { petList, type PetEntry } from '@/lib/pets';
 import type { SeasonChoice, Settings, ToneChoice } from '@/lib/store';
 import type { LibraryStats, RepairReport, Subject, SyncReport } from '@/lib/types';
 
@@ -181,6 +184,36 @@ function repairLine(report: RepairReport | null): string | null {
   return bits.join(' · ');
 }
 
+/**
+ * What the last check found, for the row that holds the button that ran it.
+ *
+ * `null` means nothing has been asked yet, and the row keeps its version line — an app that has not
+ * looked must not claim to be current. Every other phase says what is true right now, including the
+ * three that belong to a download already in progress: the card is where someone comes back to when
+ * the sidebar pill is not in front of them.
+ */
+function updateLine(state: UpdateState | undefined): string | null {
+  if (!state) return null;
+  switch (state.phase) {
+    case 'idle':
+      return null;
+    case 'checking':
+      return 'Asking the update server…';
+    case 'current':
+      return `Up to date — v${state.version} is the newest build.`;
+    case 'available':
+      return `v${state.version} is available. Open it from the sidebar to download.`;
+    case 'downloading':
+      return `Downloading v${state.version}…`;
+    case 'ready':
+      return `v${state.version} is downloaded and installs on the next restart.`;
+    case 'installing':
+      return `Restarting into v${state.version}…`;
+    case 'error':
+      return state.message;
+  }
+}
+
 export interface Props {
   /** The persisted record, exactly as `loadSettings()` returns it. */
   settings: Settings;
@@ -223,6 +256,15 @@ export interface Props {
   onCheckUpdates: () => void;
   /** True while a check is in flight; the button disables and says so. */
   checkingUpdates?: boolean;
+  /**
+   * The update flow's phase, so this card can report the outcome of its own button.
+   *
+   * It is here because the card owns the press: a check that came back "nothing newer" used to set
+   * the flow to `idle`, which draws no pill and no dialog — so on the newest build "Check now" looked
+   * exactly like a dead button. The dialog answers a press too; this is the line that is still there
+   * afterwards.
+   */
+  updateState?: UpdateState;
 
   /* ---- Data ---- */
   /** The app's state directory — where every JSON key in `store.ts` lives. */
@@ -263,6 +305,7 @@ export default function SettingsView({
   build,
   onCheckUpdates,
   checkingUpdates = false,
+  updateState,
   statePath,
   onExportData,
   onRevealData,
@@ -272,6 +315,33 @@ export default function SettingsView({
   /** Transient, and the only state on the screen: a destructive action asks first. */
   const [confirmClear, setConfirmClear] = useState(false);
   const confirmRef = useRef<HTMLSpanElement>(null);
+
+  /**
+   * The pet shelf, and just enough of the installed list to name the current mascot.
+   *
+   * `PetShelf` keeps its own copy rather than being handed this one: it installs and removes, so it
+   * needs to refresh on its own, and one shared mutable list would mean plumbing a callback up here to
+   * do what re-reading on close already does. Two cheap reads of the same directory, no shared state.
+   */
+  const [petShelf, setPetShelf] = useState(false);
+  const [pets, setPets] = useState<PetEntry[] | null>(null);
+
+  useEffect(() => {
+    // On mount, and again whenever the shelf closes — which is the only thing that can change it.
+    if (petShelf) return;
+    void petList()
+      .then(setPets)
+      .catch(() => setPets([]));
+  }, [petShelf]);
+
+  /**
+   * What the row says, which is what is actually on screen rather than what is stored: a selection
+   * whose pet has since been removed falls back to Mr. Bell, so the row has to as well.
+   */
+  const mascotName =
+    pets == null
+      ? '…'
+      : (settings.pet ? pets.find((p) => p.id === settings.pet)?.displayName : null) ?? 'Mr. Bell';
 
   useEffect(() => {
     // Swapping the pressed button for two new ones drops focus to the body, so it is moved
@@ -285,6 +355,7 @@ export default function SettingsView({
   const syncStatus = syncLine(busy, progress, report);
   const repairStatus = repairLine(repairReport);
   const lastSynced = syncedAgo(stats?.syncedAtMs);
+  const updateStatus = updateLine(updateState);
 
   /** The chips to offer. Alphabetical, and narrowed to the chosen qualification. */
   const boardSubjects = useMemo(
@@ -352,6 +423,17 @@ export default function SettingsView({
                     onChange={(reduceMotion) => onChange({ reduceMotion })}
                     label="Reduce motion"
                   />
+                </CardRow>
+
+                {/* The file draws a `Show Mr. Bell` switch here (`534:431`) and this screen has always
+                    left it out, because a switch that only hides him had nothing behind it. This is
+                    what belongs in that slot: which mascot, rather than whether. */}
+                <CardRow
+                  label="Mascot"
+                  helper="Mr. Bell ships with Bell. Pets are imported from codex-pets.net and kept on this machine."
+                  onClick={() => setPetShelf(true)}
+                >
+                  <span className="set-value t-body-small">{mascotName}</span>
                 </CardRow>
               </Card>
             </section>
@@ -608,8 +690,20 @@ export default function SettingsView({
                 </CardRow>
 
                 {/* One of the file's three label-less rows (TRAP 13): a Body/Meta string sits in the
-                    label slot and the action sits opposite it. */}
-                <CardRow helper={buildLine ? `Bell ${version} · ${buildLine}` : `Bell ${version}`}>
+                    label slot and the action sits opposite it. The helper is the answer to the button
+                    beside it once it has been pressed, and the version line until then — an app that
+                    has not looked must not claim to be up to date. */}
+                <CardRow
+                  helper={
+                    updateStatus ? (
+                      <span className="set-now">{updateStatus}</span>
+                    ) : buildLine ? (
+                      `Bell ${version} · ${buildLine}`
+                    ) : (
+                      `Bell ${version}`
+                    )
+                  }
+                >
                   <Button
                     icon="sync"
                     className={checkingUpdates ? 'set-spin' : undefined}
@@ -711,6 +805,14 @@ export default function SettingsView({
           </div>
         </div>
       </div>
+
+      {/* Last in the view, so it paints over both columns. It renders nothing while closed. */}
+      <PetShelf
+        open={petShelf}
+        onClose={() => setPetShelf(false)}
+        selected={settings.pet}
+        onSelect={(pet) => onChange({ pet })}
+      />
     </div>
   );
 }
