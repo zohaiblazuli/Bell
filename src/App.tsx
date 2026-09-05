@@ -8,7 +8,7 @@ import Button from '@ui/Button';
 import Dialog from '@ui/Dialog';
 import MrBell from '@ui/brand/MrBell';
 import * as api from './lib/api';
-import Splash, { type SplashPhase, type SplashTargets } from './components/Splash';
+import Splash, { type SplashPhase } from './components/Splash';
 import { UpdateDialog, UpdatePill } from './components/UpdateFlow';
 import LibraryView from './views/LibraryView';
 import DashboardView from './views/DashboardView';
@@ -133,7 +133,6 @@ export default function App() {
   const [resetting, setResetting] = useState(false);
 
   const [splash, setSplash] = useState<SplashPhase>('splash');
-  const [splashTargets, setSplashTargets] = useState<SplashTargets | null>(null);
 
   /**
    * The sidebar mascot's mood. Five triggers live in `state/useMascot.ts`: a failure alarms him, a tone
@@ -269,22 +268,6 @@ export default function App() {
   /* ---- startup ------------------------------------------------------------ */
 
   /**
-   * The splash's travelling pair lands on the sidebar's own mascot slot and lockup, so the targets are
-   * measured from the live DOM rather than the design's coordinates — the sidebar's geometry moves with
-   * the window and a hard-coded box would drift. If either element is missing (onboarding has no
-   * sidebar) the splash cross-fades instead.
-   */
-  useEffect(() => {
-    if (splash !== 'splash') return;
-    const frame = requestAnimationFrame(() => {
-      const slot = document.querySelector('.mascot')?.getBoundingClientRect();
-      const lockup = document.querySelector('.logo-word')?.getBoundingClientRect();
-      if (slot && lockup) setSplashTargets({ mascot: slot, lockup });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [splash]);
-
-  /**
    * The splash reports each phase from its own `animationend`, which is the honest signal — and a
    * signal that can fail to arrive. If the webview suppresses animations (reduced motion at the OS
    * level does exactly that), or a slow first paint drops the event, nothing would ever advance and the
@@ -408,7 +391,6 @@ export default function App() {
   const startup = (
     <Splash
       phase={splash}
-      targets={splashTargets}
       reduceMotion={settings.reduceMotion}
       onFinished={(finished) => setSplash(finished === 'splash' ? 'handoff' : 'done')}
     />
@@ -424,7 +406,7 @@ export default function App() {
     return (
       <>
         <Sprite />
-        <div className="app app-bare" data-view="onboarding" data-tone={tone} data-motion={motion}>
+        <div className="app app-bare" data-startup={splash} data-view="onboarding" data-tone={tone} data-motion={motion}>
           <AppBackground />
           <OnboardingView
             answers={onboarding}
@@ -464,6 +446,7 @@ export default function App() {
         <Sprite />
         <div
           className="app app-bare"
+          data-startup={splash}
           data-view="notebook"
           data-tone={tone}
           data-motion={motion}
@@ -531,6 +514,7 @@ export default function App() {
       <Sprite />
       <div
         className="app"
+        data-startup={splash}
         data-view={view}
         data-tone={tone}
         data-motion={motion}
@@ -541,6 +525,8 @@ export default function App() {
         <Sidebar
           view={view}
           onView={go}
+          version={__APP_VERSION__}
+          build={__APP_BUILD__}
           subjects={mySubjects}
           activeSubject={lib.subjectId}
           onSubject={pickSubject}
@@ -632,7 +618,6 @@ export default function App() {
         onReindex={() => void lib.runSync()}
         onSearch={() => setPalette(true)}
         onDownload={lib.download}
-        questions={null}
         notebooks={notebooks.list}
         onNewNotebook={() => {
           setNewNotebook(true);

@@ -61,9 +61,13 @@ Import via the aliases: `@/lib/store`, `@ui/Button`. There is no deep relative p
   count, and a resync leaving `notebooks\` untouched)
 
 ## Offline still matters, and the CSP is still closed
-The app reaches the network for exactly two things: the catalogue snapshot and a paper download.
-Everything else — browsing, searching, reading, annotating, timing — works with the network
-unplugged, off the cached catalogue and the files already on disk.
+The app reaches the network for exactly three things: the catalogue snapshot, a paper download, and
+the updater's version check. Everything else — browsing, searching, reading, annotating, timing —
+works with the network unplugged, off the cached catalogue and the files already on disk.
+
+**The update check is ON by default** (`SETTINGS_DEFAULTS.updateAuto`, Zohaib's call on 2026-09-06),
+and Settings can turn it off. It is one request a day from Rust, through
+`tauri_plugin_updater`; failing it changes nothing about how the app runs.
 
 **The webview is as network-isolated as it was when the app had no network at all.** All HTTP lives
 in Rust (`src-tauri/src/catalog.rs`, `src-tauri/src/downloads.rs`), so `connect-src 'self' data:
@@ -89,6 +93,14 @@ The background art is vendored as WebP under `src/assets/bg/`.
   `download` table. Since that table only ever names files this app fetched and magic-byte
   validated itself, that check *is* the sandbox — there is no path glob to get subtly wrong. Don't
   swap it back for the asset protocol.
+- **A `download` row that outlives its file heals itself.** The index lives in `app_data_dir` and the
+  papers under Documents, so anything that carries one across without the other — a roaming profile,
+  a restored AppData folder, a second machine — leaves every recorded path dangling, and a dangling
+  row used to be a paper the app insisted it had and answered `os error 3` for ever. Now a failed
+  read prunes its own row (`NotFound` only — a locked file keeps its record),
+  `library::prune_missing_downloads` sweeps at startup so the Library is honest on the first frame,
+  and the Reader falls through to a download. That re-download is free when the bytes are still on
+  disk under the expected name: `fetch_and_store` finds them and simply records them again.
 - pdf.js **standard fonts and CMaps are vendored** under `public/pdfjs/` and wired up in
   `src/lib/pdf.ts`. Without them, rendering silently degrades the moment a paper uses a
   non-embedded standard font.
@@ -163,11 +175,33 @@ about 48.
 Points and stroke widths are stored as **fractions of the page box**, never pixels, so ink stays
 put through zoom, a resize, or a move to a display with a different DPR.
 
+**There are two writing surfaces, and they keep separate files.** The pen and the eraser act on
+whichever page the pointer is over — the question paper or the mark scheme beside it — and the ink
+lands under `ink.<paper>` or `ink.<paper>-ms` respectively. Undo and redo follow the surface you drew
+on last; closing the mark-scheme sheet hands them back to the paper, because a history button must
+never act on a page that is not on screen.
+
 Ink colour is **deliberately off-token**: it is printed on the white paper, so it must not invert
 with the tone, and the literal is written into every saved `Mark` on disk. The Figma Reader screen
 has since replaced the two fixed colours with a **six-swatch palette plus stroke-width and opacity
 controls** — so ink is becoming user-chosen, and `mark.color` stays the source of truth. Existing
 ink keeps whatever it was drawn with. See `design/specs/screen-reader.md`.
+
+## The Reader's chrome is Zohaib's, not the file's
+Four instructions on 2026-09-06 moved most of §4's topbar contents, and the spec still shows the old
+arrangement. The top bar now carries only back, §4's three-style title, the **focus timer centred on
+the window** (TopBar's `center` slot), the tone pill and sync. §8's floating tool bar carries the
+tools, history, page navigation, **zoom** and a labelled **Mark scheme** button. Focus mode and
+clip-to-notebook are **hidden but still wired** — `SHOW_FOCUS_TOGGLE` / `SHOW_CLIP_TOOL` in
+`WorkspaceView.tsx` are one edit from bringing either control back.
+
+Two things not to re-break:
+- **The tool settings popover is not the same flag as the armed tool.** It used to be, so the only
+  way to dismiss the swatches was to press the pen again — which put the pen down. It now has its
+  own ×, Escape and click-away, plus a caret in the bar to reopen it.
+- **The timer is a stopwatch with no target.** No denominator, so the ring is a second hand
+  (`elapsed % 60`), and its arc carries its own `<defs>` inside `.app` rather than using the
+  sprite's `#iris` — see the note in `Sprite.tsx` about mode-paired tokens in a sibling of `.app`.
 
 ---
 
