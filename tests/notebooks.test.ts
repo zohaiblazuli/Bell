@@ -11,8 +11,10 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  INK_TOOLS,
   PAGE_LABEL_OFFSET,
   emptyPage,
+  isInkTool,
   isNbId,
   pageBottom,
   pageCountFromMaxIndex,
@@ -25,7 +27,49 @@ import {
   spreadOf,
   spreadPages,
   type NbPage,
+  type NbTool,
 } from '@/lib/notebooks';
+import { DEFAULT_INK_OPACITY, DEFAULT_INK_WIDTH_PX } from '@/lib/ink';
+
+describe('the four tools that lay ink down', () => {
+  const ALL: NbTool[] = [
+    'pen',
+    'pencil',
+    'hl',
+    'er',
+    'lasso',
+    'shapes',
+    'text',
+    'image',
+    'ruler',
+    'sticky',
+  ];
+
+  test('exactly four of the ten are ink tools', () => {
+    assert.deepEqual(ALL.filter(isInkTool), ['pen', 'pencil', 'hl', 'er']);
+    assert.deepEqual([...INK_TOOLS], ['pen', 'pencil', 'hl', 'er']);
+  });
+
+  /**
+   * Every ink tool needs a size AND an opacity, because `patchInk` remembers them per tool and a gap in
+   * either table would hand a tool `undefined` and paint an invisible or a zero-width stroke.
+   *
+   * The highlighter's numbers are the point of the pair: §5d measures its swipe as a 196x14 rect at node
+   * opacity 0.34, and while nothing read these the highlighter drew an opaque 8px bar over the words it
+   * exists to tint.
+   */
+  test('each one carries a measured size and opacity', () => {
+    for (const tool of INK_TOOLS) {
+      assert.equal(typeof DEFAULT_INK_WIDTH_PX[tool], 'number', tool);
+      assert.equal(typeof DEFAULT_INK_OPACITY[tool], 'number', tool);
+      assert.ok(DEFAULT_INK_WIDTH_PX[tool] > 0, tool);
+      assert.ok(DEFAULT_INK_OPACITY[tool] > 0 && DEFAULT_INK_OPACITY[tool] <= 1, tool);
+    }
+    assert.equal(DEFAULT_INK_OPACITY.hl, 0.34, 'the file’s own node opacity for the swipe');
+    assert.equal(DEFAULT_INK_WIDTH_PX.hl, 14, 'and the 196x14 rect it draws it as');
+    assert.ok(DEFAULT_INK_OPACITY.hl < DEFAULT_INK_OPACITY.pen, 'a highlighter is never a pen');
+  });
+});
 
 describe('the design file’s own numbers', () => {
   test('the spread nav reads `pages 12-13` somewhere real', () => {

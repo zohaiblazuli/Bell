@@ -25,6 +25,11 @@ export interface Notebooks {
   error: string | null;
   refresh: () => Promise<void>;
   create: (meta: NbAuthored) => Promise<NbEntry | null>;
+  /**
+   * Replace the authored fields. Rethrows after recording the error, because the open notebook is the
+   * one caller and it has somewhere to say so — `checked()` in Rust refuses a name outside 1 to 80
+   * characters, and a rename that fails silently is a rename the student believes happened.
+   */
   save: (id: string, meta: NbAuthored) => Promise<void>;
   remove: (id: string) => Promise<void>;
   /** The row for one id, or null. Cheap enough not to memoise; the shelf holds at most a few dozen. */
@@ -81,6 +86,9 @@ export function useNotebooks(): Notebooks {
         setError(null);
       } catch (e) {
         setError(String(e));
+        // Recorded here for the shelf AND rethrown for the caller: this one is invoked from the open
+        // notebook, which is a screen the shelf's error line cannot reach.
+        throw e;
       }
     },
     [merge],

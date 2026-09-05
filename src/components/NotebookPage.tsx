@@ -26,31 +26,43 @@ import {
   addStrokeCmd,
   createInkLoop,
   deleteCmd,
+  deleteRecords,
   eraseAt,
   hitTest,
   hitTestLasso,
+  NIB_FOR_TOOL,
   paintLive,
   paintPaper,
+  paintRecords,
   paintStatic,
-  recordBBox,
+  paintedBBox,
   samplePointer,
+  scaling,
   transformCmd,
+  transformObject,
+  transformStroke,
   translation,
+  unionBBox,
   widthFraction,
+  type Affine,
   type InkCommand,
   type InkPoint,
   type PageBox,
+  type Placed,
   type PointerOwner,
   type Pt,
+  type Rect,
   type Ruler,
 } from '@/lib/ink';
 import { assetUrl } from '@/lib/clip';
 import { resolveInk } from '@/lib/annotations';
 import {
+  pageLabel,
   q4,
   type NbInkSettings,
   type NbObject,
   type NbPage,
+  type NbStroke,
   type NbTool,
   type PaperStyle,
 } from '@/lib/notebooks';
@@ -60,6 +72,27 @@ const BOX: PageBox = { w: PAGE.w, h: PAGE.h };
 
 /** How close a press has to be to count as a hit, as a fraction of the page width. */
 const HIT_TOLERANCE = 0.012;
+
+/**
+ * The longest edge a backing store may reach, in device pixels.
+ *
+ * `devicePixelRatio x scale` is unbounded above by anything in the view — `MAX_FIT` 2.5 times the top
+ * zoom of 1.6 is a scale of 4 — and a canvas past the GPU's maximum texture size is silently demoted
+ * to a software surface, which is slower than the sharpness is worth. 4096 is the common floor for
+ * that limit and still ~6x device pixels on a 644-tall page.
+ */
+const MAX_BACKING_PX = 4096;
+
+/** Half the side of §5d's 7px corner handle, and how close a press has to land to take one. */
+const HANDLE = 3.5;
+const HANDLE_GRAB = 9;
+
+/** How far the selection frame sits outside the ink it encloses, in px. */
+const FRAME_PAD = 6;
+
+/** The editor boxes, in the page's own px — see `.nbs-typing`. A spot is clamped so neither the box nor
+ *  the object it commits can be opened into the sliver `.nbs-page`'s `overflow: hidden` leaves. */
+const TYPING = { text: { w: 240, h: 44 }, note: { w: 116, h: 104 } } as const;
 
 export interface Props {
   /** Disk page index. */
@@ -108,19 +141,36 @@ export default function NotebookPage({
   const builder = useRef<StrokeBuilder | null>(null);
   const owner = useRef<PointerOwner | null>(null);
   const lasso = useRef<Pt[] | null>(null);
-  const drag = useRef<{ from: Pt; last: Pt } | null>(null);
+  /** A selection being moved. `ids` rather than the prop, because a press can select and start dragging
+   *  in one gesture, before the selection has come back down as a prop. */
+  const drag = useRef<{ ids: string[]; from: Pt; last: Pt } | null>(null);
+  /** A corner handle being pulled: the anchor it scales about, the corner it started from, and the two
+   *  independent factors `scaling` takes. */
+  const sizing = useRef<{ ids: string[]; anchor: Pt; corner: Pt; sx: number; sy: number } | null>(
+    null,
+  );
   const shape = useRef<{ from: Pt; to: Pt } | null>(null);
   const rulerDraft = useRef<{ from: Pt; to: Pt } | null>(null);
-  /** Erased strokes accumulate across one swipe, so the whole swipe is a single undo step. */
-  const erased = useRef<ReturnType<typeof eraseAt>['removed']>([]);
+  /**
+   * An erase swipe in flight.
+   *
+   * `from` is the page as it stood when the rubber went down, `now` is that page with everything rubbed
+   * out so far taken off it, and `removed` is the whole swipe's worth of records so it can be one undo
+   * step. All three are needed: erasing against the PROP page every sample collected the same record
+   * once per sample — so an undo restored it several times over — and repainting from a page reduced by
+   * that sample alone put previously erased strokes back on screen mid-swipe.
+   */
+  const rubbing = useRef<{ from: NbPage; now: NbPage; removed: Placed<NbStroke>[] } | null>(null);
 
   /** A text or sticky note being typed, positioned in page fractions. */
   const [editing, setEditing] = useState<{ at: Pt; kind: 'text' | 'note' } | null>(null);
+  const typingRef = useRef<HTMLTextAreaElement>(null);
 
-  const dpr = useMemo(
-    () => (typeof window === 'undefined' ? 1 : (window.devicePixelRatio || 1) * scale),
-    [scale],
-  );
+  const dpr = useMemo(() => {
+    if (typeof window === 'undefined') return 1;
+    const wanted = (window.devicePixelRatio || 1) * scale;
+    return Math.min(wanted, MAX_BACKING_PX / Math.max(BOX.w, BOX.h));
+  }, [scale]);
 
   /* --- assets ------------------------------------------------------------- */
 
@@ -143,14 +193,25 @@ export default function NotebookPage({
     [page.objects],
   );
 
+  /**
+   * Shas already decoded for THIS notebook.
+   *
+   * Without it the effect below refetched every image on the page whenever the set changed, so a second
+   * clip pulled the first back through the IPC, decoded it again and minted a blob URL that the next
+   * cleanup would revoke — all to add nothing, because the name IS the hash and the copy already held is
+   * the same bytes.
+   */
+  const decoded = useRef({ notebook, shas: new Set<string>() });
+  if (decoded.current.notebook !== notebook) decoded.current = { notebook, shas: new Set() };
+
   useEffect(() => {
-    const shas = shaKey ? shaKey.split(',') : [];
-    if (shas.length === 0) return;
+    const wanted = (shaKey ? shaKey.split(',') : []).filter((sha) => !decoded.current.shas.has(sha));
+    if (wanted.length === 0) return;
     let cancelled = false;
     const urls: string[] = [];
     void (async () => {
       const loaded: [string, HTMLImageElement][] = [];
-      for (const sha of shas) {
+      for (const sha of wanted) {
         try {
           const url = await assetUrl(notebook, sha);
           urls.push(url);
@@ -166,8 +227,10 @@ export default function NotebookPage({
         }
       }
       if (cancelled) return;
+      // Recorded only once the bytes are actually in hand, so a read that failed — or one abandoned
+      // mid-flight by a page turn — is tried again rather than remembered as done.
+      for (const [sha] of loaded) decoded.current.shas.add(sha);
       setAssets((prev) => {
-        // Only add: an image already decoded is the same bytes, because the name IS the hash.
         const next = new Map(prev);
         for (const [sha, img] of loaded) if (!next.has(sha)) next.set(sha, img);
         return next;
@@ -215,7 +278,14 @@ export default function NotebookPage({
 
   useEffect(() => () => loop.stop(), [loop]);
 
-  /** The lasso path, a shape preview, the ruler and the selection frame — everything transient. */
+  /**
+   * Everything transient: a selection being moved or scaled, the lasso path, a shape preview, the
+   * ruler, and §5d's selection frame with its four corner handles.
+   *
+   * The frame lives HERE rather than in an effect of its own, which is what stops it being wiped: every
+   * `loop.mark()` runs this painter, and a painter that cleared the canvas without redrawing the frame
+   * made a drag look like the selection had vanished.
+   */
   const paintOverlay = useCallback(
     (canvas: HTMLCanvasElement) => {
       const ctx = canvas.getContext('2d');
@@ -233,6 +303,24 @@ export default function NotebookPage({
       ctx.strokeStyle = accent;
       ctx.lineWidth = 1;
       ctx.lineJoin = 'round';
+
+      /* A move or a scale in flight. Its own `ids` rather than the `selection` prop, because a press
+         that selects and starts dragging in one gesture has not re-rendered yet. */
+      const gesture = drag.current ?? sizing.current;
+      const live: Affine | null = drag.current
+        ? translation(drag.current.last.x - drag.current.from.x, drag.current.last.y - drag.current.from.y)
+        : sizing.current
+          ? scaling(sizing.current.anchor, sizing.current.sx, sizing.current.sy)
+          : null;
+      const frame = selectionFrame(page, gesture?.ids ?? selection);
+      if (live && frame) {
+        // The ink itself is lifted off the static canvas for the duration of the gesture, so this IS
+        // the selection rather than a second copy of it — the difference between a drag you can watch
+        // and one that only happens on release.
+        ctx.save();
+        paintRecords(ctx, canvas, ghostOf(page, gesture?.ids ?? selection, live), BOX, assets);
+        ctx.restore();
+      }
 
       const path = lasso.current;
       if (path && path.length > 1) {
@@ -266,58 +354,32 @@ export default function NotebookPage({
         ctx.stroke();
         ctx.restore();
       }
+
+      // Last, so the frame and its handles sit over the preview they describe.
+      if (frame) drawFrame(ctx, live ? mapRect(frame, live) : frame, accent, resolveInk('--paper', canvas));
     },
-    [dpr, ink],
+    [dpr, ink, page, selection, assets],
   );
   overlay.current = paintOverlay;
 
   /**
-   * §5d's live lasso selection: a dashed accent box with four 7px corner handles. Painted on the live
-   * canvas so it costs nothing when nothing is selected — and it is the whole answer to "you cannot
-   * select anything the Reader has drawn".
+   * Repaint the transients whenever what they describe changes.
+   *
+   * `paintOverlay` clears the live canvas, so this is also what puts the selection frame back after a
+   * commit, an undo or a page load — and the `builder` guard is what keeps it from wiping a stroke that
+   * is still being drawn.
    */
   useEffect(() => {
     const canvas = liveRef.current;
-    if (!canvas) return;
-    if (builder.current) return;
+    if (!canvas || builder.current) return;
     paintOverlay(canvas);
-    if (selection.length === 0) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const records = [...page.strokes, ...page.objects].filter((r) => selection.includes(r.id));
-    if (records.length === 0) return;
-    const boxes = records.map(recordBBox);
-    const x = Math.min(...boxes.map((b) => b.x));
-    const y = Math.min(...boxes.map((b) => b.y));
-    const right = Math.max(...boxes.map((b) => b.x + b.w));
-    const bottom = Math.max(...boxes.map((b) => b.y + b.h));
-    const accent = resolveInk('--accent', canvas);
-    const pad = 6;
-    const px = x * BOX.w - pad;
-    const py = y * BOX.h - pad;
-    const pw = (right - x) * BOX.w + pad * 2;
-    const ph = (bottom - y) * BOX.h + pad * 2;
-    ctx.save();
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([5, 4]);
-    ctx.strokeRect(px, py, pw, ph);
-    ctx.setLineDash([]);
-    ctx.fillStyle = resolveInk('--paper', canvas);
-    ctx.lineWidth = 1.5;
-    for (const [hx, hy] of [
-      [px, py],
-      [px + pw, py],
-      [px, py + ph],
-      [px + pw, py + ph],
-    ]) {
-      ctx.beginPath();
-      ctx.roundRect(hx - 3.5, hy - 3.5, 7, 7, 1.5);
-      ctx.fill();
-      ctx.stroke();
-    }
-    ctx.restore();
-  }, [selection, page, paintOverlay]);
+  }, [paintOverlay]);
+
+  // Focus the inline text/sticky editor when it opens. `autoFocus` alone was unreliable — the tap
+  // that opens it briefly held pointer capture on the canvas — so focus is placed explicitly here.
+  useEffect(() => {
+    if (editing) typingRef.current?.focus();
+  }, [editing]);
 
   /* --- pointer ------------------------------------------------------------ */
 
@@ -349,14 +411,13 @@ export default function NotebookPage({
           c: resolveInk(ink.colour, e.currentTarget),
           w: widthFraction(ink.strokePx),
           o: ink.opacity,
-          n: ink.nib,
-          sm: ink.smoothing,
+          // The nib follows the tool — pen→fountain, pencil→pencil, highlighter→marker — so the dock
+          // is the single control for a stroke's character; smoothing rides the engine default.
+          n: NIB_FOR_TOOL[tool],
         };
-        builder.current = new StrokeBuilder(seed, {
-          pressure: ink.pressure,
-          lock: ink.straightLock,
-          ruler: ink.snapRuler ? ruler : null,
-        });
+        // Pressure is always on (a mouse reports a flat stream and simply draws an even width); there
+        // is no straight-line lock; and a stroke snaps to the ruler whenever a guide has been placed.
+        builder.current = new StrokeBuilder(seed, { pressure: true, lock: false, ruler });
         const points = sample(e);
         builder.current.begin(points[0] ?? { ...at, pressure: 0.5 });
         if (points.length > 1) builder.current.extend(points.slice(1));
@@ -376,22 +437,37 @@ export default function NotebookPage({
           );
           builder.current.begin(sample(e)[0] ?? { ...at, pressure: 0.5 });
         } else {
-          erased.current = [];
+          // The swipe carries its own copy of the page from here on, and `rub` reduces THAT — never the
+          // prop — so nothing is collected twice and nothing rubbed out comes back mid-swipe.
+          rubbing.current = { from: page, now: page, removed: [] };
           rub(at);
         }
         loop.mark();
         break;
       }
       case 'lasso': {
-        const hit = hitTest(page, at, HIT_TOLERANCE);
-        if (hit && selection.includes(hit.id)) {
-          drag.current = { from: at, last: at };
-        } else if (hit) {
-          onSelection([hit.id]);
-          drag.current = { from: at, last: at };
+        const frame = selection.length > 0 ? selectionFrame(page, selection) : null;
+        const grab = frame ? grabHandle(frame, at) : null;
+        if (grab) {
+          // §5d draws four corner handles; this is what makes them the control they look like, instead
+          // of a press that missed every record and cleared the selection.
+          sizing.current = { ids: [...selection], ...grab, sx: 1, sy: 1 };
+          lift(selection);
         } else {
-          onSelection([]);
-          lasso.current = [at];
+          const hit = hitTest(page, at, HIT_TOLERANCE);
+          if (hit && selection.includes(hit.id)) {
+            drag.current = { ids: [...selection], from: at, last: at };
+            lift(selection);
+          } else if (hit) {
+            // Selected and dragged in one gesture, so the ids are carried on the gesture rather than
+            // read back from a `selection` prop that has not re-rendered yet.
+            onSelection([hit.id]);
+            drag.current = { ids: [hit.id], from: at, last: at };
+            lift([hit.id]);
+          } else {
+            onSelection([]);
+            lasso.current = [at];
+          }
         }
         loop.mark();
         break;
@@ -405,13 +481,22 @@ export default function NotebookPage({
         loop.mark();
         break;
       case 'text':
-      case 'sticky':
-        setEditing({ at, kind: tool === 'text' ? 'text' : 'note' });
+      case 'sticky': {
+        // Release the capture taken above: a click-to-place tool must not hold the pointer, or the
+        // textarea that opens below cannot take focus cleanly — which is what made the editor feel
+        // dead. Focus is then placed explicitly by the effect keyed on `editing`.
+        e.currentTarget.releasePointerCapture(e.pointerId);
         owner.current = null;
+        const kind = tool === 'text' ? 'text' : 'note';
+        // Clamped once, here, so the editor and the object it commits agree on where they are: the page
+        // clips its own children, and an unclamped press near an edge opened the box into a sliver.
+        setEditing({ at: clampSpot(at, kind), kind });
         break;
+      }
       case 'image':
         // Nothing to draw: the image tool is the paste / drop / clip target, and the spread's own
         // handlers own those. Said in the dock's tooltip rather than by a dead press here.
+        e.currentTarget.releasePointerCapture(e.pointerId);
         owner.current = null;
         break;
     }
@@ -435,6 +520,17 @@ export default function NotebookPage({
       loop.mark();
       return;
     }
+    if (sizing.current) {
+      const grip = sizing.current;
+      const spanX = grip.corner.x - grip.anchor.x;
+      const spanY = grip.corner.y - grip.anchor.y;
+      // A selection with no extent in one axis — a horizontal rule, a single dot — cannot be scaled in
+      // it, and dividing by that zero would send every point to infinity.
+      grip.sx = Math.abs(spanX) < 1e-4 ? 1 : clampScale((at.x - grip.anchor.x) / spanX);
+      grip.sy = Math.abs(spanY) < 1e-4 ? 1 : clampScale((at.y - grip.anchor.y) / spanY);
+      loop.mark();
+      return;
+    }
     if (drag.current) {
       drag.current.last = at;
       loop.mark();
@@ -451,7 +547,16 @@ export default function NotebookPage({
     }
   }
 
-  function up() {
+  /**
+   * The gesture ends — but only for the pointer that owns it.
+   *
+   * Without the identity check, a palm resting beside the pen and then LIFTING committed the pen's
+   * stroke half-drawn and dropped its owner, so the rest of the stroke went nowhere. `acceptsPointer`
+   * rejects that palm on the way down; this is the same guarantee at the other end of the gesture.
+   */
+  function up(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (!owner.current || e.pointerId !== owner.current.pointerId) return;
+
     const stroke = builder.current;
     builder.current = null;
 
@@ -460,16 +565,15 @@ export default function NotebookPage({
       finishGesture();
       return;
     }
-    if (erased.current.length > 0) {
-      // One swipe, one undo step — and the removed records carry the index they sat at, so an undo
-      // puts each back in its own z position rather than on top.
-      const ids = erased.current.map((entry) => entry.rec.id);
-      const before: NbPage = {
-        ...page,
-        strokes: [...page.strokes, ...erased.current.map((entry) => entry.rec)],
-      };
-      onCommand(deleteCmd(index, before, ids));
-      erased.current = [];
+    const swipe = rubbing.current;
+    if (swipe) {
+      rubbing.current = null;
+      // One swipe, one undo step, taken against the page as it stood when the rubber went down — and
+      // the removed records carry the index they sat at, so an undo puts each back in its own z
+      // position rather than on top.
+      if (swipe.removed.length > 0) {
+        onCommand(deleteCmd(index, swipe.from, swipe.removed.map((entry) => entry.rec.id)));
+      }
       finishGesture();
       return;
     }
@@ -480,14 +584,23 @@ export default function NotebookPage({
       finishGesture();
       return;
     }
+    if (sizing.current) {
+      const { ids, anchor, sx, sy } = sizing.current;
+      sizing.current = null;
+      if (Math.abs(sx - 1) > 0.001 || Math.abs(sy - 1) > 0.001) {
+        onCommand(transformCmd(index, page, ids, scaling(anchor, sx, sy)));
+      } else settle();
+      finishGesture();
+      return;
+    }
     if (drag.current) {
-      const { from, last } = drag.current;
+      const { ids, from, last } = drag.current;
       drag.current = null;
       const dx = q4(last.x - from.x);
       const dy = q4(last.y - from.y);
-      if (dx !== 0 || dy !== 0) {
-        onCommand(transformCmd(index, page, selection, translation(dx, dy)));
-      }
+      if (dx !== 0 || dy !== 0) onCommand(transformCmd(index, page, ids, translation(dx, dy)));
+      // Nothing moved, so no commit will repaint: the lifted ink has to be put back by hand.
+      else settle();
       finishGesture();
       return;
     }
@@ -517,13 +630,33 @@ export default function NotebookPage({
     loop.mark();
   }
 
-  /** One erase step. Accumulated across the swipe so the whole rub is one undo. */
+  /** Take a set of records off the static canvas, so a move or scale preview replaces them rather than
+   *  doubling them. Put back by the commit, or by `settle` when the gesture came to nothing. */
+  function lift(ids: readonly string[]) {
+    if (staticRef.current && ids.length > 0)
+      paintStatic(staticRef.current, deleteRecords(page, ids), BOX, assets, dpr);
+  }
+
+  function settle() {
+    if (staticRef.current) paintStatic(staticRef.current, page, BOX, assets, dpr);
+  }
+
+  /**
+   * One erase step, against the swipe's own copy of the page.
+   *
+   * Reducing `swipe.now` each sample is what makes the rubber behave like one: a record already taken
+   * out cannot be collected again — which is what duplicated it on undo, once per sample that touched
+   * it — and the repaint is of everything erased so far rather than of this sample alone, which is what
+   * used to put earlier strokes back on screen halfway through the swipe.
+   */
   function rub(at: Pt) {
-    if (ink.eraser === 'paint') return;
+    const swipe = rubbing.current;
+    if (!swipe || ink.eraser === 'paint') return;
     const radius = widthFraction(Math.max(ink.strokePx, 18)) / 2;
-    const result = eraseAt(page, at, radius, DEFAULT_ERASER_MODE);
+    const result = eraseAt(swipe.now, at, radius, DEFAULT_ERASER_MODE);
     if (result.removed.length === 0) return;
-    erased.current = [...erased.current, ...result.removed];
+    swipe.now = result.page;
+    swipe.removed = [...swipe.removed, ...result.removed];
     // Painted immediately from the reduced page rather than waiting for the commit, so the rubber
     // feels like a rubber. The commit at pointer-up is what makes it an edit.
     if (staticRef.current) paintStatic(staticRef.current, result.page, BOX, assets, dpr);
@@ -558,7 +691,9 @@ export default function NotebookPage({
               s: text,
               x: q4(spot.at.x),
               y: q4(spot.at.y),
-              w: q4(Math.min(0.6, 1 - spot.at.x - 0.08)),
+              // Floored as well as capped. A negative width is not merely a thin column: `inRect` can
+              // never contain a point in one, so the object would be unselectable and undeletable.
+              w: q4(Math.max(TYPING.text.w / PAGE.w, Math.min(0.6, 1 - spot.at.x - PAGE.padX / PAGE.w))),
               size: q4(widthFraction(16)),
               c: colour,
             };
@@ -579,7 +714,7 @@ export default function NotebookPage({
         className="nbs-layer"
         data-layer="live"
         role="img"
-        aria-label={`Page ${index + 2}`}
+        aria-label={`Page ${pageLabel(index)}`}
         onPointerDown={down}
         onPointerMove={move}
         onPointerUp={up}
@@ -587,13 +722,14 @@ export default function NotebookPage({
       />
       {editing && (
         <textarea
+          key={`${editing.kind}-${editing.at.x}-${editing.at.y}`}
+          ref={typingRef}
           className="nbs-typing"
           data-kind={editing.kind}
-          autoFocus
-          style={{
-            left: `${editing.at.x * 100}%`,
-            top: `${editing.at.y * 100}%`,
-          }}
+          /* The page's own px rather than a percentage: the box has a fixed pixel size, so a percentage
+             origin is what let it hang off the right edge into `overflow: hidden`. `clampSpot` has
+             already kept the origin inside. */
+          style={{ left: editing.at.x * PAGE.w, top: editing.at.y * PAGE.h }}
           onBlur={(e) => commitText(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Escape') {
@@ -611,23 +747,6 @@ export default function NotebookPage({
 
 /* ─────────────────────────────────────────────────────────────── shapes ───────────────────────── */
 
-/** Which of §5d's four shapes the STROKE card's current settings make. */
-function shapeKind(ink: NbInkSettings): 'line' | 'arrow' | 'rect' | 'ellipse' {
-  // The dock has one `shapes` button and the file draws a line, an arrow, a rect and an ellipse on
-  // page 12's free-body diagram. Cycling would be a hidden mode, so the nib doubles as the picker:
-  // the four nibs map to the four shapes, which keeps one visible control for one choice.
-  switch (ink.nib) {
-    case 'fountain':
-      return 'line';
-    case 'ballpoint':
-      return 'arrow';
-    case 'pencil':
-      return 'rect';
-    default:
-      return 'ellipse';
-  }
-}
-
 function drawShape(
   ctx: CanvasRenderingContext2D,
   ink: NbInkSettings,
@@ -638,7 +757,7 @@ function drawShape(
   const x2 = box.to.x * PAGE.w;
   const y2 = box.to.y * PAGE.h;
   ctx.beginPath();
-  switch (shapeKind(ink)) {
+  switch (ink.shape) {
     case 'line':
     case 'arrow':
       ctx.moveTo(x1, y1);
@@ -670,7 +789,7 @@ function shapeObject(
   const h = box.to.y - box.from.y;
   // A click is not a shape. 4px on a 455-wide page, the same threshold the marquee uses.
   if (Math.abs(w) * PAGE.w < 4 && Math.abs(h) * PAGE.h < 4) return null;
-  const kind = shapeKind(ink);
+  const kind = ink.shape;
   const line = kind === 'line' || kind === 'arrow';
   return {
     id: `shape-${Date.now().toString(36)}`,
@@ -686,6 +805,114 @@ function shapeObject(
     // literal — the rule `annotations.ts` documents at length, and why there is no hex fallback here.
     c: resolveInk(ink.colour, context),
     sw: q4(widthFraction(ink.strokePx)),
+  };
+}
+
+/* ──────────────────────────────────────────────────── the selection frame ─────────────────────── */
+
+/**
+ * What a selection encloses, in page fractions, or null when nothing named is on this page.
+ *
+ * `paintedBBox` rather than `recordBBox`: the frame is drawn around ink, and a nib is a width-fraction
+ * the path bounds deliberately leave out.
+ */
+function selectionFrame(page: NbPage, ids: readonly string[]): Rect | null {
+  const set = new Set(ids);
+  const records = [...page.strokes, ...page.objects].filter((r) => set.has(r.id));
+  return records.length === 0 ? null : unionBBox(records.map(paintedBBox));
+}
+
+/** The frame as page px, padding included — what is drawn, and what a handle press is measured against. */
+const framePx = (rect: Rect): Rect => ({
+  x: rect.x * PAGE.w - FRAME_PAD,
+  y: rect.y * PAGE.h - FRAME_PAD,
+  w: rect.w * PAGE.w + FRAME_PAD * 2,
+  h: rect.h * PAGE.h + FRAME_PAD * 2,
+});
+
+/** The four corners of a px frame, in one fixed order — so the paint and the hit test cannot disagree
+ *  about which corner is which, and `3 - i` is always the diagonally opposite one. */
+const cornersOf = (box: Rect): [number, number][] => [
+  [box.x, box.y],
+  [box.x + box.w, box.y],
+  [box.x, box.y + box.h],
+  [box.x + box.w, box.y + box.h],
+];
+
+/** A rect under a live transform, for previewing the frame where the selection is going. */
+const mapRect = (rect: Rect, m: Affine): Rect => ({
+  x: m.ax + (rect.x - m.ax) * m.sx + m.dx,
+  y: m.ay + (rect.y - m.ay) * m.sy + m.dy,
+  w: rect.w * m.sx,
+  h: rect.h * m.sy,
+});
+
+/** Never mirrored and never collapsed: a negative factor would flip handwriting, and a zero would
+ *  discard it. */
+const clampScale = (n: number) => Math.min(20, Math.max(0.05, n));
+
+/** The handle under `at`, as the anchor to scale about and the corner being pulled — both in fractions. */
+function grabHandle(rect: Rect, at: Pt): { anchor: Pt; corner: Pt } | null {
+  const box = framePx(rect);
+  const px = at.x * PAGE.w;
+  const py = at.y * PAGE.h;
+  const corners = cornersOf(box);
+  for (let i = 0; i < corners.length; i++) {
+    const [cx, cy] = corners[i];
+    if (Math.hypot(px - cx, py - cy) > HANDLE_GRAB) continue;
+    // The anchor is the diagonally opposite corner, so the selection grows away from the hand rather
+    // than sliding while it resizes.
+    const [ax, ay] = corners[3 - i];
+    return {
+      anchor: { x: ax / PAGE.w, y: ay / PAGE.h },
+      corner: { x: cx / PAGE.w, y: cy / PAGE.h },
+    };
+  }
+  return null;
+}
+
+/** The selected records under a live transform — the move / scale preview on the live canvas. */
+function ghostOf(page: NbPage, ids: readonly string[], m: Affine): NbPage {
+  const set = new Set(ids);
+  return {
+    v: 1,
+    strokes: page.strokes.filter((s) => set.has(s.id)).map((s) => transformStroke(s, m)),
+    objects: page.objects.filter((o) => set.has(o.id)).map((o) => transformObject(o, m)),
+  };
+}
+
+/** §5d's dashed accent frame and its four 7px corner handles. `rect` is in fractions. */
+function drawFrame(
+  ctx: CanvasRenderingContext2D,
+  rect: Rect,
+  accent: string,
+  paper: string,
+): void {
+  const box = framePx(rect);
+  ctx.save();
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([5, 4]);
+  ctx.strokeRect(box.x, box.y, box.w, box.h);
+  ctx.setLineDash([]);
+  ctx.fillStyle = paper;
+  ctx.lineWidth = 1.5;
+  for (const [hx, hy] of cornersOf(box)) {
+    ctx.beginPath();
+    ctx.roundRect(hx - HANDLE, hy - HANDLE, HANDLE * 2, HANDLE * 2, 1.5);
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** Keep an editor — and the object it commits — inside the page. `.nbs-page` clips its children, so an
+ *  unclamped origin near the right or bottom edge opened the box into a sliver of itself. */
+function clampSpot(at: Pt, kind: 'text' | 'note'): Pt {
+  const box = TYPING[kind];
+  return {
+    x: Math.min(Math.max(0, at.x), (PAGE.w - box.w) / PAGE.w),
+    y: Math.min(Math.max(0, at.y), (PAGE.h - box.h) / PAGE.h),
   };
 }
 

@@ -22,7 +22,7 @@
         "resizable": true,
         "decorations": false,
         "shadow": true,
-        "dragDropEnabled": true
+        "dragDropEnabled": false
       }
     ],
     "security": {
