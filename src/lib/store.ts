@@ -239,6 +239,15 @@ export interface Settings {
    * user can turn it off in Settings. The Figma file also draws this switch On (`536:451`).
    */
   updateAuto: boolean;
+  /**
+   * The mascot. `null` is Mr. Bell, who ships in the binary and is what a fresh install draws.
+   *
+   * A Codex pet id (`isPetId` in `lib/pets.ts`), pointing at a directory under `<app data>\pets\`. It
+   * is only ever a *selection*: the pet's own files are not study state and a reset leaves them on
+   * disk, so clearing data returns the mascot to Mr. Bell without throwing away a download. An id
+   * whose pet has since been removed falls back to him too, rather than failing.
+   */
+  pet: string | null;
 }
 
 export const SETTINGS_DEFAULTS: Settings = {
@@ -249,6 +258,7 @@ export const SETTINGS_DEFAULTS: Settings = {
   focusAutostart: true,
   streakMinutes: 10,
   updateAuto: true,
+  pet: null,
 };
 
 export function loadSettings(): Settings {
