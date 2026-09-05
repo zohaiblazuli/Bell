@@ -29,10 +29,11 @@ import Field from '@ui/Field';
 import Kbd from '@ui/Kbd';
 import Notice from '@ui/Notice';
 import Rail from '@ui/Rail';
-import MrBell, { type BellMood } from '@ui/brand/MrBell';
+import type { BellMood } from '@ui/brand/MrBell';
 import SeasonIcon, { seasonKeyOf } from '@ui/icons/SeasonIcon';
 import SubjectIcon from '@ui/icons/SubjectIcon';
 import Icon from '@/components/Icon';
+import Mascot from '@/components/Mascot';
 import WindowLights from '@/components/WindowLights';
 import { sessionLabel } from '@/lib/difficulty';
 import type { BulkProgress } from '@/state/useLibraryIndex';
@@ -904,7 +905,7 @@ export default function OnboardingView({
         </div>
 
         {/* Last in the stage, so he paints over the sheet (§3.5). 160px is the 256 rig at 0.625. */}
-        <MrBell size={160} mood={MOODS[step]} className="onb__bell" />
+        <Mascot size={160} mood={MOODS[step]} className="onb__bell" />
       </div>
     </div>
   );
