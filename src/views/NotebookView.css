@@ -114,6 +114,15 @@
 .nbs-save[data-state='saving'] {
   color: var(--accent);
 }
+/* And a flush that FAILED has to look like one. `Could not save` in the resting `--ink-3` beside an
+   accent dot was indistinguishable from `Saved on this device`, which is the one sentence in the
+   product that must never be ambiguous. `--danger`, never `--d5` — rule 3. */
+.nbs-save[data-state='error'] {
+  color: var(--danger);
+}
+.nbs-save[data-state='error'] .nbs-save-dot {
+  background: var(--danger);
+}
 
 .nbs-top-gap {
   flex: 1 1 auto;
@@ -156,15 +165,49 @@
 
 /* ---------- the stage and §5c the spread ---------- */
 
-.nbs-stage {
+/* The well is the grid cell, and it never scrolls: it holds the scroller plus everything that floats
+   over it, and it is what the view measures. The nav and the notice used to live inside the stage,
+   which was fine while the stage could not scroll — an absolutely positioned child of a scroll
+   container scrolls with the content, and they would now ride off the bottom of a zoomed spread. */
+.nbs-well {
   position: relative;
   grid-column: 2;
   grid-row: 2;
   display: grid;
-  place-items: center;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+}
+
+/* The stage scrolls. Zoom is a real zoom now: past the fit the spread is larger than the window and the
+   pages have to be reachable, where `overflow: hidden` simply cropped them with no way to pan.
+   `margin: auto` on the child rather than `justify-content: center` on the parent, deliberately: a
+   centred flex or grid container makes its own start-side overflow unreachable, and `auto` margins are
+   the documented way to centre inside a scroller without losing it.
+   `padding-bottom` is the spread nav's own height: the view reserves it, but a centred box splits a
+   reserve in two, so half of it landed above the pages where nothing needed it. */
+.nbs-stage {
+  grid-area: 1 / 1;
+  display: flex;
+  padding-bottom: 64px;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  /* No scrollbar gutter, in either engine. A classic scrollbar would narrow the box the scale is
+     measured from, and the two would chase each other on every resize. Wheel and trackpad still pan. */
+  scrollbar-width: none;
+}
+.nbs-stage::-webkit-scrollbar {
+  display: none;
+}
+
+/* What gives the scroller something to scroll. A `transform` creates no scrollable overflow, so the
+   scaled spread needs a real box of its own size — and the spread then draws from the top left of it. */
+.nbs-sizer {
+  position: relative;
+  flex: none;
+  margin: auto;
 }
 
 /* 936x644 at (90,134) in the file. Fixed here, scaled as one — see note 2 at the head. `--nbs-scale`
@@ -175,6 +218,8 @@
   width: 936px;
   height: 644px;
   transform: scale(var(--nbs-scale));
+  /* The sizer is the scaled box, so the spread grows out of its top-left corner into exactly that. */
+  transform-origin: top left;
   /* §13 TRAP 12: the paper shadow reaches well outside the box and a clipping ancestor slices it. */
   overflow: visible;
 }
@@ -349,7 +394,10 @@
 /* ---------- focus mode ---------- */
 
 /* Transform and opacity only. Each surface leaves by exactly its own width, which is the same rule
-   the `cover open` timeline uses — nothing crosses the stage on its way out. */
+   the `cover open` timeline uses — nothing crosses the stage on its way out.
+   `pointer-events: none` takes them away from the pointer; the KEYBOARD is `inert`, set from the view,
+   because `opacity: 0` leaves sixteen invisible dock buttons and a whole inspector in the tab order and
+   no CSS property removes them without animating something the design system forbids. */
 .app[data-focus='on'] .nbs-dock {
   transform: translateX(-64px);
   opacity: 0;
@@ -364,8 +412,9 @@
 /* ---------- paste / drop target ---------- */
 /* Dragging an image over the spread. `--accent-soft` is the one permitted wash and the dashed accent
    line is rule 2 — the same treatment the Reader's clip marquee gets, because it is the same gesture
-   arriving from the other end. */
-.nbs-stage[data-drop='over']::after {
+   arriving from the other end. On the WELL rather than the stage, so it frames the window's whole
+   drop area instead of scrolling away with the pages. */
+.nbs-well[data-drop='over']::after {
   content: '';
   position: absolute;
   inset: 12px;
@@ -391,7 +440,9 @@
   background: var(--paper);
   color: var(--page-ink);
   font-family: var(--font-ui);
-  font-size: 15px;
+  /* 16, matching `NOTE.text` and the text object's own `widthFraction(16)`: the editor and what it
+     commits must wrap at the same size, or the block re-flows the moment you stop typing. */
+  font-size: 16px;
   line-height: normal;
   resize: none;
 }
@@ -565,6 +616,10 @@
  * is dropped and the intent is exact rather than compensated. */
 .nbs[data-turn] .nbs-page {
   transform-origin: left center;
+  /* A leaf mid-fold is not a writing surface. Without this, `getBoundingClientRect` on a page squeezed
+     to 2% still maps a press to a "valid" fraction, and the stroke lands stretched across the page once
+     the fold finishes — and the outgoing leaf is drawable for the whole 450ms as well. */
+  pointer-events: none;
 }
 .nbs[data-turn='fwd'] .nbs-page[data-side='r'][data-turn='out'] {
   animation: nbs-turn-out 0.45s cubic-bezier(0.4, 0, 1, 1) both;
