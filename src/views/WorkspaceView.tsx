@@ -19,13 +19,12 @@
 import './WorkspaceView.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import Card from '@ui/Card';
 import IconButton from '@ui/IconButton';
 import Notice from '@ui/Notice';
-import SectionLabel from '@ui/SectionLabel';
+import Slider from '@ui/Slider';
 import type { Tone } from '@ui/TonePill';
 import FocusTimer from '../components/FocusTimer';
-import Icon, { type IconName } from '../components/Icon';
+import type { IconName } from '../components/Icon';
 import MarkSchemeSheet from '../components/MarkSchemeSheet';
 import PaperCanvas from '../components/PaperCanvas';
 import ClipPicker from '../components/ClipPicker';
@@ -37,7 +36,8 @@ import {
   DEFAULT_OPACITY,
   DEFAULT_STROKE,
   INK_SWATCHES,
-  STROKE_WIDTHS,
+  STROKE_MAX,
+  STROKE_MIN,
   type InkSettings,
   type Mark,
   type PageInk,
@@ -56,35 +56,12 @@ const ZOOMS = [0.7, 0.85, 1, 1.2, 1.45, 1.75, 2.1];
 
 /** §5's thumbnail sheet is 96 x 136 — and 96 × 1.414 lands on 136, so A4 fills it exactly. */
 const THUMB_WIDTH = 96;
-/**
- * How far either side of the current page the rail rasterises. pdf.js runs a single worker, so a
- * rail that eagerly rendered forty thumbnails would queue in front of the page being read.
- */
-const THUMB_REACH = 5;
 
 /** §8's tool group, in the file's order. */
 const TOOLS: { tool: Tool; icon: IconName; label: string }[] = [
   { tool: 'pen', icon: 'pen', label: 'Pen' },
-  { tool: 'hl', icon: 'hl', label: 'Highlighter' },
   { tool: 'er', icon: 'eraser', label: 'Eraser' },
 ];
-
-const toolLabel = (tool: Tool) => TOOLS.find((t) => t.tool === tool)?.label ?? 'Pen';
-
-/** `252` -> `4:12`, the form §7c prints. */
-const mmss = (seconds: number) =>
-  `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
-
-export interface ReaderQuestion {
-  /** The label as printed on the paper — `1`, `4`, `4(a)`. */
-  label: string;
-  /** 1-based page the question starts on, so a row can jump to it. */
-  page: number;
-  /** Seconds attributed to it. Absent renders §7c's em dash rather than a dishonest zero. */
-  seconds?: number;
-  /** Answered — this is what lights §7c's check marker. */
-  done?: boolean;
-}
 
 export interface Props {
   paper: PaperRow;
@@ -107,12 +84,6 @@ export interface Props {
    */
   onDownload: (paperId: number, kind: DocKind) => Promise<string | null>;
   /**
-   * Rows for the QUESTIONS card. Nothing derives question boundaries from a PDF yet, so the app
-   * passes nothing and the card renders its empty state; a parser landing later fills this in and
-   * the card lights up unchanged.
-   */
-  questions?: ReaderQuestion[] | null;
-  /**
    * The student's notebooks, for "Clip to notebook". `null` means the list has not been read yet,
    * which is a different thing from having none and the picker says so.
    */
@@ -128,22 +99,39 @@ function PageThumb({
   doc,
   page,
   active,
-  render,
+  live,
   onSelect,
 }: {
   doc: PDFDocumentProxy;
   page: number;
   active: boolean;
-  /** False keeps the sheet blank — an honest "not rasterised yet", never mock page furniture. */
-  render: boolean;
+  /** The first read page has rasterised, so the rail may now use the single pdf.js worker. */
+  live: boolean;
   onSelect: () => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const box = useRef<HTMLButtonElement>(null);
   const [drawn, setDrawn] = useState(false);
+  // Rasterise a thumbnail when it scrolls into the RAIL — not on current-page proximity. The first
+  // screen's worth start near so the top of the rail is never blank.
+  const [near, setNear] = useState(page <= 6);
 
   useEffect(() => {
-    if (!render || drawn) return;
+    if (near) return;
+    const el = box.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) setNear(true);
+      },
+      { root: el.closest('.rd-thumbs'), rootMargin: '600px 0px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [near]);
+
+  useEffect(() => {
+    if (!live || !near || drawn) return;
     const el = canvas.current;
     if (!el) return;
     let cancelled = false;
@@ -155,10 +143,10 @@ function PageThumb({
     return () => {
       cancelled = true;
     };
-  }, [doc, page, render, drawn]);
+  }, [doc, page, live, near, drawn]);
 
-  // `nearest`, and no smooth behaviour: paging with the arrow keys should reveal the thumb, not
-  // animate the rail past every page in between. It is also the reduced-motion-safe default.
+  // `nearest`, no smooth: when navigation scrolls the reader, reveal the newly-active thumb rather
+  // than animate the rail past every page between. Also the reduced-motion-safe default.
   useEffect(() => {
     if (active) box.current?.scrollIntoView({ block: 'nearest' });
   }, [active]);
@@ -182,6 +170,75 @@ function PageThumb({
   );
 }
 
+/**
+ * One page in the continuous-scroll well. Rasterised only when near the viewport — pdf.js runs a
+ * single worker, so mounting every page's canvas at once would queue the whole paper. Mirrors
+ * `MarkSchemeSheet`'s per-page IntersectionObserver; until a page is near, a blank `--paper` box of
+ * the A4 estimate holds its scroll height so nothing jumps as pages render in.
+ */
+function ReaderPage({
+  doc,
+  page,
+  width,
+  tool,
+  ink,
+  marks,
+  onCommit,
+  onRendered,
+  clipping,
+  onClip,
+}: {
+  doc: PDFDocumentProxy;
+  page: number;
+  width: number;
+  tool: Tool | null;
+  ink: InkSettings;
+  marks: Mark[];
+  onCommit: (mark: Mark) => void;
+  onRendered: () => void;
+  clipping: boolean;
+  onClip: (png: Blob) => void;
+}) {
+  const box = useRef<HTMLDivElement>(null);
+  const [near, setNear] = useState(page <= 2);
+
+  useEffect(() => {
+    if (near) return;
+    const el = box.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) setNear(true);
+      },
+      // A screen of slack, so a page rasterises just before it is scrolled to.
+      { root: el.closest('.rd-well'), rootMargin: '600px 0px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [near]);
+
+  return (
+    <div ref={box} className="rd-page" data-page={page}>
+      {near ? (
+        <PaperCanvas
+          doc={doc}
+          page={page}
+          width={width}
+          tool={tool}
+          ink={ink}
+          marks={marks}
+          onCommit={onCommit}
+          onRendered={onRendered}
+          clipping={clipping}
+          onClip={onClip}
+        />
+      ) : (
+        <div className="rd-paper" style={{ width, height: Math.round(width * 1.414) }} />
+      )}
+    </div>
+  );
+}
+
 export default function WorkspaceView({
   paper,
   onBack,
@@ -193,7 +250,6 @@ export default function WorkspaceView({
   onReindex,
   onSearch,
   onDownload,
-  questions,
   notebooks,
   onNewNotebook,
   onOpenNotebook,
@@ -206,11 +262,11 @@ export default function WorkspaceView({
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   /**
-   * Index into `ZOOMS`, not a factor. 1 (0.85 -> 612px) rather than the 2 the reader shipped with:
-   * §2's frame spends 408px on the rail and the tool panel, so at the design's own 1320 width a
-   * 720px page would open already overflowing the well sideways.
+   * Index into `ZOOMS`, not a factor. 2 (1.0 -> 720px): the continuous-scroll well is the design's
+   * 1320 width minus the 140 rail and 268 panel (~912), so a 720px page opens centred with room to
+   * spare and reads at full size. Tunable — zoom out for a denser overview.
    */
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(2);
   const [msOpen, setMsOpen] = useState(false);
   /** Set while this reader is fetching its own question paper. */
   const [fetching, setFetching] = useState(false);
@@ -219,10 +275,11 @@ export default function WorkspaceView({
   /** Held back until the page being read has rasterised — see `THUMB_REACH`. */
   const [thumbsLive, setThumbsLive] = useState(false);
 
-  // The tool is never null; `armed` is what "press it again to just read" toggles. Keeping the two
-  // apart is what lets the tools card always describe a real tool's ink, even with the pen down.
-  const [tool, setTool] = useState<Tool>('hl');
-  const [armed, setArmed] = useState(true);
+  // Opens in read mode: the default tool is the pen but `armed` is false until you pick it up, so a
+  // fresh paper never catches a stray click as ink. Clicking the active tool toggles `armed` back off,
+  // and the pen's controls popover shows only while the pen is armed.
+  const [tool, setTool] = useState<Tool>('pen');
+  const [armed, setArmed] = useState(false);
 
   // Ink settings persist across papers: the colour you write in is yours, not the paper's. All three
   // are plain prefs, so nothing new is needed in the store. Stored values are read key by key
@@ -339,7 +396,6 @@ export default function WorkspaceView({
   }, [msOpen, msPath, paper.hasMs, paper.id, onDownload]);
 
   const pageCount = doc?.numPages ?? 1;
-  const marks = useMemo(() => ink[page] ?? [], [ink, page]);
   const nib = useMemo<InkSettings>(
     () => ({ token: swatch, strokePx: stroke, opacity: opacity[tool] }),
     [swatch, stroke, opacity, tool],
@@ -350,15 +406,15 @@ export default function WorkspaceView({
   // of them has to touch both: a `setState(prev => …)` updater runs twice under StrictMode, which
   // would push the same lifted mark onto the redo stack twice.
   const commit = useCallback(
-    (mark: Mark) => {
-      const next = { ...ink, [page]: [...(ink[page] ?? []), mark] };
+    (pageNum: number, mark: Mark) => {
+      const next = { ...ink, [pageNum]: [...(ink[pageNum] ?? []), mark] };
       saveInk(id, next);
       setInk(next);
       // Drawing again is the end of that redo branch — the standard undo model, and the only one
       // where the button's enabled state cannot lie about what it will put back.
-      if (undone[page]?.length) setUndone({ ...undone, [page]: [] });
+      if (undone[pageNum]?.length) setUndone({ ...undone, [pageNum]: [] });
     },
-    [ink, undone, id, page],
+    [ink, undone, id],
   );
 
   const undo = useCallback(() => {
@@ -398,21 +454,49 @@ export default function WorkspaceView({
   };
 
   // --- pages ----------------------------------------------------------------
+  // The well is a continuous vertical stack, so navigation SCROLLS to a page rather than swapping a
+  // single canvas. `goTo` brings page n's top just under the well's head padding.
   const goTo = useCallback(
     (target: number) => {
-      setPage(Math.min(pageCount, Math.max(1, target)));
-      well.current?.scrollTo({ top: 0 });
+      const el = well.current;
+      if (!el) return;
+      const n = Math.min(pageCount, Math.max(1, target));
+      const node = el.querySelector<HTMLElement>(`.rd-page[data-page="${n}"]`);
+      if (!node) return;
+      el.scrollTo({
+        top: el.scrollTop + node.getBoundingClientRect().top - el.getBoundingClientRect().top - 20,
+      });
     },
     [pageCount],
   );
 
-  const go = useCallback(
-    (delta: number) => {
-      setPage((p) => Math.min(pageCount, Math.max(1, p + delta)));
-      well.current?.scrollTo({ top: 0 });
-    },
-    [pageCount],
-  );
+  const go = useCallback((delta: number) => goTo(page + delta), [goTo, page]);
+
+  // The current page is DERIVED from scroll position now: the page whose box spans the well's
+  // vertical midpoint. Drives the indicator, the active thumb and the current question. rAF-throttled
+  // so a fast scroll does not setState per event.
+  useEffect(() => {
+    const el = well.current;
+    if (!el || !doc) return;
+    let raf = 0;
+    const measure = () => {
+      raf = 0;
+      const mid = el.getBoundingClientRect().top + el.clientHeight / 2;
+      let current = 1;
+      el.querySelectorAll<HTMLElement>('.rd-page').forEach((p) => {
+        if (p.getBoundingClientRect().top <= mid) current = Number(p.dataset.page);
+      });
+      setPage(current);
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(measure);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [doc]);
 
   // --- keyboard -------------------------------------------------------------
   useEffect(() => {
@@ -437,13 +521,7 @@ export default function WorkspaceView({
         return;
       }
 
-      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
-        e.preventDefault();
-        go(1);
-      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-        e.preventDefault();
-        go(-1);
-      } else if (e.key === 'Escape') {
+      if (e.key === 'Escape') {
         // Most transient first: the marquee is a mode you entered a second ago, the sheet is one you
         // opened deliberately, and focus mode is one you may have been in for an hour.
         if (clipTo) {
@@ -455,13 +533,9 @@ export default function WorkspaceView({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [undo, redo, go, msOpen, focus, onToggleFocus, clipTo]);
+  }, [undo, redo, msOpen, focus, onToggleFocus, clipTo]);
 
   const width = Math.round(BASE_WIDTH * ZOOMS[zoom]);
-  const rows = questions ?? [];
-  const answered = rows.filter((q) => q.done).length;
-  /** The question you are on: the last one that starts at or before this page. */
-  const here = rows.reduce<string | null>((found, q) => (q.page <= page ? q.label : found), null);
   const inkPercent = Math.round(opacity[tool] * 100);
 
   return (
@@ -594,7 +668,7 @@ export default function WorkspaceView({
                   doc={doc}
                   page={n}
                   active={n === page}
-                  render={thumbsLive && Math.abs(n - page) <= THUMB_REACH}
+                  live={thumbsLive}
                   onSelect={() => goTo(n)}
                 />
               ))}
@@ -606,8 +680,8 @@ export default function WorkspaceView({
           )}
         </nav>
 
-        {/* §6 paper `194:741`, centred in the well. The well is the only scroller: the page itself
-            is a fixed box, so a zoomed page pans rather than reflowing. */}
+        {/* §6 paper `194:741`. The well is the only scroller and holds a continuous vertical STACK of
+            pages, each lazily rasterised and centred; a zoomed page pans because the well overflows. */}
         <div className="rd-well" ref={well}>
           <div className="rd-stage">
             {error ? (
@@ -616,20 +690,23 @@ export default function WorkspaceView({
               /* First open of a paper that is not on this machine yet. Said plainly, because
                  the alternative — a blank sheet with no explanation — reads as a fault. */
               <Notice className="rd-error">Downloading this paper…</Notice>
-            ) : (
-              <PaperCanvas
-                doc={doc}
-                page={page}
-                width={width}
-                tool={armed ? tool : null}
-                ink={nib}
-                marks={marks}
-                onCommit={commit}
-                onRendered={() => setThumbsLive(true)}
-                clipping={clipTo != null}
-                onClip={takeClip}
-              />
-            )}
+            ) : doc ? (
+              Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
+                <ReaderPage
+                  key={`${id}-${n}`}
+                  doc={doc}
+                  page={n}
+                  width={width}
+                  tool={armed ? tool : null}
+                  ink={nib}
+                  marks={ink[n] ?? []}
+                  onCommit={(mark) => commit(n, mark)}
+                  onRendered={() => setThumbsLive(true)}
+                  clipping={clipTo != null}
+                  onClip={takeClip}
+                />
+              ))
+            ) : null}
           </div>
         </div>
 
@@ -671,6 +748,62 @@ export default function WorkspaceView({
             wrapper spans the frame and a transform shifts the pill onto the well's centre, so
             focus mode can recentre it without animating a layout property. */}
         <div className="rd-barwrap">
+          {tool === 'pen' && armed && (
+            <div className="rd-pen-pop" role="group" aria-label="Pen settings">
+              <div className="rd-swatches" role="group" aria-label="Ink colour">
+                {INK_SWATCHES.map((s) => (
+                  <button
+                    key={s.token}
+                    type="button"
+                    className="rd-swatch"
+                    style={{ background: `var(${s.token})` }}
+                    aria-label={s.label}
+                    aria-pressed={s.token === swatch}
+                    title={s.label}
+                    onClick={() => pickSwatch(s.token)}
+                  />
+                ))}
+              </div>
+              <div className="rd-pen-preview-box">
+                <span
+                  className="rd-pen-preview"
+                  style={{
+                    width: stroke,
+                    height: stroke,
+                    background: `var(${swatch})`,
+                    opacity: opacity.pen,
+                  }}
+                  aria-hidden="true"
+                />
+              </div>
+              <div className="rd-pen-row">
+                <span className="rd-pen-rowlabel t-body-meta">Size</span>
+                <Slider
+                  value={stroke}
+                  min={STROKE_MIN}
+                  max={STROKE_MAX}
+                  step={1}
+                  label="Pen size"
+                  aria-valuetext={`${stroke} px`}
+                  onChange={(v) => pickStroke(Math.round(v))}
+                />
+                <span className="rd-pen-val t-mono-small">{stroke} px</span>
+              </div>
+              <div className="rd-pen-row">
+                <span className="rd-pen-rowlabel t-body-meta">Opacity</span>
+                <Slider
+                  value={inkPercent}
+                  min={10}
+                  max={100}
+                  step={5}
+                  label="Pen opacity"
+                  aria-valuetext={`${inkPercent}%`}
+                  onChange={(v) => pickOpacity(v / 100)}
+                />
+                <span className="rd-pen-val t-mono-small">{inkPercent}%</span>
+              </div>
+            </div>
+          )}
           <div className="rd-bar">
             <div className="rd-bar-grp" role="group" aria-label="Annotation tools">
               {TOOLS.map((t) => (
@@ -732,124 +865,6 @@ export default function WorkspaceView({
             </div>
           </div>
         </div>
-
-        {/* §7 tool panel `194:733` — glass frame, opaque cards. */}
-        <aside className="rd-panel">
-          {/* §7b `tools` `198:27`. */}
-          <Card className="rd-card rd-tools">
-            <div className="rd-cardhead">
-              <span className="t-label-section">Tools</span>
-              <span className="rd-cardhead-gap" />
-              <span className="rd-cardhead-meta t-body-meta">
-                {armed ? toolLabel(tool) : `${toolLabel(tool)} — off`}
-              </span>
-            </div>
-
-            {/* §1's six swatches. The value is a token; the literal is frozen into each mark at the
-                draw site, which is why an existing stroke never retones or migrates. */}
-            <div className="rd-swatches" role="group" aria-label="Ink colour">
-              {INK_SWATCHES.map((s) => (
-                <button
-                  key={s.token}
-                  type="button"
-                  className="rd-swatch"
-                  style={{ background: `var(${s.token})` }}
-                  aria-label={s.label}
-                  aria-pressed={s.token === swatch}
-                  title={s.label}
-                  onClick={() => pickSwatch(s.token)}
-                />
-              ))}
-            </div>
-
-            {/* §7b's stroke row. The file draws bare 5 / 8 / 12 px dots; each one here sits in a
-                22px button, because a 5px hit target is not operable. */}
-            <div className="rd-strokes" role="group" aria-label="Stroke width">
-              {STROKE_WIDTHS.map((px) => (
-                <button
-                  key={px}
-                  type="button"
-                  className="rd-stroke"
-                  aria-label={`${px} px`}
-                  aria-pressed={px === stroke}
-                  onClick={() => pickStroke(px)}
-                >
-                  <span className="rd-stroke-dot" style={{ width: px, height: px }} />
-                </button>
-              ))}
-              <span className="rd-strokes-gap" />
-              <span className="rd-strokes-read t-mono-small">{stroke} px</span>
-            </div>
-
-            {/* §7b's opacity meter, made operable: a range input painted as the measured 4px bar,
-                so it keeps arrow keys, Home/End and a real accessible value. */}
-            <div className="rd-opacity">
-              <span className="rd-opacity-label t-body-meta">Opacity</span>
-              <input
-                className="rd-opacity-range"
-                type="range"
-                min={10}
-                max={100}
-                step={5}
-                value={inkPercent}
-                aria-label={`${toolLabel(tool)} ink opacity`}
-                /* Without this a reader announces the bare number; the visible readout is "45%". */
-                aria-valuetext={`${inkPercent}%`}
-                style={{
-                  background: `linear-gradient(to right, var(--iris-3) 0 ${inkPercent}%, var(--hair) ${inkPercent}% 100%)`,
-                }}
-                onChange={(e) => pickOpacity(Number(e.target.value) / 100)}
-              />
-              <span className="rd-opacity-read t-mono-small">{inkPercent}%</span>
-            </div>
-          </Card>
-
-          {/* §7c `questions` `198:51`. The head's meta is answered-of-total, which is what the
-              file's "4 / 7" is counting. */}
-          <Card padding={14} className="rd-card rd-questions">
-            <SectionLabel
-              label="Questions"
-              meta={rows.length ? `${answered} / ${rows.length}` : undefined}
-              rule={false}
-            />
-            {rows.length === 0 ? (
-              <p className="rd-empty t-body-meta">
-                Nothing reads question boundaries out of a question paper yet, so there is no list
-                to show. Every page is still here — the rail on the left walks them.
-              </p>
-            ) : (
-              <ol className="rd-qs">
-                {rows.map((q) => {
-                  const state = q.done ? 'done' : q.label === here ? 'here' : 'todo';
-                  const time = q.seconds != null ? mmss(q.seconds) : '—';
-                  return (
-                    <li key={q.label}>
-                      <button
-                        type="button"
-                        className="rd-q"
-                        data-state={state}
-                        aria-current={state === 'here' ? 'step' : undefined}
-                        /* The marker is the only thing carrying "answered" visually, so the state
-                           has to be in the name rather than left to colour and a glyph. */
-                        aria-label={`Question ${q.label}, ${
-                          state === 'done' ? 'answered' : state === 'here' ? 'current' : 'not started'
-                        }${q.seconds != null ? `, ${time}` : ''}`}
-                        onClick={() => goTo(q.page)}
-                      >
-                        <span className="rd-q-label t-mono-small">{q.label}</span>
-                        <span className="rd-q-mark" aria-hidden="true">
-                          {state === 'done' && <Icon name="check" />}
-                        </span>
-                        <span className="rd-q-gap" />
-                        <span className="rd-q-time t-mono-small">{time}</span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ol>
-            )}
-          </Card>
-        </aside>
 
         <MarkSchemeSheet
           path={msPath}
