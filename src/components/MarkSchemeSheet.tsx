@@ -20,7 +20,9 @@ import Icon from './Icon';
 import { readDocument } from '../lib/api';
 import { openPdf, renderPage } from '../lib/pdf';
 
-const SHEET_PAGE_WIDTH = 356;
+/** MS pages rasterise at this width and CSS scales them to fill the split pane — see `.rd-ms-page`.
+ *  640 is the widest the pane ever gets, so the raster only ever downscales and stays sharp. */
+const SHEET_PAGE_WIDTH = 640;
 
 /**
  * One page, rasterised when it is close to being looked at.

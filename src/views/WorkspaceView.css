@@ -24,10 +24,15 @@
 section.rd {
   position: relative;
   display: grid;
-  grid-template-columns: 140px minmax(0, 1fr) 268px;
+  /* Two live columns — rail + well — and a third that is 0 until the mark scheme opens, when it
+     grows to `--ms-w` and the well shrinks to make room. Transitioned, so the split animates open.
+     The Questions panel that used to sit on the right has been removed. */
+  --ms-w: clamp(360px, 40%, 620px);
+  grid-template-columns: 140px minmax(0, 1fr) 0px;
   grid-template-rows: minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
+  transition: grid-template-columns 0.4s cubic-bezier(0.4, 0, 0.1, 1);
 }
 
 /* ---------- §4 topbar: the right slot's contents ---------- */
@@ -218,7 +223,19 @@ button.rd-badge:disabled {
 .rd-stage {
   position: relative;
   margin-inline: auto;
+  /* The continuous-scroll stack: pages in a centred column with a gap between them. The well is the
+     scroller; a page still pans left/right when zoomed past the well because the well overflows. */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
   transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* One page's slot in the stack — the lazy `.rd-paper` (real or placeholder) sits inside it. */
+.rd-page {
+  flex: none;
+  position: relative;
 }
 .rd-error {
   max-width: 460px;
@@ -405,6 +422,61 @@ button.rd-cliphint-go {
    glyphs are symmetric about the horizontal axis, so one mirror serves for both. */
 .rd-bar button.rd-flip svg {
   transform: scaleX(-1);
+}
+
+/* ---------- the pen popover (above the bar, shown while the pen is armed) ---------- */
+
+.rd-pen-pop {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--r-panel);
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: blur(30px) saturate(170%);
+  backdrop-filter: blur(30px) saturate(170%);
+  border: 1px solid var(--glass-brd);
+  box-shadow: var(--shadow-card-h), inset 0 1px 0 var(--glass-hi);
+}
+.rd-pen-pop .rd-swatches {
+  justify-content: center;
+}
+/* A stable slot for the live preview so the popover does not resize as the nib grows. */
+.rd-pen-preview-box {
+  display: grid;
+  place-items: center;
+  height: 44px;
+}
+.rd-pen-preview {
+  display: block;
+  border-radius: 50%;
+}
+.rd-pen-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rd-pen-row .bell-slider {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.rd-pen-rowlabel {
+  flex: none;
+  width: 50px;
+  color: var(--ink-3);
+}
+.rd-pen-val {
+  flex: none;
+  width: 42px;
+  text-align: right;
+  color: var(--ink-3);
+  white-space: nowrap;
 }
 
 /* ---------- §7 tool panel `194:733` ---------- */
@@ -677,15 +749,26 @@ button.rd-cliphint-go {
   border: 1.5px solid var(--hair);
 }
 
-/* ---------- mark-scheme sheet (chrome, so glass) ---------- */
+/* ---------- mark-scheme sheet — a slide-over the reader makes ROOM for ---------- */
+
+/* Opening the mark scheme grows column 3 from 0 to `--ms-w` (defined on `section.rd`), so the
+   reader well genuinely shrinks and the tool bar recentres onto it — nothing is covered, unlike the
+   old overlay that painted over the panel and the bar. The sheet itself stays an absolute slide-over
+   so it still animates in from the right, landing exactly over the space column 3 vacated. */
+section.rd[data-ms='open'] {
+  grid-template-columns: 140px minmax(0, 1fr) var(--ms-w);
+}
+/* Keep the floating tool bar centred on the now-narrower well rather than the frame. */
+section.rd[data-ms='open'] .rd-barwrap {
+  transform: translateX(calc(70px - var(--ms-w) / 2));
+}
 
 .rd-ms {
   position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
-  width: 392px;
-  max-width: 82%;
+  width: var(--ms-w);
   z-index: 7;
   display: flex;
   flex-direction: column;
@@ -695,9 +778,8 @@ button.rd-cliphint-go {
   border-left: 1px solid var(--glass-brd);
   box-shadow: var(--shadow-pop), inset 1px 0 0 var(--glass-hi);
   transform: translateX(100%);
-  /* Closed, the sheet is not merely off-screen: `visibility` is what takes its close button out of
-     the tab order. It steps rather than animating — the 0.4s delay only holds the step back until
-     the slide has finished, and opening flips it with no delay at all. */
+  /* Closed, `visibility` takes the close button out of the tab order; the 0.4s delay holds that
+     step back until the slide-out has finished. */
   visibility: hidden;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.1, 1), visibility 0s 0.4s;
 }
@@ -705,10 +787,6 @@ button.rd-cliphint-go {
   transform: none;
   visibility: visible;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.1, 1), visibility 0s;
-}
-/* The paper steps aside rather than being covered outright. */
-section.rd[data-ms='open'] .rd-stage {
-  transform: translateX(-110px) scale(0.94);
 }
 
 .rd-ms-head {
@@ -742,7 +820,12 @@ section.rd[data-ms='open'] .rd-stage {
   gap: 14px;
 }
 .rd-ms-page {
+  /* Rendered at a fixed 640px (SHEET_PAGE_WIDTH) and CSS-scaled to fill the pane — `!important`
+     because renderPage sets the canvas width/height inline. Downscaling a 640px raster stays sharp,
+     so one render fits every pane width without re-rasterising on resize. */
   display: block;
+  width: 100% !important;
+  height: auto !important;
   background: var(--paper);
   border-radius: 2px;
   box-shadow: var(--shadow-card);

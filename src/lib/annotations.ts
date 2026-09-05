@@ -69,11 +69,16 @@ export const INK_SWATCHES: readonly InkSwatch[] = [
   { token: '--page-ink', label: 'Graphite' },
 ] as const;
 
-/** §7b's stroke picker: three nibs, in reference-page px (see `REFERENCE_PAGE`). */
+/** §7b's original three nibs, in reference-page px. Kept for reference; the Reader's pen now scales
+ *  continuously between `STROKE_MIN` and `STROKE_MAX` through the pen popover's slider. */
 export const STROKE_WIDTHS = [5, 8, 12] as const;
-export type StrokeWidth = (typeof STROKE_WIDTHS)[number];
+/** The pen width is a continuous px value now (it was the 5 | 8 | 12 union). */
+export type StrokeWidth = number;
+/** The continuous pen-size range the popover slider spans. */
+export const STROKE_MIN = 1;
+export const STROKE_MAX = 40;
 
-/** The `8 px` the comp's readout prints, and the middle dot it lights in `--accent`. */
+/** The `8 px` the comp's readout prints — still the sensible default nib. */
 export const DEFAULT_STROKE: StrokeWidth = 8;
 
 /**

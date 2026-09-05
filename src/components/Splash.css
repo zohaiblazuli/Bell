@@ -43,10 +43,36 @@
 /* THE GROUND PLATE — the note at the top of Splash.tsx is the whole story. The file has no ground
    because it assumes a transparent window over something dark; we have no transparent window, and
    `--plate` is the colour `body` already paints, so the splash and the window's own corners match. */
+/* THE PLATE IS NOW JUST THE CLOCK. It used to paint `--plate` so the white splash art had a dark
+   ground; with the window transparent (tauri.conf.json) and `.app` held out during the splash (see
+   the `.app[data-startup]` block below), the art floats over the desktop instead, so the plate
+   paints nothing. It stays in the DOM because its `splash-hold` / `handoff-reveal` animations are
+   the timing signal Splash.tsx reports on — see the header there. */
 .splash-plate {
   position: absolute;
   inset: 0;
-  background: var(--plate);
+  background: transparent;
+}
+
+/* THE WINDOW IS TRANSPARENT DURING STARTUP. `.app` is a SIBLING of `.splash` (both under `#root`),
+   so holding it out here shows the desktop behind the floating splash art without touching the
+   splash itself. `data-startup` mirrors the phase App already tracks. The app then RISES during the
+   handoff on the same 180 -> 500ms window the plate's opacity fade used, which that fade — now
+   invisible — no longer does. */
+.app[data-startup='splash'] {
+  opacity: 0;
+}
+.app[data-startup='handoff'] {
+  animation: startup-rise 900ms linear both;
+}
+@keyframes startup-rise {
+  0%, 20% {
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0, 0, 0.58, 1);
+  }
+  55.56%, 100% {
+    opacity: 1;
+  }
 }
 
 /* The hold. It animates nothing: it *is* the 2.0s, and its `animationend` is the only honest
