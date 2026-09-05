@@ -37,7 +37,7 @@ const GROUPS: readonly (readonly Entry[])[] = [
     { tool: 'er', icon: 'eraser', label: 'Eraser', title: 'Eraser — removes whole strokes' },
   ],
   [
-    { tool: 'lasso', icon: 'lasso', label: 'Select', title: 'Select — lasso strokes to move, scale, recolour or delete' },
+    { tool: 'lasso', icon: 'lasso', label: 'Select', title: 'Select — lasso strokes to move, resize by a corner, or delete' },
     { tool: 'shapes', icon: 'shapes', label: 'Shapes', title: 'Shapes — line, arrow, rectangle, ellipse' },
     { tool: 'text', icon: 'text', label: 'Text', title: 'Text — a typed block on the page' },
     { tool: 'image', icon: 'image', label: 'Image', title: 'Image — paste, drop or clip one in' },
@@ -55,11 +55,25 @@ export interface Props {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  /**
+   * Focus mode. The dock leaves by a transform and fades to nothing, which hides it from the eye and
+   * from the pointer but NOT from the keyboard — sixteen invisible buttons in the tab order. `inert`
+   * is the one thing that takes all three away without animating anything the design system forbids.
+   */
+  hidden?: boolean;
 }
 
-export default function ToolDock({ tool, onTool, onUndo, onRedo, canUndo, canRedo }: Props) {
+export default function ToolDock({
+  tool,
+  onTool,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
+  hidden = false,
+}: Props) {
   return (
-    <nav className="nbs-dock" aria-label="Tools">
+    <nav className="nbs-dock" aria-label="Tools" inert={hidden}>
       {GROUPS.map((group, i) => (
         <Fragment key={i}>
           {/* A real element rather than a pseudo: the dock is a flex column and a `::before` on a
