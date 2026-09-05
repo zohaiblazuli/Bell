@@ -6,7 +6,7 @@ import TopBar from './components/TopBar';
 import CommandPalette, { screenCommands, type PaletteCommand } from './components/CommandPalette';
 import Button from '@ui/Button';
 import Dialog from '@ui/Dialog';
-import MrBell from '@ui/brand/MrBell';
+import Mascot from './components/Mascot';
 import * as api from './lib/api';
 import Splash, { type SplashPhase } from './components/Splash';
 import { UpdateDialog, UpdatePill } from './components/UpdateFlow';
@@ -324,7 +324,7 @@ export default function App() {
         onRecent: () => go('recent'),
         onSettings: () => go('settings'),
         // Omitted while unconfigured, so the palette never offers a check that cannot happen.
-        onCheckUpdates: UPDATES_CONFIGURED ? () => void up.check() : undefined,
+        onCheckUpdates: UPDATES_CONFIGURED ? () => void up.check(true) : undefined,
       },
       {
         docs: lib.stats?.papers,
@@ -560,7 +560,7 @@ export default function App() {
           open={resetOpen}
           onClose={() => (resetting ? undefined : setResetOpen(false))}
           title="Reset Bell?"
-          art={<MrBell size={96} mood="alarm" />}
+          art={<Mascot size={96} mood="alarm" />}
           actions={
             <>
               {/* Cancel first in DOM order, so Tab and the panel's initial focus reach the safe
@@ -718,8 +718,9 @@ export default function App() {
             onToggleSubject={toggleSubject}
             version={__APP_VERSION__}
             build={__APP_BUILD__}
-            onCheckUpdates={() => void up.check()}
+            onCheckUpdates={() => void up.check(true)}
             checkingUpdates={up.state.phase === 'checking'}
+            updateState={up.state}
             statePath={up.statePath}
             onExportData={() => void up.exportData()}
             onRevealData={() => void up.revealData()}

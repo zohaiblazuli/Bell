@@ -1,0 +1,276 @@
+/* ══ PetShelf — choosing the mascot, and importing new ones ═══════════════════════════════════════
+   Component: src/components/PetShelf.tsx.
+
+   Fill is `--card`, not `--glass`. Rule 1 keeps translucency on the frame, and CLAUDE.md's one stated
+   refinement is that a sheet this size in chrome glass reads muddy and gives text no stable ground —
+   the same call the onboarding panel makes. The scrim behind it is the chrome half.
+
+   The selected tile is an accent LINE and a single `--accent-soft` wash behind one element, which is
+   the only wash rule 2 permits. Nothing here is filled with the accent.
+
+   **BOTH LAYERS ANCHOR TO THE VIEWPORT, AND NEITHER IS CENTRED BY ITS PARENT.** The component
+   portals into `<body>` (see the note there) and the sheet places itself with `left/top: 50%` and a
+   translate, in `vw`/`vh`, so nothing about what encloses it — a scroller, 1,300px of Settings above
+   it, an ancestor transform — can move it. It was `display: grid; place-items: center` on the scrim
+   and it laid out 1,180px below the fold: opaque, correctly sized, off screen. Do not put the
+   centring back into the parent.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════ */
+
+.pets-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--scrim);
+  backdrop-filter: blur(6px);
+}
+
+.pets-sheet {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 61;
+  /* 80px of air at the smallest window the app allows (1040 x 680), and never wider than authored. */
+  width: min(760px, 100vw - 80px);
+  max-height: min(620px, 100vh - 80px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 24px 20px;
+  border-radius: var(--r-panel);
+  border: 1px solid var(--card-brd);
+  background: var(--card);
+  box-shadow: var(--shadow-pop);
+}
+
+.pets-head {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.pets-head__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pets-title {
+  margin: 0;
+  color: var(--ink);
+}
+
+.pets-sub {
+  margin: 0;
+  max-width: 56ch;
+  color: var(--ink-3);
+}
+
+/* The only scroller. The head and the notice stay put; the two lists move. */
+.pets-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-right: 4px;
+}
+
+.pets-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pets-note {
+  margin: 0;
+  color: var(--ink-3);
+}
+
+/* ── on this device ────────────────────────────────────────────────────────────────────────────── */
+
+.pets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 10px;
+}
+
+.pets-card {
+  position: relative;
+  border-radius: var(--r-card);
+  border: 1px solid var(--hair);
+  /* No shadow: content cards here take their elevation from the recess behind them. */
+  transition: border-color 0.15s ease-out, background-color 0.15s ease-out;
+}
+
+/* The live one: an accent line, and the one wash rule 2 allows, behind one element. */
+.pets-card[data-on] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.pets-pick {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 10px 11px;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  cursor: default;
+  color: inherit;
+  text-align: center;
+}
+
+/* The mascot's own box, bottom-aligned so a crab and a 208-tall pet cell stand on one line. */
+.pets-art {
+  height: 96px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+.pets-name {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+.pets-meta {
+  color: var(--ink-3);
+}
+
+/* Sits over the tile's top-right corner and only shows when the card is reached for. */
+.pets-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+}
+
+/* Keyboard included, or the control would be unreachable without a pointer. */
+.pets-card:hover .pets-remove,
+.pets-remove:focus-visible {
+  opacity: 1;
+}
+
+/* ── from the registry ─────────────────────────────────────────────────────────────────────────── */
+
+.pets-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.pets-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 4px;
+  border-bottom: 1px solid var(--hair-2);
+}
+
+.pets-row:last-child {
+  border-bottom: 0;
+}
+
+.pets-row__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pets-row__text p {
+  margin: 0;
+}
+
+.pets-desc {
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pets-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+/* A registry preview. Fixed box so thirty rows do not each reflow to their own art, and `contain` so
+   a preview of an unexpected aspect is letterboxed rather than cropped through the pet's head. */
+.pets-thumb {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  border-radius: var(--r-btn);
+  background: var(--ground-2);
+}
+
+.pets-thumb--empty {
+  border: 1px solid var(--hair-2);
+}
+
+/* ── motion ────────────────────────────────────────────────────────────────────────────────────────
+   Both entrances are declared INSIDE the query rather than cancelled inside a `reduce` one, which is
+   the shape `Dialog.css` uses two files over: the foot of `chrome.css` sets
+   `animation-duration: 0.01ms !important` on `*` under reduced motion, so an animation declared
+   unconditionally still exists there with its duration collapsed and its fill mode intact. Nothing to
+   collapse beats something to cancel. The `to` keyframes are explicit for the same reason from the
+   other side — the value being synthesised would be the one that decides whether the panel is on
+   screen at all, so it is stated rather than inferred.
+
+   The sheet appears either way: a panel is information, not decoration. What goes is the travel. */
+@media (prefers-reduced-motion: no-preference) {
+  .pets-scrim {
+    animation: pets-scrim-in 0.18s cubic-bezier(0.4, 0, 0.1, 1) both;
+  }
+  .pets-sheet {
+    animation: pets-sheet-in 0.22s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+}
+
+@keyframes pets-scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pets-sheet-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 10px)) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* Settings' own switch, which does not cascade off the media query. */
+[data-motion='off'] .pets-scrim,
+[data-motion='off'] .pets-sheet {
+  animation: none;
+}
+
+[data-motion='off'] .pets-card,
+[data-motion='off'] .pets-remove {
+  transition: none;
+}
