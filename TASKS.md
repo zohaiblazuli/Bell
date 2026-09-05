@@ -660,17 +660,76 @@ retrofit in this pass**.
 
 ---
 
+## Phase 7 — Pets (BUILT — one gap noted below)
+The mascot becomes the student's choice. A **Codex pet** — the two-file package `codex-pets.net`,
+`openai/skills`' `hatch-pet` and that ecosystem already share — replaces Mr. Bell at all five of his
+slots. He stays in the binary as the default, the fallback, and the brand.
+
+### 7.0 The format, read rather than guessed
+- 30 pets live on the registry today: 26 v2 atlases (1536x2288, 11 rows) and 4 v1 (1536x1872, 9),
+  all on 192x208 cells. Row order and per-row frame counts come from the registry's own preview
+  code, `fps: 8` with them; `pet.json` is `{ id, displayName, description, spritesheetPath,
+  spriteVersionNumber, kind }`. Transcribed into `src/lib/pets.ts`, which is the only copy.
+- `GET /api/pets` is the index — no key, no account. `/api/manifest` and `/llms.txt` are 404 here,
+  so this deployment is **not** `astandrik/codex-pets`; do not assume its routes.
+
+### 7.1 Storage — `src-tauri/src/pets.rs` (its own directory, like notebooks) — DONE
+- `<app_data_dir>\pets\{index.json, <id>\pet.json, <id>\spritesheet.webp}`. `index.json` is a cache
+  and `pet_list` self-heals it both ways; a directory missing either file is dropped, not nursed —
+  a pet is re-installable and one that cannot render is not a pet.
+- **The id arrives from the network**, so the charset is closed, DOS device names are refused, only
+  the registry's host over TLS may be fetched, and `spritesheetPath` is overwritten rather than
+  trusted. Rust checks the WebP magic; the webview checks the geometry.
+
+### 7.2 The renderer — `src/ui/Pet.tsx` + `Pet.css` — DONE
+- Clip one cell, park the sheet on a row, step it sideways. `transform` only; the travel is a
+  percentage of the strip, so the keyframes hold no variables and the format's four frame counts
+  (4/5/6/8) are the whole set of rules there can be. `pixelated` only when upscaled.
+- `Mascot` is the swap point; `petStateForMood` maps Bell's twelve moods down a preference list that
+  always ends on a row v1 carries.
+
+### 7.3 The shelf — `src/components/PetShelf.tsx` — DONE
+Settings → Appearance → **Mascot**, which is the slot the Figma file drew a dead `Show Mr. Bell`
+switch in. Installed pets animate from their own sheets; registry rows use the small preview, fetched
+through Rust because `img-src` names no remote origin. An install is verified by decoding what it
+wrote, and a sheet that fails is deleted again.
+
+### 7.4 Verification
+- `cargo test --lib` — the id and URL guards, the WebP check, the self-healing shelf, and a resync
+  and a reset leaving `pets\` untouched. `-- --ignored` adds two live ones: the registry still serves
+  atlases this app can slice, and a real 1.7 MB pet installs into a throwaway root.
+- `npm test` — the atlas tables, version-from-height, the mood mapping (total, and degrading rather
+  than selecting a row v1 has no pixels for), the id guard, and `parseRegistry` against hostile rows.
+- Both atlas versions were rendered from real spritesheets — every row, and every frame of an 8- and
+  a 4-frame row — off the shipped `Pet.css`, to check the slicing against real art rather than maths.
+- **THE OPEN BUG:** in the running app the shelf's **panel does not appear** — the scrim dims and
+  blurs, and the sheet is not on screen. Not opacity, not paint, not the entrance animation (all three
+  were measured and ruled out): `getComputedStyle` reports the sheet `opacity 1`, `visibility visible`,
+  `display flex`, `760x620`, no filter and no clip — but `getBoundingClientRect` puts it at
+  **y = 1302**, roughly 1,180px below an 860-tall viewport, inside a scrim that measures
+  `0,0 1320x860`, `position: fixed`, `display: grid`, `place-items: center`. So it is a placement
+  problem, and those two rects cannot both be right for one parent and its only in-flow child. The
+  next thing to check is whether they *are* one parent and child — count `.pets-scrim` and
+  `.pets-sheet` nodes and read the sheet's `parentElement` / `offsetParent`. Forcing
+  `opacity: 1 !important` on `.pets-sheet` makes the whole panel render correctly, registry rows,
+  thumbnails, tags and all, which is how the rest of the screen was verified.
+- Everything either side of that panel is verified: `Mascot` renders Mr. Bell at all five slots in the
+  running app, the Mascot row sits in Settings → Appearance and reads the current mascot, and the
+  registry list, its 30 rows and their Import buttons all render once the sheet is forced visible.
+
 ## Verification commands
 - `npm run verify:index` — walk G: and report the index shape (Rust, throwaway DB)
 - `npm run verify:thresholds [code] [cap]` — parse real `gt` PDFs, show accepted/rejected rows
 - `npm run verify:difficulty [code|all]` — ported formula vs. the original, plus the distribution
 - `npm run verify:papers [code|all] [cap]` — open real question papers, check page counts
-- `cargo test --lib` (in `src-tauri`) — 26 tests, 2 ignored: path parsing, three-levels-only walk,
+- `cargo test --lib` (in `src-tauri`) — 36 tests, 4 ignored: path parsing, three-levels-only walk,
   the paper, search and difficulty SQL, the read sandbox, state-key safety, the Foolscap→Bell state
-  migration, and notebook storage (id validation, the derived page count, index self-heal, a round
-  trip, and a resync leaving `notebooks\` untouched)
-- `npm test` — the JS unit tests. `node:test` + esbuild, no new dependency. `src/lib/ink.ts` and the
-  page arithmetic in `src/lib/notebooks.ts`
+  migration, notebook storage (id validation, the derived page count, index self-heal, a round
+  trip, and a resync leaving `notebooks\` untouched), and pet storage (the id and URL guards, the
+  WebP check, the self-healing shelf). The four ignored ones need a server: two for the catalogue,
+  two for the pet registry.
+- `npm test` — the JS unit tests. `node:test` + esbuild, no new dependency. `src/lib/ink.ts`, the
+  page arithmetic in `src/lib/notebooks.ts`, and the pet atlas in `src/lib/pets.ts`
 - `npm run fonts` — re-vendor the woff2 faces (the only step that needs network)
 - `npm run icon` — re-render the app icon and regenerate every size
 
@@ -691,3 +750,21 @@ retrofit in this pass**.
 - [?] **`bell-mascots/` + `media/`.** Untracked mascot exploration (crabby / hat / spectacles),
       referenced nowhere in `src/`. Say whether it becomes part of the product — onboarding and
       empty states are where the design contract allows a lush render — or stays provenance.
+- [?] **The pet shelf has no Figma.** The file draws no pet UI at all, so `PetShelf` is designed
+      from the system rather than measured from a node: a `--card` sheet on a scrim (rule 1's own
+      refinement for a panel this size), a tile grid for what is installed and a row list for what
+      is not, the selected tile carrying an accent line plus the one `--accent-soft` wash rule 2
+      allows. Everything else on this screen is measured; this is not. Draw it and it gets rebuilt.
+- [?] **How far "replaces Mr. Bell" goes.** A pet takes the five *mascot* slots — sidebar,
+      onboarding, both dialogs, the splash. It does **not** take `MrBellMark`: that is the app icon
+      (baked at build time by `npm run icon`), the sidebar logo's mark and a notebook sticker, and
+      the wordmark wears his spectacles. A mascot the student picks at runtime cannot be an icon
+      compiled into the installer, so the brand stayed his. Say if you want the identity to move too
+      — that is a different job and it starts in Figma.
+- [?] **Pets survive a reset.** "Clear study data" drops `settings.pet`, so the mascot goes back to
+      Mr. Bell, but the installed sheets stay under `<app data>\pets\`. Treated like a downloaded
+      paper rather than like a bookmark, because re-fetching one needs the network. Say if clearing
+      should take them as well.
+- [?] **Nothing identifies you to the registry.** The paper downloader sends `x-bell-install` and a
+      session id because that server is ours; codex-pets.net gets the shared user agent and nothing
+      else. It is a third party, so no install id, no session, no version.

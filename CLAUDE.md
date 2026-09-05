@@ -49,32 +49,38 @@ Import via the aliases: `@/lib/store`, `@ui/Button`. There is no deep relative p
 - `npm run tauri build` — Windows installer
 - `npm run build` — frontend typecheck + bundle only
 - `npm test` — unit tests. Node's own `node:test`, with esbuild bundling the TypeScript, so it adds
-  no dependency. Covers the two pure things Phase 6 added: the stroke engine (`src/lib/ink.ts`) and
-  the page arithmetic (`src/lib/notebooks.ts`). `npm run build` is still the typecheck.
+  no dependency. Covers the pure things: the stroke engine (`src/lib/ink.ts`), the page arithmetic
+  (`src/lib/notebooks.ts`) and the pet atlas (`src/lib/pets.ts` — the row tables, the mood mapping and
+  the registry parser). `npm run build` is still the typecheck.
 - `npm run tokens` — regenerate `tokens.css`, `theme.css`, `type.css` from `scripts/tokens.mjs`
 - `npm run fonts` — re-vendor the woff2 faces (the only step that needs network)
 - `npm run icon` — re-render the app icon from `MrBellMark`'s geometry and fan out every size
 - `npm run verify:papers` — end-to-end check of the catalogue API and the download redirect
   (`BELL_API_BASE=http://localhost:3000` to point it at a local web app)
 - `cargo test --lib` (from `src-tauri`) — path parsing, the walk, the SQL, the read sandbox, state
-  keys, the Foolscap→Bell state migration, and notebook storage (id validation, the derived page
-  count, and a resync leaving `notebooks\` untouched)
+  keys, the Foolscap→Bell state migration, notebook storage (id validation, the derived page
+  count, and a resync leaving `notebooks\` untouched), and pet storage (the id and URL guards, the
+  WebP check, the self-healing shelf). Add `-- --ignored` to reach the live pet registry.
 
 ## Offline still matters, and the CSP is still closed
-The app reaches the network for exactly three things: the catalogue snapshot, a paper download, and
-the updater's version check. Everything else — browsing, searching, reading, annotating, timing —
-works with the network unplugged, off the cached catalogue and the files already on disk.
+The app reaches the network for exactly four things: the catalogue snapshot, a paper download, the
+updater's version check, and — only while the pet shelf is open — the codex-pets.net registry and a
+pet's spritesheet. Everything else — browsing, searching, reading, annotating, timing, and drawing
+whichever mascot you chose — works with the network unplugged, off the cached catalogue, the files
+already on disk, and the pets already installed.
 
 **The update check is ON by default** (`SETTINGS_DEFAULTS.updateAuto`, Zohaib's call on 2026-09-06),
 and Settings can turn it off. It is one request a day from Rust, through
 `tauri_plugin_updater`; failing it changes nothing about how the app runs.
 
 **The webview is as network-isolated as it was when the app had no network at all.** All HTTP lives
-in Rust (`src-tauri/src/catalog.rs`, `src-tauri/src/downloads.rs`), so `connect-src 'self' data:
-blob: ipc: http://ipc.localhost` in `tauri.conf.json` is unchanged and must stay that way. Do not
-move a fetch into the renderer: it would need a CSP hole, and then CORS, which the web app does not
-send. `capabilities/default.json` likewise needs no HTTP permission, because raw `reqwest` in Rust
-is not gated by one.
+in Rust (`src-tauri/src/catalog.rs`, `src-tauri/src/downloads.rs`, `src-tauri/src/pets.rs`), so
+`connect-src 'self' data: blob: ipc: http://ipc.localhost` in `tauri.conf.json` is unchanged and must
+stay that way. Do not move a fetch into the renderer: it would need a CSP hole, and then CORS, which
+the web app does not send. `capabilities/default.json` likewise needs no HTTP permission, because raw
+`reqwest` in Rust is not gated by one. **The same applies to images** — `img-src 'self' data: blob:`
+names no remote origin, which is why a pet's spritesheet and even a registry thumbnail come through
+Rust as bytes and become blob URLs here rather than sitting in an `<img src>`.
 
 **No runtime CDN, no font `@import`, no remote asset.** `font-src 'self' data:` permits no remote
 font origin. The three type families are vendored as woff2 under `src/assets/fonts/`, declared in
@@ -83,10 +89,11 @@ The background art is vendored as WebP under `src/assets/bg/`.
 
 ## Where each piece runs
 - **Rust** owns the network, the file system and SQLite: the catalogue sync, downloads, the read
-  queries, the study-state files, and the one-time state migration from the app's previous
-  identifier.
+  queries, the study-state files, the pet registry and pet installs, and the one-time state migration
+  from the app's previous identifier.
 - **The webview** owns PDF work, because that is where `pdfjs-dist` lives — rendering and the
-  annotation overlay. It no longer parses grade thresholds or scores difficulty: both come from the
+  annotation overlay. It also owns every image decode, which is why it and not Rust is what measures
+  a pet's atlas. It no longer parses grade thresholds or scores difficulty: both come from the
   catalogue already computed, which is why `buildDifficulty`/`thresholdRows`/`scoreSittings`/
   `difficultyFormula` are gone rather than merely unused.
 - PDFs reach the webview through **`read_document`**, which refuses any path not recorded in the
@@ -170,6 +177,52 @@ Geometry in a saved page is **fractions of the page box, quantised to 4 dp**, ne
 page renders identically at any zoom, window size or DPR. Stroke points are a flat
 `[x, y, pressure, …]` stream at roughly 7 bytes a point, where the Reader's `{x,y}` objects cost
 about 48.
+
+## Pets (`src-tauri/src/pets.rs`, `src/lib/pets.ts`, `src/ui/Pet.tsx`)
+**The mascot is the student's choice, and Mr. Bell is the default rather than the only one.** A pet
+is a *Codex pet* — the two-file package `codex-pets.net`, `openai/skills`' `hatch-pet` and that whole
+ecosystem already agree on — and one selected pet replaces Mr. Bell at all five of his slots.
+
+```
+<app_data_dir>\pets\
+  index.json               the shelf, a rebuildable CACHE
+  <id>\pet.json            { id, displayName, description, spritesheetPath, ... } — the truth
+  <id>\spritesheet.webp    an 8-column atlas of 192x208 cells, one animation per ROW
+```
+
+Its own directory for the same reason notebooks have one: `state_load` reads every state key into
+memory before the first render, and a sheet is 1.7 MB. Everything below is the format's, not ours:
+
+- **8 columns, 192x208 cells, and a per-row frame count that varies** — v1 is 9 rows / 1536x1872,
+  v2 adds two look-around rows for 11 / 1536x2288. Both are live on the registry. The tables live in
+  `src/lib/pets.ts`; `PET_FPS` (8) is the one number the format does not state, taken from the
+  registry's own previews.
+- **The atlas version is measured off the decoded image, never read from `pet.json`.** A manifest
+  claiming v2 over an 1872px sheet would point the last two rows at pixels that do not exist and
+  animate an empty cell with nothing anywhere reporting it. `atlasVersionForHeight` is the fact;
+  `usePet` is the only place that has a decoder, so it is the only place that can ask.
+- **`<id>` arrives from the network.** So the charset is closed (`^[a-z0-9][a-z0-9-]{0,63}$`, and not
+  a DOS device name) and checked by `pets::valid_id` before a path exists, `spritesheetPath` is
+  overwritten rather than trusted, and only the registry's own host over TLS may be fetched
+  (`checked_url`). Rust validates the WebP magic the way `downloads` validates `%PDF-`; the geometry
+  is verified in the webview right after an install, and a sheet that fails is deleted again.
+- **`Pet` steps `transform`, never `background-position`** — the sprite walk is the one animation
+  where the cheap way and rule "animate only transform and opacity" coincide. The travel is a
+  percentage of the strip's own width, so the keyframes carry no variables, and since the format only
+  uses 4, 5, 6 or 8 frames a row, `Pet.css`'s four static `steps()` rules are the whole set there can
+  be. `image-rendering: pixelated` is applied **only when the pet is upscaled**: at 160 in a 208-tall
+  cell it is a 0.77 downscale, where nearest-neighbour drops pixel rows instead of averaging them.
+- **`Mascot` is the whole of the swap.** `useMascot` keeps speaking Bell — `alarm`, `double-take`,
+  `sleep` — because those name what the *app* did; `petStateForMood` translates once, at that
+  boundary, down a preference list that always ends on a row v1 carries.
+- Pets survive a resync and a "clear all data": the files are a download the student chose, and only
+  the *selection* (`settings.pet`) is study state. `pets::tests::a_resync_and_a_reset_leave_pets_untouched`
+  pins it. Two `#[ignore]`d tests reach the real registry and are what catch a change to somebody
+  else's API.
+
+**Mr. Bell stays the brand.** `MrBellMark` is the app icon (`npm run icon` renders his geometry), the
+sidebar logo's mark and a notebook sticker, and the wordmark wears his spectacles. A pet chosen at
+runtime cannot be any of those, and nothing in this subsystem touches them.
 
 ## Annotation ink
 Points and stroke widths are stored as **fractions of the page box**, never pixels, so ink stays
@@ -382,9 +435,12 @@ Night within **0.6**.
 
 
 ## Mr. Bell
-The mascot: a pixel-art crab in spectacles, and the app's only mascot. He lives at the foot of
+The default mascot, and the brand's animal: a pixel-art crab in spectacles. He lives at the foot of
 every sidebar at 160px, hosts onboarding at 160px, appears at 96px in the update dialog, and his
-64px `MrBellMark` is the app icon and the sidebar logo's mark.
+64px `MrBellMark` is the app icon and the sidebar logo's mark. **He is no longer the only mascot** —
+an imported Codex pet takes those five slots when one is selected (see Pets) — but he is what a fresh
+install draws, what a pet that will not decode falls back to, and the only one that ships in the
+binary.
 
 - The rig is **39 rects in 9 limb groups** with six empty pivot frames centred on the joints, so
   rotation swings from the shoulder or hip. `body` holds the claws, shell, eyes and specs; the four
