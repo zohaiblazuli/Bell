@@ -1,10 +1,12 @@
 /**
  * The notebook inspector — `design/specs/screen-notebooks.md` §6, `inspector 268 x 808 @(1052,52)`.
  *
- * The Reader's tool panel is the box, to the pixel: `--glass`, 1px `--hair` on all four sides, blur
- * 26, clipped, VERTICAL gap 16, pad 18 (`WorkspaceView.css` `.rd-panel`). What is new is that the
- * panel carries three tabs rather than one column, so `Panel Tabs` is its first child and the rest
- * of the column is whichever tab is showing.
+ * The Reader's tool panel WAS the box, to the pixel: `--glass`, 1px `--hair` on all four sides, blur
+ * 26, clipped, VERTICAL gap 16, pad 18. That panel has since been deleted from the Reader — its TOOLS
+ * card became the floating bar's settings popover and its QUESTIONS card never had anything real to
+ * show — so `.rd-panel` is gone and this file's geometry is now the only copy of it. What is new here
+ * is that the panel carries three tabs rather than one column, so `Panel Tabs` is its first child and
+ * the rest of the column is whichever tab is showing.
  *
  * THE THREE TABS ARE NOT THREE PANELS OF THE SAME KIND.
  *   Tool     (§6a) edits `NbInkSettings` — a pref, so it belongs to the student and not to this

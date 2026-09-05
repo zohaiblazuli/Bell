@@ -41,6 +41,14 @@ export interface Props {
    */
   onRendered?: () => void;
   /**
+   * A page could not be rasterised. Optional, and only the mark-scheme sheet passes one: a destroyed
+   * document used to show up there as a column of blank sheets with nothing saying why, so that sheet
+   * reports the failure instead of swallowing it. The Reader leaves it unset — a cancelled render is
+   * the normal outcome of flipping pages, and it has its own error state for a document that will not
+   * open at all.
+   */
+  onError?: (message: string) => void;
+  /**
    * Clip mode: a marquee takes the page's pointer events instead of the ink layer, and releasing
    * hands back a PNG of the dragged region. It suppresses drawing entirely rather than layering on
    * top of it — one drag cannot mean both "write here" and "keep this".
@@ -58,6 +66,7 @@ export default function PaperCanvas({
   marks,
   onCommit,
   onRendered,
+  onError,
   clipping,
   onClip,
 }: Props) {
@@ -74,6 +83,8 @@ export default function PaperCanvas({
   // re-rasterise the page for nothing.
   const rendered = useRef(onRendered);
   rendered.current = onRendered;
+  const failed = useRef(onError);
+  failed.current = onError;
 
   useEffect(() => {
     if (!doc) return;
@@ -90,9 +101,13 @@ export default function PaperCanvas({
           setRendering(false);
           rendered.current?.();
         }
-      } catch {
-        // A cancelled render (page flipped mid-draw) is normal; nothing to report.
-        if (!cancelled) setRendering(false);
+      } catch (e) {
+        // A cancelled render (page flipped mid-draw) is normal, and `renderPage` already swallows
+        // that one; anything reaching here is real, so a caller that wants to know is told.
+        if (!cancelled) {
+          setRendering(false);
+          failed.current?.(String(e));
+        }
       }
     })();
     return () => {

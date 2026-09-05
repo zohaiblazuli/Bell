@@ -38,6 +38,17 @@ pub fn run() {
             }
 
             let conn = db::open(&dir.join("index.sqlite3"))?;
+            // A `download` row is what authorises a read, so a row whose file has gone is a paper the
+            // app insists it has and cannot open. The index lives here in app data and the papers live
+            // under Documents, so anything that carries one across without the other leaves every
+            // recorded path dangling — see `library::prune_missing_downloads`. Dropping those rows
+            // before the first query is what turns "cannot find the path specified" into a paper that
+            // simply downloads again when you open it.
+            match library::prune_missing_downloads(&conn) {
+                Ok(0) => {}
+                Ok(n) => eprintln!("[downloads] forgot {n} record(s) whose file has gone"),
+                Err(e) => eprintln!("[downloads] could not check the records: {e}"),
+            }
             app.manage(db::Db(std::sync::Mutex::new(conn)));
 
             let state_dir = dir.join("state");

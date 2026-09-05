@@ -336,6 +336,24 @@
   flex: 1;
 }
 
+/* The bar's centre slot — the Reader's focus timer. Absolute rather than a third flex cell, because
+   "centred" here means centred on the WINDOW: as a flex item it would sit wherever the title's width
+   and the right-hand cluster left it, and it would move every time the paper's name changed.
+   `pointer-events: none` on the strip is not optional: `.topbar` carries `data-tauri-drag-region`,
+   and a full-width overlay over it would swallow the window drag everywhere but the pill. */
+.tb-center {
+  position: absolute;
+  inset: 0 0 auto;
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.tb-center > * {
+  pointer-events: auto;
+}
+
 /* ---------- views ---------- */
 .view {
   flex: 1;

@@ -31,6 +31,12 @@ interface Props {
   onSearch: () => void;
   /** Before the title. The Reader's back button, which §4 places at x 77. */
   left?: React.ReactNode;
+  /**
+   * Centred on the WINDOW, not on whatever the row's flex happens to leave — the Reader's focus
+   * timer, which Zohaib asked to sit at the top middle. It is absolutely positioned, so it neither
+   * takes part in the row's sizing nor pushes the search field off its measured 420.
+   */
+  center?: React.ReactNode;
   /** Extra controls before the tone pill — the Reader's timer, zoom and tools. */
   right?: React.ReactNode;
   /**
@@ -48,6 +54,7 @@ export default function TopBar({
   onReindex,
   onSearch,
   left,
+  center,
   right,
   showSearch = true,
 }: Props) {
@@ -79,6 +86,11 @@ export default function TopBar({
           onClick={onReindex}
         />
       </div>
+
+      {/* Last in DOM order and absolutely positioned, so it centres on the bar rather than on the
+          gap the row leaves. The wrapper takes no pointer events — the bar under it is the window's
+          drag handle and a full-width overlay would kill dragging — and the content takes them back. */}
+      {center && <div className="tb-center">{center}</div>}
     </div>
   );
 }

@@ -16,6 +16,14 @@ export default function Sprite() {
           <stop offset=".67" stopColor="var(--bell-cap-lo)" />
           <stop offset="1" stopColor="var(--bell-cap-deep)" />
         </linearGradient>
+
+        {/* NO MODE-PAIRED TOKEN MAY BE USED IN HERE, and `#iris` is only safe because all four of its
+            stops are mode-invariant. This sprite is mounted as a SIBLING of `.app` (App.tsx), and the
+            Night overrides are declared on `.app` — so a `var(--accent)` stop would inherit from
+            `:root` and paint the Day value in both tones. The same trap `annotations.ts` documents for
+            `resolveInk`. A gradient that needs to retone has to be defined inside `.app`, which is why
+            the focus timer's arc carries its own `<defs>` (FocusTimer.tsx) rather than one here.
+            Symbols are unaffected: they paint `currentColor`, which resolves at the `<use>` site. */}
       </defs>
 
       <g
@@ -122,6 +130,13 @@ export default function Sprite() {
         <symbol id="i-sync" viewBox="0 0 24 24">
           <path d="M20 12a8 8 0 1 1-2.4-5.7" />
           <path d="M20 4.5V10h-5.5" />
+        </symbol>
+        {/* `sync` mirrored — anticlockwise, which is the direction every rewind glyph turns. A
+            separate symbol rather than a CSS `scaleX(-1)` on `sync`, because the two live side by side
+            in the Reader's bar and one of them being a transform of the other reads as a bug. */}
+        <symbol id="i-reset" viewBox="0 0 24 24">
+          <path d="M4 12a8 8 0 1 0 2.4-5.7" />
+          <path d="M4 4.5V10h5.5" />
         </symbol>
         <symbol id="i-warn" viewBox="0 0 24 24">
           <path d="M12 4.5 21 19.5H3z" />
