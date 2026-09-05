@@ -1,6 +1,6 @@
 [package]
 name = "bell"
-version = "0.1.1"
+version = "0.1.2"
 description = "Focused studying of Cambridge exam papers"
 authors = ["Zohaib"]
 edition = "2021"

@@ -128,8 +128,15 @@
 
    No `overflow` — see the shadow note on `.lv` above. This is the frame Figma had to un-clip. */
 .lv-grid {
+  /* FIXED-SIZE CARDS THAT REFLOW (Zohaib's instruction — a deliberate deviation from the fluid
+     Figma design described above, whose `layoutGrow: 1` columns stretched the card with the window).
+     The card is a fixed 330px — its design-rendered width, so the 1320 window still shows three — and
+     the grid fits as many columns as the width allows: more when wider, fewer when narrower, never
+     resizing the card itself. `auto-fit` (not `auto-fill`) collapses the empty tail tracks so
+     `justify-content` can centre the block the way the old `1fr` columns filled it edge to edge. */
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, 330px);
+  justify-content: center;
   gap: 14px;
 }
 

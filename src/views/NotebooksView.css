@@ -96,8 +96,14 @@
    fifth needs 1076) and drops to three near the minimum, at ~231 each — closer to the master than
    four ever would be. */
 .nb-shelf {
+  /* FIXED-SIZE COVERS THAT REFLOW (Zohaib's instruction — the same deliberate deviation as
+     `.lv-grid`; the Figma design above made the cover fluid). The cover is a fixed 237px — its
+     master / design-rendered width, so the design width still shows four — and the shelf fits as
+     many columns as the width allows, never resizing the cover. `auto-fit` + `justify-content`
+     centre the block the way the old `1fr` columns filled it. */
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+  grid-template-columns: repeat(auto-fit, 237px);
+  justify-content: center;
   gap: 24px;
 }
 

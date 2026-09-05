@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { hydrate } from './lib/store';
 // Stylesheet order is explicit, and each file is a real module so Vite invalidates it on change.
 // Tailwind + @theme first, then the generated foundations, then the hand-written layers, then the
@@ -40,4 +41,9 @@ void hydrate().then(() => {
       <App />
     </React.StrictMode>,
   );
+  // The window starts hidden (`visible: false` in tauri.conf.json) so Windows never flashes its
+  // opaque white default before the transparent webview has painted. Reveal it only once the first
+  // frame — the splash over the see-through window — is on screen. Two rAFs: the first runs before
+  // that paint is committed, the second after it.
+  requestAnimationFrame(() => requestAnimationFrame(() => void getCurrentWindow().show()));
 });
