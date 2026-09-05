@@ -11,9 +11,11 @@ body,
 }
 
 body {
-  /* NOT var(--ground): the tone vars are defined on .app, so anything here resolves Day in
-     both modes. This is only seen at the window's rounded corners and behind the splash. */
-  background: var(--plate);
+  /* Transparent so the window itself is see-through (tauri.conf.json `transparent: true`): the
+     desktop shows at the window's rounded corners, and behind the startup splash while `.app` is
+     held out. The app proper stays opaque — `.bg` paints `--ground` across the whole window the
+     moment the handoff reveals it, so only the corners and the splash are ever see-through. */
+  background: transparent;
   color: var(--ink);
   font-family: var(--font-ui);
   font-size: 14px;
