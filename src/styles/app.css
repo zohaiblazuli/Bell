@@ -214,79 +214,11 @@
   white-space: nowrap;
 }
 
-/* ---------- workspace: focus timer ---------- */
-.timer {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  height: 38px;
-  padding: 0 6px 0 8px;
-  border-radius: var(--r-pill);
-  border: 1px solid var(--hair);
-  background: var(--glass-strong);
-  flex: none;
-}
-.ring {
-  position: relative;
-  width: 30px;
-  height: 30px;
-}
-.ring svg {
-  transform: rotate(-90deg);
-}
-.ring .trk {
-  fill: none;
-  stroke: var(--hair);
-  stroke-width: 3;
-}
-.ring .prg {
-  fill: none;
-  stroke: url(#iris);
-  stroke-width: 3;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 0.9s linear;
-}
-
-.timer .t {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 15px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-}
-.timer .t[data-over='true'] {
-  color: var(--d5);
-}
-.timer .tgt {
-  display: block;
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 10px;
-  color: var(--ink-3);
-  margin-top: -2px;
-  padding: 0;
-  text-align: left;
-}
-.timer .tgt:hover {
-  color: var(--ink-2);
-}
-.timer .pp {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  color: var(--ink-2);
-  flex: none;
-}
-.timer .pp:hover {
-  background: var(--hair-2);
-  color: var(--ink);
-}
-.timer .pp svg {
-  width: 15px;
-  height: 15px;
-}
+/* ---------- workspace: focus timer ----------
+   Gone: `.timer`, `.ring`, `.timer .t`, `.timer .tgt`, `.timer .pp` and their hovers all moved to
+   `src/components/FocusTimer.css` when the timer lost its target and grew a reset. The ring is
+   `@ui/Ring` now, so `.ring`'s wrapper div went with them. `.hero-ring` below is the dashboard's
+   own copy and is a separate deletion. */
 
 /* ---------- workspace: tools ----------
    The active tool is edged with the iris gradient — a line, never a fill. */

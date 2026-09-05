@@ -447,6 +447,23 @@ pub fn read_document(db: State<'_, Db>, path: String) -> Result<tauri::ipc::Resp
     Ok(tauri::ipc::Response::new(bytes))
 }
 
+/// Read a file this app downloaded — and forget it if the file is gone.
+///
+/// A `download` row is what authorises a read, so a row that outlives its file is a paper the app
+/// insists it has and cannot open. That is not hypothetical: the index lives in `app_data_dir` and the
+/// papers live under Documents, so anything that carries one across without the other — a roaming
+/// profile, a restored AppData folder, a second machine, a hand-tidied Documents — leaves every
+/// recorded path pointing at nothing, and every paper opened that way used to dead-end on a raw
+/// `os error 3`.
+///
+/// So a missing file prunes its own row. The Library then stops claiming the paper is on this machine,
+/// and the next open downloads it — which costs nothing at all when the bytes are in fact still there
+/// under the name the current build expects, because `fetch_and_store` finds them on disk and just
+/// records them again.
+///
+/// **`NotFound` only.** A locked, in-use or momentarily unavailable file must keep its row: pruning on
+/// any error at all would throw away a good record because an antivirus scanner held the handle for a
+/// second.
 pub fn read_downloaded(conn: &Connection, path: &str) -> Result<Vec<u8>, String> {
     let known: i64 = conn
         .query_row("SELECT COUNT(*) FROM download WHERE path = ?1", [path], |r| r.get(0))
@@ -454,7 +471,51 @@ pub fn read_downloaded(conn: &Connection, path: &str) -> Result<Vec<u8>, String>
     if known == 0 {
         return Err(format!("not a downloaded paper: {path}"));
     }
-    std::fs::read(path).map_err(|e| format!("{path}: {e}"))
+    match std::fs::read(path) {
+        Ok(bytes) => Ok(bytes),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            let _ = conn.execute("DELETE FROM download WHERE path = ?1", [path]);
+            Err(format!("that file is no longer on this machine: {path}"))
+        }
+        Err(e) => Err(format!("{path}: {e}")),
+    }
+}
+
+/// Drop every `download` row whose file is definitely gone. Run once at startup.
+///
+/// Returns how many rows went. Cheap — one `metadata` call per row, so a 2,000-paper library costs a
+/// few tens of milliseconds — and it is what makes the Library honest on the first frame instead of
+/// after someone hits an error and then finds "Check downloads" in Settings.
+///
+/// Two deliberate restraints:
+///   * **Existence only, never the magic-byte check.** `is_pdf_on_disk` opens the file and reads five
+///     bytes, which on a OneDrive "files on demand" library would hydrate every paper from the network
+///     at launch. Metadata alone answers the question being asked.
+///   * **`NotFound` only**, for the same reason `read_downloaded` prunes on nothing else.
+pub fn prune_missing_downloads(conn: &Connection) -> Result<i64, String> {
+    let mut gone: Vec<String> = Vec::new();
+    {
+        let mut st = conn
+            .prepare("SELECT path FROM download")
+            .map_err(|e| e.to_string())?;
+        let rows = st
+            .query_map([], |r| r.get::<_, String>(0))
+            .map_err(|e| e.to_string())?;
+        for row in rows {
+            let path = row.map_err(|e| e.to_string())?;
+            match std::fs::metadata(&path) {
+                Ok(meta) if meta.is_file() => {}
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => gone.push(path),
+                // A directory where a paper should be, or an unreadable one: leave it to `repair`.
+                _ => {}
+            }
+        }
+    }
+    for path in &gone {
+        conn.execute("DELETE FROM download WHERE path = ?1", [path])
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(gone.len() as i64)
 }
 
 #[cfg(test)]
@@ -763,6 +824,66 @@ mod tests {
 
         assert!(read_downloaded(&conn, r"C:\Windows\win.ini").is_err());
         assert!(read_downloaded(&conn, &dir.to_string_lossy()).is_err());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// A record that outlives its file must not be a dead end.
+    ///
+    /// This is the shape of the bug users hit after v0.1.2: the index lives in `app_data_dir` and the
+    /// papers under Documents, so anything that carries one across without the other leaves every
+    /// recorded path dangling — and every paper opened that way answered `os error 3` for ever, because
+    /// nothing in the read path ever revised the row.
+    #[test]
+    fn a_record_that_outlives_its_file_forgets_itself() {
+        let (dir, mut conn) = fixture("stale");
+        let root = dir.join("library");
+        let qp = place_pdf(&root, &conn, 9001, "qp");
+        downloads::repair_into(&mut conn, &root).unwrap();
+        let as_text = qp.to_string_lossy().to_string();
+        assert!(read_downloaded(&conn, &as_text).is_ok());
+
+        // The whole folder goes, which is what produces ERROR_PATH_NOT_FOUND rather than
+        // ERROR_FILE_NOT_FOUND — the exact error in the report.
+        std::fs::remove_dir_all(qp.parent().unwrap()).unwrap();
+
+        let err = read_downloaded(&conn, &as_text).unwrap_err();
+        assert!(err.contains("no longer on this machine"), "{err}");
+        assert!(
+            query_papers(&conn, None, None, None, Some(true), None).unwrap().is_empty(),
+            "the row went with the failed read, so the Library stops claiming the paper"
+        );
+        // And a second attempt is the ordinary "never downloaded" answer, not the same OS error.
+        let again = read_downloaded(&conn, &as_text).unwrap_err();
+        assert!(again.contains("not a downloaded paper"), "{again}");
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// The startup sweep, so a stale library is honest on the first frame rather than after an error.
+    #[test]
+    fn the_startup_sweep_drops_only_what_is_really_gone() {
+        let (dir, mut conn) = fixture("prune");
+        let root = dir.join("library");
+        let qp = place_pdf(&root, &conn, 9001, "qp");
+        let ms = place_pdf(&root, &conn, 9001, "ms");
+        downloads::repair_into(&mut conn, &root).unwrap();
+        assert_eq!(prune_missing_downloads(&conn).unwrap(), 0, "nothing is missing yet");
+
+        std::fs::remove_file(&ms).unwrap();
+        assert_eq!(prune_missing_downloads(&conn).unwrap(), 1);
+        assert_eq!(prune_missing_downloads(&conn).unwrap(), 0, "and it is idempotent");
+
+        let rows = query_papers(&conn, None, None, None, Some(true), None).unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].qp_path.as_deref(), Some(qp.to_string_lossy().as_ref()));
+        assert!(rows[0].ms_path.is_none(), "the mark scheme's row went, the paper's stayed");
+
+        // A file that is merely unreadable is NOT gone: only NotFound prunes, so a locked or
+        // momentarily unavailable paper keeps its record.
+        std::fs::write(&ms, b"%PDF-1.4\nback\n").unwrap();
+        downloads::repair_into(&mut conn, &root).unwrap();
+        assert_eq!(prune_missing_downloads(&conn).unwrap(), 0);
 
         std::fs::remove_dir_all(&dir).ok();
     }

@@ -591,13 +591,14 @@ export default function SettingsView({
             <section className="set-group" aria-label="Updates">
               <SectionLabel label="Updates" />
               <Card rows>
-                {/* Off by default, and that default is still the point even though the app now has
-                    a network: the catalogue is fetched because the library depends on it, whereas a
-                    background version check is something the user should opt into. The file draws
-                    this switch On (`536:451`); the default outranks the mock. */}
+                {/* ON by default since 2026-09-06, at Zohaib's instruction — the Figma file draws it
+                    that way too (`536:451`). The reasoning that kept it off still holds everywhere
+                    else: the catalogue is fetched because the library depends on it, and nothing else
+                    reaches the network unasked. A daily version check is the one exception, and it is
+                    one request from Rust that the app carries on working fine without. */}
                 <CardRow
                   label="Check automatically"
-                  helper="Daily, in the background. Off by default — nothing but the catalogue is fetched otherwise."
+                  helper="Daily, in the background. Turn it off and a new version only arrives when you press Check now."
                 >
                   <Switch
                     checked={settings.updateAuto}
