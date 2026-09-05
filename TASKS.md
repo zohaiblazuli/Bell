@@ -580,7 +580,9 @@ retrofit in this pass**.
 
 ### 6.4 Images and the Reader clip — DONE, and built first
 - [x] Ctrl+V a screenshot — needed nothing; the CSP already allows `img-src 'self' data: blob:`
-- [x] Drag-and-drop — `dragDropEnabled` flipped false → **true** at `tauri.conf.json:25`
+- [x] Drag-and-drop — `dragDropEnabled` must be **false** at `tauri.conf.json:25`. Corrected from an
+      earlier `true`: with `true`, Tauri's webview swallows the OS drop and the DOM `drop` never sees
+      the file, so on Windows the drop was a silent no-op. `false` lets the HTML5 handler receive it.
 - [x] **Clip a region of a paper** — a marquee over the already-rendered pdf.js canvas, `drawImage`
       the crop, `toBlob`, `nb_asset_put`. No OS capture API, no new plugin, no new permission. Both
       layers are composited, so a clip keeps the highlight that is half the reason for keeping it

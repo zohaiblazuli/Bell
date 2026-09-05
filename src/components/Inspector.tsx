@@ -8,7 +8,8 @@
  *
  * THE THREE TABS ARE NOT THREE PANELS OF THE SAME KIND.
  *   Tool     (§6a) edits `NbInkSettings` — a pref, so it belongs to the student and not to this
- *                  notebook. Four cards: nib, ink, stroke, behaviour.
+ *                  notebook. Cards: ink and stroke, plus a shape picker for the Shapes tool — the
+ *                  nib follows the dock tool, and the smoothing / behaviour controls were removed.
  *   Pages    (§6b) navigates. Its ghost trailing tile is requirement 2 and TRAP 15 made visible:
  *                  never a count, never a total, always one more spread available.
  *   Notebook (§6c) edits `NbAuthored` and holds the only two irreversible controls in the screen.
@@ -17,8 +18,8 @@
  * and the Notebook tab's delete confirmation are both states that must not survive a tab switch.
  *
  * WHAT IS DRAWN RATHER THAN GLYPHED, and why that is the design rather than an economy:
- *  - the four nib tiles draw a real stroke sample at that nib's taper (a computed filled ribbon, not
- *    four copies of one line), because a flat line on all four would make the card decorative;
+ *  - the four shape tiles draw the shape they make — a stroked line, arrow, rect and ellipse, shown
+ *    only while the Shapes tool is active, because a glyph would not say which shape the tool draws;
  *  - the four paper styles and every page mini are real miniature pages — a `--paper` rectangle with
  *    its own ruling — which is exactly why §10's 14 new glyphs include none for paper;
  *  - the cover mini is drawn here from §4e's parts. It should collapse onto `@ui/NotebookCover` the
@@ -53,8 +54,7 @@ import Switch from '@ui/Switch';
 import SubjectIcon from '@ui/icons/SubjectIcon';
 import {
   NB_INK_PALETTE,
-  NB_STROKES,
-  NIB_IDS,
+  NB_SHAPES,
   PAPER_STYLES,
   pageLabel,
   spreadCountFor,
@@ -64,8 +64,8 @@ import {
   type NbAuthored,
   type NbEntry,
   type NbInkSettings,
+  type NbShape,
   type NbTool,
-  type NibId,
   type PaperStyle,
 } from '@/lib/notebooks';
 import type { Qualification, Subject } from '@/lib/types';
@@ -113,11 +113,11 @@ const TOOL_LABEL: Record<NbTool, string> = {
   sticky: 'Sticky note',
 };
 
-const NIB_LABEL: Record<NibId, string> = {
-  fountain: 'Fountain',
-  ballpoint: 'Ballpoint',
-  pencil: 'Pencil',
-  marker: 'Marker',
+const SHAPE_LABEL: Record<NbShape, string> = {
+  line: 'Line',
+  arrow: 'Arrow',
+  rect: 'Rectangle',
+  ellipse: 'Ellipse',
 };
 
 const PAPER_LABEL: Record<PaperStyle, string> = {
@@ -151,81 +151,26 @@ const QUAL_PALETTE: Record<Qualification, ChipPalette> = {
   o_level: 'o-level',
 };
 
-/**
- * §6a's `behaviour` card. Read and patch travel with the label rather than as a key, so the three
- * rows stay exhaustively typed against `NbInkSettings` without a cast at the call site.
- */
-const BEHAVIOUR: readonly {
-  label: string;
-  read: (ink: NbInkSettings) => boolean;
-  patch: (on: boolean) => Partial<NbInkSettings>;
-}[] = [
-  { label: 'Pressure', read: (i) => i.pressure, patch: (on) => ({ pressure: on }) },
-  { label: 'Straight-line lock', read: (i) => i.straightLock, patch: (on) => ({ straightLock: on }) },
-  { label: 'Snap to ruler', read: (i) => i.snapRuler, patch: (on) => ({ snapRuler: on }) },
-];
-
-/* ──────────────────────────────────────────────────────────── the four stroke samples ─────────── */
+/* ─────────────────────────────────────────────────────────── the four shape samples ───────────── */
 
 /**
- * §6a: "Each draws a real stroke sample at that nib taper." So the four tiles are not four copies of
- * one line — they are one centreline swept at four different width profiles, which is the only thing
- * that makes the card informative rather than decorative.
- *
- * Each sample is a FILLED ribbon rather than a stroked path, because a stroke has exactly one width
- * and a taper is the point. The outline is the centreline offset along its own normal by the nib's
- * half-width, sampled forward and then back — computed once at module load, not stored as four hand-
- * written path literals nobody could later re-derive.
+ * The Shapes tool's four tiles draw the shape they make — a stroked sample in a 40 x 24 box, echoing
+ * how the paper minis draw real pages rather than glyphs. Static `d` strings: unlike the old nib
+ * ribbons there is no width profile to compute, so a hand-readable path per shape is the honest form.
+ * They keep index.css's global `svg { fill: none; stroke: currentColor }`, so each tile is a stroked
+ * outline.
  */
-const SAMPLE_W = 80;
-const SAMPLE_H = 24;
-const SAMPLES = 40;
-
-/** The shared centreline: a gentle S across the sample box, so every taper is read on one shape. */
-const cx = (t: number) => 7 + (SAMPLE_W - 14) * t;
-const cy = (t: number) => 16 - 7 * t + 3 * Math.sin(2 * Math.PI * t);
-
-/** Half-width in sample-box units, so the drawn nib is twice this. */
-const NIB_PROFILE: Record<NibId, (t: number) => number> = {
-  /** A calligraphic taper: hairline in, 4.8 wide at the middle, hairline out. */
-  fountain: (t) => 0.3 + 2.2 * Math.sin(Math.PI * t) ** 0.7,
-  /** A ball rolls at one width. The 7% swell is the ink pooling, not a taper. */
-  ballpoint: (t) => 0.78 + 0.07 * Math.sin(Math.PI * t),
-  /** Graphite is uneven: a fine waver on a constant width, and it lays down grey rather than black. */
-  pencil: (t) => 1 + 0.22 * Math.sin(t * 11.3) + 0.1 * Math.sin(t * 24.7),
-  /** A chisel — flat, blunt at both ends, and translucent where it overlaps itself. */
-  marker: () => 2.3,
+const SHAPE_PATH: Record<NbShape, string> = {
+  line: 'M6 18 L34 6',
+  arrow: 'M6 18 L34 6 M34 6 L27 7.4 M34 6 L32.6 12.8',
+  rect: 'M7 6 h26 v12 h-26 Z',
+  ellipse: 'M34 12 A14 7 0 1 1 6 12 A14 7 0 1 1 34 12',
 };
 
-const r2 = (n: number) => Math.round(n * 100) / 100;
-
-function ribbon(halfWidth: (t: number) => number): string {
-  const near: string[] = [];
-  const far: string[] = [];
-  for (let i = 0; i <= SAMPLES; i++) {
-    const t = i / SAMPLES;
-    // A central difference for the tangent; the normal is that turned a quarter. Clamped at both
-    // ends so the first and last samples use a one-sided difference rather than reading off-curve.
-    const a = Math.max(0, t - 1 / SAMPLES);
-    const b = Math.min(1, t + 1 / SAMPLES);
-    const dx = cx(b) - cx(a);
-    const dy = cy(b) - cy(a);
-    const len = Math.hypot(dx, dy) || 1;
-    const w = halfWidth(t);
-    const ox = (-dy / len) * w;
-    const oy = (dx / len) * w;
-    near.push(`${r2(cx(t) + ox)} ${r2(cy(t) + oy)}`);
-    far.push(`${r2(cx(t) - ox)} ${r2(cy(t) - oy)}`);
-  }
-  return `M${near.join('L')}L${far.reverse().join('L')}Z`;
-}
-
-const NIB_PATH: Record<NibId, string> = {
-  fountain: ribbon(NIB_PROFILE.fountain),
-  ballpoint: ribbon(NIB_PROFILE.ballpoint),
-  pencil: ribbon(NIB_PROFILE.pencil),
-  marker: ribbon(NIB_PROFILE.marker),
-};
+/** The brush-size slider's range, in the page's own px. The old 5 / 8 / 12 presets sit inside it, and
+ *  40 is a fat marker on the 455-wide page while still fitting the preview strip at 1:1. */
+const STROKE_MIN = 1;
+const STROKE_MAX = 40;
 
 /* ────────────────────────────────────────────────────────────────────── formatting ────────────── */
 
@@ -336,39 +281,36 @@ function ToolTab({
 
   return (
     <div className="nbi-tab" role="tabpanel" aria-label="Tool">
-      {/* §6a `nib` — 2 x 2 of 96 x 56 tiles, each a real stroke sample above its name. */}
-      <Card className="nbi-card">
-        <SectionLabel label="Nib" meta={TOOL_LABEL[ink.tool]} />
-        <div className="nbi-nibs" role="group" aria-label="Nib">
-          {NIB_IDS.map((nib) => (
-            <button
-              key={nib}
-              type="button"
-              className="nbi-nib"
-              aria-pressed={nib === ink.nib}
-              onClick={() => onInk({ nib })}
-            >
-              {/* Painted `--ink-2`, never the live ink colour: `--page-ink` on a `--card` ground is
-                  all but invisible in Night, and §5 of the controls spec makes the same call about
-                  `State=Active` — an accent fill, an accent glyph and an accent line is three
-                  signals for one state. */}
-              <svg
-                className="nbi-nib-ink"
-                data-nib={nib}
-                viewBox={`0 0 ${SAMPLE_W} ${SAMPLE_H}`}
-                aria-hidden="true"
+      {/* The Shapes tool draws one of four shapes; it carries its own picker rather than borrowing
+          the nib as a hidden one, so the card shows only while that tool is active. Each tile draws
+          the shape it makes. */}
+      {ink.tool === 'shapes' && (
+        <Card className="nbi-card">
+          <SectionLabel label="Shape" meta={TOOL_LABEL[ink.tool]} />
+          <div className="nbi-shapes" role="group" aria-label="Shape">
+            {NB_SHAPES.map((s) => (
+              <button
+                key={s}
+                type="button"
+                className="nbi-shape"
+                aria-pressed={s === ink.shape}
+                aria-label={SHAPE_LABEL[s]}
+                title={SHAPE_LABEL[s]}
+                onClick={() => onInk({ shape: s })}
               >
-                <path d={NIB_PATH[nib]} />
-              </svg>
-              <span className="nbi-nib-name t-body-small">{NIB_LABEL[nib]}</span>
-            </button>
-          ))}
-        </div>
-      </Card>
+                <svg className="nbi-shape-ink" viewBox="0 0 40 24" aria-hidden="true">
+                  <path d={SHAPE_PATH[s]} />
+                </svg>
+                <span className="nbi-shape-name t-body-small">{SHAPE_LABEL[s]}</span>
+              </button>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* §6a `ink` — the two measured rows, iterated off the constant rather than retyped. */}
       <Card className="nbi-card">
-        <SectionLabel label="Ink" />
+        <SectionLabel label="Ink" meta={ink.tool === 'shapes' ? undefined : TOOL_LABEL[ink.tool]} />
         {NB_INK_PALETTE.map((row, i) => (
           <div
             key={i}
@@ -430,26 +372,38 @@ function ToolTab({
         </div>
       </Card>
 
-      {/* §6a `stroke` — the 5 / 8 / 12 dots, then the two slider rows. */}
+      {/* `stroke` — a live brush preview, then the Size and Opacity sliders. Size and opacity are the
+          whole of it now: the nib comes from the tool, and smoothing and the behaviour aids are gone. */}
       <Card className="nbi-card">
         <SectionLabel label="Stroke" />
-        <div className="nbi-strokes" role="group" aria-label="Stroke width">
-          {NB_STROKES.map((px) => (
-            /* The file draws bare 5 / 8 / 12 px dots; each sits in a 22px button here, because a
-               5px hit target is not operable. The Reader made the same correction. */
-            <button
-              key={px}
-              type="button"
-              className="nbi-stroke"
-              aria-pressed={px === ink.strokePx}
-              aria-label={`${px} px`}
-              onClick={() => onInk({ strokePx: px })}
-            >
-              <span className="nbi-stroke-dot" style={{ width: px, height: px }} />
-            </button>
-          ))}
-          <span className="nbi-gap" />
-          <span className="nbi-strokes-read t-mono-small">{ink.strokePx} px</span>
+
+        {/* Real-time preview: a dot the true size of the brush, painted in the current ink at its
+            opacity — it grows and shrinks as Size moves, and recolours / fades with Ink and Opacity. */}
+        <div className="nbi-preview">
+          <span
+            className="nbi-preview-dot"
+            style={{
+              width: ink.strokePx,
+              height: ink.strokePx,
+              background: paint(ink.colour),
+              opacity: ink.opacity,
+            }}
+            aria-hidden="true"
+          />
+        </div>
+
+        <div className="nbi-slide">
+          <span className="nbi-slide-label t-body-small">Size</span>
+          <Slider
+            value={ink.strokePx}
+            onChange={(v) => onInk({ strokePx: v })}
+            min={STROKE_MIN}
+            max={STROKE_MAX}
+            step={1}
+            label="Brush size"
+            aria-valuetext={`${ink.strokePx} px`}
+          />
+          <span className="nbi-slide-val t-mono-small">{ink.strokePx}px</span>
         </div>
 
         <div className="nbi-slide">
@@ -461,34 +415,6 @@ function ToolTab({
             aria-valuetext={pct(ink.opacity)}
           />
           <span className="nbi-slide-val t-mono-small">{pct(ink.opacity)}</span>
-        </div>
-        <div className="nbi-slide">
-          <span className="nbi-slide-label t-body-small">Smoothing</span>
-          <Slider
-            value={ink.smoothing}
-            onChange={(v) => onInk({ smoothing: v })}
-            label="Stroke smoothing"
-            aria-valuetext={pct(ink.smoothing)}
-          />
-          <span className="nbi-slide-val t-mono-small">{pct(ink.smoothing)}</span>
-        </div>
-      </Card>
-
-      {/* §6a `behaviour` — three `Switch` rows at pitch 36, which is the 24 switch plus a 12 gap. */}
-      <Card className="nbi-card">
-        <SectionLabel label="Behaviour" />
-        <div className="nbi-switches">
-          {BEHAVIOUR.map((row) => (
-            <div key={row.label} className="nbi-swrow">
-              <span className="nbi-swrow-label t-body-small">{row.label}</span>
-              <span className="nbi-gap" />
-              <Switch
-                checked={row.read(ink)}
-                onChange={(on) => onInk(row.patch(on))}
-                label={row.label}
-              />
-            </div>
-          ))}
         </div>
       </Card>
     </div>
@@ -645,6 +571,9 @@ function NotebookTab({
           value={notebook.name}
           placeholder="Untitled notebook"
           aria-label="Notebook name"
+          /* Rust refuses a name outside 1 to 80 characters, and a rejected rename has nowhere to be
+             reported from a 232px column — so the field cannot type or paste its way into one. */
+          maxLength={80}
           onChange={(e) => onMeta(authored({ name: e.currentTarget.value }))}
         />
         {linked ? (
@@ -763,7 +692,12 @@ function NotebookTab({
             }}
           >
             <p id={warnId} className="nbi-kill-warn t-body-small">
-              {notebook.pages} pages of your handwriting. This cannot be undone.
+              {/* The page count floors at one spread, so it reads "2 pages" for a notebook nobody has
+                  written in — and telling a student they are about to lose two pages of handwriting
+                  that do not exist is the kind of small lie the whole screen is built to avoid. */}
+              {notebook.bytes === 0
+                ? 'Nothing has been written in this notebook yet. Deleting it cannot be undone.'
+                : `${notebook.pages} pages of your handwriting. This cannot be undone.`}
             </p>
             <div className="nbi-kill-pair">
               <button

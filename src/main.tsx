@@ -18,6 +18,20 @@ import './ui/styles';
 // every view's CSS at the head of the bundle, where app.css would then override it.
 import App from './App';
 
+/**
+ * Swallow every drop the app does not handle itself.
+ *
+ * `dragDropEnabled` is false in `tauri.conf.json` so the notebook's own `drop` handler can see the file
+ * — but that hands the OS drop to the DOM everywhere, and the webview's default for an unhandled one is
+ * to navigate to it. A PDF dropped on the sidebar would replace the running app with a file:// view of
+ * itself, taking the 400ms save window with it. `dragover` has to be defaulted too, or `drop` never
+ * fires at all. Both are registered on the window, so anything that handles a drop for real — the
+ * notebook stage — has already run by the time these do.
+ */
+for (const type of ['dragover', 'drop'] as const) {
+  window.addEventListener(type, (e) => e.preventDefault());
+}
+
 // Study state is read synchronously all over the app, so it is loaded from disk before the
 // first render rather than threaded through as a loading state.
 void hydrate().then(() => {

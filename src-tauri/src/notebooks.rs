@@ -537,6 +537,19 @@ fn page_path(root: &Path, id: &str, page: u32) -> Result<PathBuf, String> {
     Ok(nb_dir(root, id)?.join("pages").join(format!("{page:04}.json")))
 }
 
+/// Refuse to write into a notebook that is not there.
+///
+/// **`write_atomic` creates its parent directory**, so any write arriving after a `delete` — a flush
+/// still in flight when the student confirmed, say — would rebuild `<id>\` with no `meta.json` beside it.
+/// `list` skips a directory it cannot read a meta from, so those bytes would be real, on disk, and
+/// unreachable for ever. `meta.json` is the source of truth; this is what makes it a precondition too.
+fn require_notebook(root: &Path, id: &str) -> Result<(), String> {
+    if nb_dir(root, id)?.join("meta.json").exists() {
+        return Ok(());
+    }
+    Err(format!("there is no notebook {id}"))
+}
+
 pub fn page_load(root: &Path, id: &str, page: u32) -> Result<Option<String>, String> {
     read_optional(&page_path(root, id, page)?)
 }
@@ -545,8 +558,13 @@ pub fn page_load(root: &Path, id: &str, page: u32) -> Result<Option<String>, Str
 ///
 /// The JSON is the frontend's `NbPage` and is never parsed here, which is what leaves the stroke
 /// format free to gain a tool or a field without a Rust release.
+///
+/// A page cannot exist without the notebook it belongs to — see `require_notebook`. The frontend drops
+/// its pending writes before deleting; this is the half that cannot be forgotten.
 pub fn page_save(root: &Path, id: &str, page: u32, json: &str) -> Result<(), String> {
-    write_atomic(&page_path(root, id, page)?, json.as_bytes())?;
+    let path = page_path(root, id, page)?;
+    require_notebook(root, id)?;
+    write_atomic(&path, json.as_bytes())?;
     touch(root, id);
     Ok(())
 }
@@ -572,8 +590,9 @@ pub fn history_load(root: &Path, id: &str) -> Result<Option<String>, String> {
 }
 
 /// Does not stamp `updatedAt`: history is saved alongside the page edit that produced it, and that
-/// edit has already said the notebook changed.
+/// edit has already said the notebook changed. Guarded like `page_save`, and for the same reason.
 pub fn history_save(root: &Path, id: &str, json: &str) -> Result<(), String> {
+    require_notebook(root, id)?;
     write_atomic(&nb_dir(root, id)?.join("history.json"), json.as_bytes())
 }
 
@@ -597,6 +616,7 @@ fn sha256_hex(bytes: &[u8]) -> String {
 /// write can only lose.
 pub fn asset_put(root: &Path, id: &str, bytes: &[u8]) -> Result<String, String> {
     let dir = nb_dir(root, id)?.join("assets");
+    require_notebook(root, id)?;
     if bytes.len() > MAX_ASSET_BYTES {
         return Err(format!(
             "that image is {} MB and the limit is {} MB",
@@ -906,6 +926,39 @@ mod tests {
         // The four-digit stem is the format, so a page beyond it is refused rather than written
         // somewhere `page_indices` would never see it.
         assert!(page_save(root, &id, MAX_PAGE_INDEX + 1, "{}").is_err());
+    }
+
+    /// A page cannot be written to a notebook that is not there.
+    ///
+    /// `write_atomic` creates its parent, so a save arriving after a delete — a flush still in flight
+    /// when the student confirmed — would rebuild `<id>\pages\` with no `meta.json`, and `list` skips a
+    /// directory it cannot read a meta from. That page would be real, on disk, and unreachable for ever.
+    #[test]
+    fn a_page_cannot_resurrect_a_deleted_notebook() {
+        let root = temp_root("orphan");
+        let id = create(&root, authored("Mechanics")).unwrap().meta.id;
+        page_save(&root, &id, 0, r#"{"v":1}"#).unwrap();
+
+        delete(&root, &id).unwrap();
+        assert!(!root.join(&id).exists());
+
+        assert!(
+            page_save(&root, &id, 0, r#"{"v":1}"#).is_err(),
+            "a page write must not recreate the directory"
+        );
+        assert!(history_save(&root, &id, "[]").is_err(), "nor a history write");
+        assert!(asset_put(&root, &id, &png(b"clip")).is_err(), "nor an asset");
+        assert!(!root.join(&id).exists(), "and must leave nothing behind on the way out");
+        assert!(list(&root).unwrap().is_empty(), "so nothing is stranded where the shelf cannot look");
+
+        // The same guard cannot lock out a notebook that DOES exist — that is the whole difference.
+        let live = create(&root, authored("Waves")).unwrap().meta.id;
+        page_save(&root, &live, 3, r#"{"v":1}"#).unwrap();
+        history_save(&root, &live, "[]").unwrap();
+        asset_put(&root, &live, &png(b"clip")).unwrap();
+        assert_eq!(stat(&root, &live).unwrap().pages, 4);
+
+        std::fs::remove_dir_all(&root).ok();
     }
 
     /// The page count is derived, never stored. Pinned against `pageCountFromMaxIndex` in

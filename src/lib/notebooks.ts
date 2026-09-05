@@ -94,12 +94,26 @@ export const DEFAULT_AUTHORED: NbAuthored = {
 export type NbTool = 'pen' | 'pencil' | 'hl' | 'er' | 'lasso' | 'shapes' | 'text' | 'image' | 'ruler' | 'sticky';
 export type InkTool = 'pen' | 'pencil' | 'hl' | 'er';
 
+/** The four that lay ink down, and so the four that can appear in a saved stroke. Stated once here
+ *  rather than re-tested as a four-way `||` wherever a tool has to be narrowed. */
+export const INK_TOOLS: readonly InkTool[] = ['pen', 'pencil', 'hl', 'er'];
+export const isInkTool = (tool: NbTool): tool is InkTool =>
+  (INK_TOOLS as readonly NbTool[]).includes(tool);
+
 /** Spec §6a's NIB card. The nib decides the taper, so it has to be stored with the stroke. */
 export type NibId = 'fountain' | 'ballpoint' | 'pencil' | 'marker';
 export const NIB_IDS: readonly NibId[] = ['fountain', 'ballpoint', 'pencil', 'marker'];
 
 /**
- * The inspector's Tool tab, as one record — spec §6a's four cards.
+ * The Shapes tool's four shapes. The Shapes tool now carries its own picker rather than borrowing
+ * the nib as a hidden one, so a stroke's nib and a drawn shape are never the same control.
+ */
+export type NbShape = 'line' | 'arrow' | 'rect' | 'ellipse';
+export const NB_SHAPES: readonly NbShape[] = ['line', 'arrow', 'rect', 'ellipse'];
+
+/**
+ * The inspector's Tool tab, as one record — the tool, its ink colour, stroke size and opacity, and
+ * (for the Shapes tool) which shape it draws.
  *
  * It lives here rather than in `ink.ts` because three components and two libraries read it: the dock
  * picks the tool, the inspector edits the rest, the page paints with it, and the engine turns it into
@@ -108,15 +122,16 @@ export const NIB_IDS: readonly NibId[] = ['fountain', 'ballpoint', 'pencil', 'ma
  */
 export interface NbInkSettings {
   tool: NbTool;
-  nib: NibId;
+  /**
+   * Which shape the Shapes tool draws. The four ink tools take their nib from the tool itself
+   * (`NIB_FOR_TOOL` in `ink.ts`) — pen→fountain, pencil→pencil, highlighter→marker — so a stroke's
+   * character is one visible choice, the dock tool, rather than a tool AND a nib that could disagree.
+   */
+  shape: NbShape;
   /** A palette TOKEN. The literal is frozen into each stroke at pointer-down, never stored here. */
   colour: string;
   strokePx: number;
   opacity: number;
-  smoothing: number;
-  pressure: boolean;
-  straightLock: boolean;
-  snapRuler: boolean;
   /** `stroke` deletes whole strokes; `paint` is the Reader's `destination-out`. See `ink.ts`. */
   eraser: 'stroke' | 'paint';
 }
@@ -140,14 +155,10 @@ export const NB_STROKES = [5, 8, 12] as const;
 
 export const DEFAULT_INK: NbInkSettings = {
   tool: 'pen',
-  nib: 'fountain',
+  shape: 'line',
   colour: '--iris-3',
   strokePx: 8,
   opacity: 1,
-  smoothing: 0.4,
-  pressure: true,
-  straightLock: false,
-  snapRuler: false,
   eraser: 'stroke',
 };
 
@@ -184,7 +195,7 @@ export type NbObject =
   | {
       id: string;
       k: 'shape';
-      s: 'line' | 'arrow' | 'rect' | 'ellipse';
+      s: NbShape;
       x: number;
       y: number;
       w: number;

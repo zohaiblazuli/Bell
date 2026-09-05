@@ -490,6 +490,11 @@ export default function App() {
                 setOpenNotebook(null);
                 setFocusMode(false);
                 go('notebooks');
+                // The shelf's `pages`, `bytes` and "most recently edited" order are all answered by the
+                // filesystem, and a session of writing changes every one of them — `NotebookView` flushes
+                // before it calls this, so what comes back is the notebook as it now stands rather than
+                // as it was when it was opened.
+                void notebooks.refresh();
               }}
             />
           ) : (
