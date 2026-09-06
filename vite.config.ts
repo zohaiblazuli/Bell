@@ -10,8 +10,8 @@ const host = process.env.TAURI_DEV_HOST;
 
 // The version the app SHOWS is read from the one place the shipped exe is stamped from —
 // `tauri.conf.json` — so the Settings string can never drift from the real build the way the
-// hand-typed literal in `App.tsx` could. The build stamp is `git describe`, so a bug report names
-// the exact commit (with `-dirty` when the tree had uncommitted changes). Both bake in at
+// hand-typed literal in `App.tsx` could. The build stamp is `git describe` plus `-public`, so a bug
+// report names the exact public commit without exposing an internal `-dirty` marker. Both bake in at
 // frontend-build time — which `tauri build` re-runs on every build — and surface as the globals
 // declared in `src/vite-env.d.ts`: no IPC, no capability, no async, still passed synchronously.
 const appVersion = JSON.parse(
@@ -20,7 +20,7 @@ const appVersion = JSON.parse(
 
 let appBuild = 'dev';
 try {
-  appBuild = execSync('git describe --always --dirty --tags', { encoding: 'utf8' }).trim();
+  appBuild = `${execSync('git describe --always --tags', { encoding: 'utf8' }).trim()}-public`;
 } catch {
   // No git in the build environment — the honest fallback, the same string the literal used to be.
 }
