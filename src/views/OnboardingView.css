@@ -37,11 +37,11 @@
      height. Centring the row instead would split §3's deliberate 120-top / 100-bottom asymmetry;
      extra height belongs in the top gutter, which nothing is measured against. */
   justify-content: center;
-  align-items: flex-end;
+  align-items: center;
   /* 84 is not a taste number: it is exactly how far Mr. Bell hangs past the sheet's left edge, so
      it is the smallest side gutter that keeps him inside the frame — `.app` clips at the window
      rounding, and a narrower gutter would cut his claw off. */
-  padding: 24px 84px 100px;
+  padding: 24px 84px;
 }
 
 /* `page recess` (§2 layer 4) — full-frame here at 1320x860, NOT the Dashboard's inset
@@ -134,7 +134,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   overflow: hidden auto;
   /* `primaryAxisAlignItems` per step: CENTER on 01/02/05/06, MIN on 03/04 (§5.1–§5.6). */
   --onb-slack: auto;
@@ -215,11 +215,12 @@
  * on the rig would outline all 65 of his rectangles instead of the silhouette. */
 .onb__bell {
   position: absolute;
-  left: -84px;
-  bottom: -16px;
+  left: -270px;
+  bottom: -12px;
   pointer-events: none;
-  filter: drop-shadow(0 6px 14px color-mix(in srgb, var(--plate) 38%, transparent))
-    drop-shadow(0 0 28px color-mix(in srgb, var(--bell-cap-mid) 20%, transparent));
+  /* Azure's illustration already carries its own edge treatment. The legacy Bell glow turns that
+     edge into a dark duplicate silhouette, so onboarding leaves the pet artwork unfiltered. */
+  filter: none;
 }
 
 /* ═══ 3. SHARED BODY PIECES — §4, and the heading every step opens with ══════════════════════ */

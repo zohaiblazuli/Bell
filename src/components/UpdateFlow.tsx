@@ -141,6 +141,64 @@ export function UpdatePill({ state, onDownload, onRestart, className }: UpdatePi
   }
 }
 
+/**
+ * Persistent update control for the app shell. Unlike the old sidebar pill plus modal sequence,
+ * this keeps the update's current action in one unobtrusive bottom-right panel: Download becomes
+ * Restart in place after the bytes have landed.
+ */
+export function UpdateCorner({
+  state,
+  onDownload,
+  onInstall,
+}: Pick<UpdatePillProps, 'state' | 'onDownload'> & { onInstall: () => void }) {
+  const isUpdateFlow =
+    state.phase === 'available' ||
+    state.phase === 'downloading' ||
+    state.phase === 'ready' ||
+    state.phase === 'installing' ||
+    (state.phase === 'error' && state.during !== 'check');
+  if (!isUpdateFlow) return null;
+
+  const downloading = state.phase === 'downloading';
+  const ready = state.phase === 'ready' || state.phase === 'installing';
+  const retryingDownload = state.phase === 'error' && state.during === 'download';
+  const retryingInstall = state.phase === 'error' && state.during === 'install';
+  const version = 'version' in state ? state.version : 'the latest version';
+  const notes = state.phase === 'available' ? state.notes?.trim() : null;
+  const busy = state.phase === 'installing';
+
+  return (
+    <aside className="uflow-corner" aria-live="polite" aria-label="Application update">
+      <span className="uflow-corner__eyebrow">
+        {downloading ? 'Downloading update' : ready ? 'Update ready' : 'Update available'}
+      </span>
+      <strong className="uflow-corner__title">
+        {ready ? `Restart to install v${version}` : `Bell v${version}`}
+      </strong>
+      {downloading ? (
+        <DownloadProgress progress={state.progress} />
+      ) : state.phase === 'error' ? (
+        <Notice className="uflow-error">{state.message}</Notice>
+      ) : ready ? (
+        <p className="uflow-corner__copy">{RESTART_BODY}</p>
+      ) : notes ? (
+        <p className="uflow-corner__copy">{notes}</p>
+      ) : (
+        <p className="uflow-corner__copy">A new version is ready to download.</p>
+      )}
+      {!downloading && (
+        <Button
+          variant="primary"
+          label={busy ? 'Restarting…' : ready ? 'Restart now' : retryingDownload ? 'Try download again' : retryingInstall ? 'Try restart again' : 'Download now'}
+          onClick={busy ? undefined : ready || retryingInstall ? onInstall : onDownload}
+          aria-disabled={busy ? 'true' : undefined}
+          aria-busy={busy ? true : undefined}
+        />
+      )}
+    </aside>
+  );
+}
+
 /* ── the dialog · §A1 ──────────────────────────────────────────────────────────────────────── */
 
 /**

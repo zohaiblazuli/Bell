@@ -77,7 +77,9 @@ const LOCKUP_MARK_SCALE = 1.25;
    instead of the file's 480 x 320 frame: the crab's box is (159, 44) in a 480 x 320 frame, i.e. its
    centre is 1px left and 36px above the centre of it. */
 const CRAB_OFFSET = { x: -1, y: -36 } as const;
-const WORD_OFFSET = { x: 2.8, y: 90.4 } as const;
+// Azure's startup presentation is substantially taller than Mr. Bell's original 160px rig.
+// Keep the wordmark below her feet instead of letting it cross her lower body.
+const WORD_OFFSET = { x: 2.8, y: 280 } as const;
 
 /** 0.6 of the 196 x 88 master: the splash wordmark is 117.6 x 52.8 (spec B1). */
 const WORD_SPLASH_H = WORDMARK_BOX.h * 0.6;

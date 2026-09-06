@@ -15,6 +15,10 @@
 .app {
   position: relative;
   height: 100%;
+  /* The native window is transparent and undecorated. This is therefore the visible window
+     silhouette, not a card inside a rectangular frame. A generous radius lets the desktop show
+     through at all four corners while the existing overflow clip keeps every route within it. */
+  border-radius: 32px;
   display: grid;
   grid-template-columns: 238px 1fr;
   /* The top bar's height, as a var so the grid and `.topbar` cannot drift apart at two literals. */
@@ -283,6 +287,15 @@
 .app[data-tone='night'] .mascot {
   filter: drop-shadow(0 6px 14px color-mix(in srgb, var(--plate) 38%, transparent))
     drop-shadow(0 0 28px color-mix(in srgb, var(--bell-cap-mid) 20%, transparent));
+}
+
+/* Azure's painted edges already define her silhouette. The historical Mr. Bell drop shadow makes
+   that edge read as a second, dark figure, so leave the motion pet unfiltered while preserving the
+   fallback rig's authored shadow. */
+.mascot:has(.bell-pet),
+.app[data-tone='night'] .mascot:has(.bell-pet) {
+  filter: none;
+  transition: none;
 }
 /* `dev` — the build stamp and the credit line. */
 .dev {

@@ -9,7 +9,7 @@ import Dialog from '@ui/Dialog';
 import Mascot from './components/Mascot';
 import * as api from './lib/api';
 import Splash, { type SplashPhase } from './components/Splash';
-import { UpdateDialog, UpdatePill } from './components/UpdateFlow';
+import { UpdateCorner, UpdateDialog } from './components/UpdateFlow';
 import LibraryView from './views/LibraryView';
 import DashboardView from './views/DashboardView';
 import WorkspaceView from './views/WorkspaceView';
@@ -553,15 +553,6 @@ export default function App() {
           notebookCount={notebooks.list?.length ?? null}
           mascot={mascot.mood}
           onPokeMascot={mascot.poke}
-          update={
-            up.state.phase === 'idle' || up.state.phase === 'checking' ? null : (
-              <UpdatePill
-                state={up.state}
-                onDownload={() => void up.download()}
-                onRestart={() => up.setDialogOpen(true)}
-              />
-            )
-          }
         />
 
         <div className="main">{inReader ? reader() : screens()}</div>
@@ -571,6 +562,12 @@ export default function App() {
           onClose={() => setPalette(false)}
           onOpenPaper={openPaperAt}
           commands={commands}
+        />
+
+        <UpdateCorner
+          state={up.state}
+          onDownload={() => void up.download()}
+          onInstall={() => void up.install()}
         />
 
         <Dialog

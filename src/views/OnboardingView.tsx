@@ -904,11 +904,10 @@ export default function OnboardingView({
           </div>
         </div>
 
-        {/* Azure accompanies every onboarding step. Her taller character art gets its own stage size
-            while the 160px fallback keeps Mr. Bell's legacy geometry intact. */}
+        {/* Azure stays beside the task sheet, never on top of a first-run control. */}
         <Mascot
           size={160}
-          petSize="clamp(320px, 42vh, 420px)"
+          petSize="clamp(420px, 50vh, 520px)"
           mood={MOODS[step]}
           className="onb__bell"
         />
