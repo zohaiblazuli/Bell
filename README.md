@@ -16,6 +16,11 @@ Browse the entire CAIE catalogue, pull the papers you want onto your own machine
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)
 ![Rust](https://img.shields.io/badge/Rust-Tauri%20core-000000?style=flat-square&logo=rust&logoColor=white)
 ![Version](https://img.shields.io/badge/version-0.1.7-blue?style=flat-square)
+[![GitHub Stars](https://img.shields.io/github/stars/zohaiblazuli/Bell?style=flat-square&logo=github&color=FFD700&label=stars)](https://github.com/zohaiblazuli/Bell/stargazers)
+
+<br />
+
+[![⭐ Star this repo](https://img.shields.io/badge/⭐%20Star%20this%20repo-Support%20the%20project-FFD700?style=for-the-badge&logo=github&logoColor=black)](https://github.com/zohaiblazuli/Bell)
 
 <br />
 
