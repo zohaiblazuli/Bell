@@ -41,7 +41,8 @@ pub struct LevelCount {
 pub fn library_stats(db: State<'_, Db>) -> Result<LibraryStats, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     let one = |sql: &str| -> Result<i64, String> {
-        conn.query_row(sql, [], |r| r.get(0)).map_err(|e| e.to_string())
+        conn.query_row(sql, [], |r| r.get(0))
+            .map_err(|e| e.to_string())
     };
 
     let mut levels = Vec::new();
@@ -181,7 +182,8 @@ pub fn query_subjects(conn: &Connection, level: Option<String>) -> Result<Vec<Su
             })
         })
         .map_err(|e| e.to_string())?;
-    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())
 }
 
 /// One row per paper in the catalogue.
@@ -335,7 +337,11 @@ pub fn query_papers(
                 subject_id,
                 qualification,
                 scode,
-                if downloaded_only.unwrap_or(false) { 1 } else { 0 },
+                if downloaded_only.unwrap_or(false) {
+                    1
+                } else {
+                    0
+                },
                 // The whole catalogue is ~2.6k rows, so the default lets everything
                 // through: the Library now lists papers that are not on disk too.
                 limit.unwrap_or(4000)
@@ -343,7 +349,8 @@ pub fn query_papers(
             map_paper,
         )
         .map_err(|e| e.to_string())?;
-    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())
 }
 
 /// Free-text search for the ⌘K palette.
@@ -405,7 +412,8 @@ pub fn search_catalog(
             map_paper,
         )
         .map_err(|e| e.to_string())?;
-    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())
 }
 
 /// Resolve a subject `code` (with an optional level) to its catalogue id.
@@ -466,7 +474,11 @@ pub fn read_document(db: State<'_, Db>, path: String) -> Result<tauri::ipc::Resp
 /// second.
 pub fn read_downloaded(conn: &Connection, path: &str) -> Result<Vec<u8>, String> {
     let known: i64 = conn
-        .query_row("SELECT COUNT(*) FROM download WHERE path = ?1", [path], |r| r.get(0))
+        .query_row(
+            "SELECT COUNT(*) FROM download WHERE path = ?1",
+            [path],
+            |r| r.get(0),
+        )
         .map_err(|e| e.to_string())?;
     if known == 0 {
         return Err(format!("not a downloaded paper: {path}"));
@@ -588,8 +600,18 @@ mod tests {
                 },
             ],
             sessions: vec![
-                ApiSession { id: 1, code: "s24".into(), year: 2024, season: "may_june".into() },
-                ApiSession { id: 2, code: "w23".into(), year: 2023, season: "oct_nov".into() },
+                ApiSession {
+                    id: 1,
+                    code: "s24".into(),
+                    year: 2024,
+                    season: "may_june".into(),
+                },
+                ApiSession {
+                    id: 2,
+                    code: "w23".into(),
+                    year: 2023,
+                    season: "oct_nov".into(),
+                },
             ],
             papers: vec![
                 paper(9001, 65, 1, "12", true),
@@ -656,10 +678,17 @@ mod tests {
         let (dir, conn) = fixture("list");
 
         let papers = query_papers(&conn, None, None, None, None, None).unwrap();
-        assert_eq!(papers.len(), 3, "nothing is on disk, yet every paper is listed");
+        assert_eq!(
+            papers.len(),
+            3,
+            "nothing is on disk, yet every paper is listed"
+        );
         assert_eq!(papers[0].year, 2024, "newest sitting first");
         assert!(papers.iter().all(|p| p.qp_path.is_none()));
-        assert!(papers.iter().all(|p| p.has_ms), "the catalogue says a mark scheme exists");
+        assert!(
+            papers.iter().all(|p| p.has_ms),
+            "the catalogue says a mark scheme exists"
+        );
 
         let maths = papers.iter().find(|p| p.id == 9001).unwrap();
         assert_eq!(maths.component, "12");
@@ -679,12 +708,36 @@ mod tests {
         assert!(unscored.difficulty_note.is_none());
 
         // Filters
-        assert_eq!(query_papers(&conn, None, Some("IGCSE".into()), None, None, None).unwrap().len(), 1);
-        assert_eq!(query_papers(&conn, None, Some("igcse".into()), None, None, None).unwrap().len(), 1);
-        assert_eq!(query_papers(&conn, None, None, Some("w23".into()), None, None).unwrap().len(), 1);
-        assert_eq!(query_papers(&conn, Some(65), None, None, None, None).unwrap().len(), 2);
+        assert_eq!(
+            query_papers(&conn, None, Some("IGCSE".into()), None, None, None)
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(
+            query_papers(&conn, None, Some("igcse".into()), None, None, None)
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(
+            query_papers(&conn, None, None, Some("w23".into()), None, None)
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(
+            query_papers(&conn, Some(65), None, None, None, None)
+                .unwrap()
+                .len(),
+            2
+        );
         // A filter we cannot parse must match nothing rather than everything.
-        assert!(query_papers(&conn, None, Some("A-Level".into()), None, None, None).unwrap().is_empty());
+        assert!(
+            query_papers(&conn, None, Some("A-Level".into()), None, None, None)
+                .unwrap()
+                .is_empty()
+        );
 
         let subjects = query_subjects(&conn, None).unwrap();
         assert_eq!(subjects.len(), 2);
@@ -712,12 +765,31 @@ mod tests {
 
         let before = query_papers(&conn, Some(65), None, Some("s24".into()), None, None).unwrap();
         assert_eq!(before.len(), 1);
-        assert_eq!(before[0].qp_path.as_deref(), Some(qp.to_string_lossy().as_ref()));
-        assert_eq!(before[0].ms_path.as_deref(), Some(ms.to_string_lossy().as_ref()));
+        assert_eq!(
+            before[0].qp_path.as_deref(),
+            Some(qp.to_string_lossy().as_ref())
+        );
+        assert_eq!(
+            before[0].ms_path.as_deref(),
+            Some(ms.to_string_lossy().as_ref())
+        );
 
         // The downloaded-only filter is what the Library's chip drives.
-        assert_eq!(query_papers(&conn, None, None, None, Some(true), None).unwrap().len(), 1);
-        assert_eq!(query_subjects(&conn, None).unwrap().iter().find(|s| s.code == "9709").unwrap().downloaded, 1);
+        assert_eq!(
+            query_papers(&conn, None, None, None, Some(true), None)
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(
+            query_subjects(&conn, None)
+                .unwrap()
+                .iter()
+                .find(|s| s.code == "9709")
+                .unwrap()
+                .downloaded,
+            1
+        );
 
         // Re-syncing replaces the catalogue wholesale. Under the old folder-walking
         // schema that wiped every derived table; now it must leave download records
@@ -728,10 +800,23 @@ mod tests {
 
         let after = query_papers(&conn, Some(65), None, Some("s24".into()), None, None).unwrap();
         assert_eq!(after.len(), 1);
-        assert_eq!(after[0].qp_path.as_deref(), Some(qp.to_string_lossy().as_ref()));
-        assert_eq!(after[0].ms_path.as_deref(), Some(ms.to_string_lossy().as_ref()));
-        assert_eq!(after[0].difficulty.as_deref(), Some("hard"), "difficulty comes back with the catalogue");
-        assert!(qp.exists() && ms.exists(), "the files themselves are untouched");
+        assert_eq!(
+            after[0].qp_path.as_deref(),
+            Some(qp.to_string_lossy().as_ref())
+        );
+        assert_eq!(
+            after[0].ms_path.as_deref(),
+            Some(ms.to_string_lossy().as_ref())
+        );
+        assert_eq!(
+            after[0].difficulty.as_deref(),
+            Some("hard"),
+            "difficulty comes back with the catalogue"
+        );
+        assert!(
+            qp.exists() && ms.exists(),
+            "the files themselves are untouched"
+        );
 
         std::fs::remove_dir_all(&dir).ok();
     }
@@ -751,7 +836,10 @@ mod tests {
         let first = downloads::repair_into(&mut conn, &root).unwrap();
         assert_eq!(first.linked, 1, "only the catalogued paper links");
         assert_eq!(first.unmatched, 1, "the stray component 99 does not");
-        assert_eq!(first.scanned, 2, "the .txt is not even scanned as a candidate");
+        assert_eq!(
+            first.scanned, 2,
+            "the .txt is not even scanned as a candidate"
+        );
         assert_eq!(first.pruned, 0);
 
         // A user deleting a PDF by hand must not leave the app claiming to have it,
@@ -760,7 +848,9 @@ mod tests {
         let second = downloads::repair_into(&mut conn, &root).unwrap();
         assert_eq!(second.pruned, 1);
         assert_eq!(second.linked, 0);
-        assert!(query_papers(&conn, None, None, None, Some(true), None).unwrap().is_empty());
+        assert!(query_papers(&conn, None, None, None, Some(true), None)
+            .unwrap()
+            .is_empty());
 
         std::fs::remove_dir_all(&dir).ok();
     }
@@ -774,14 +864,27 @@ mod tests {
         assert_eq!(hits[0].component, "12");
 
         assert_eq!(search_catalog(&conn, "mathematics", None).unwrap().len(), 2);
-        assert_eq!(search_catalog(&conn, "MATHEMATICS w23", None).unwrap().len(), 1);
+        assert_eq!(
+            search_catalog(&conn, "MATHEMATICS w23", None)
+                .unwrap()
+                .len(),
+            1
+        );
         assert_eq!(search_catalog(&conn, "biology", None).unwrap().len(), 1);
         // `a level` has to match the stored `a_level`, hence the replace() in HAY.
         assert_eq!(search_catalog(&conn, "a level", None).unwrap().len(), 2);
         assert_eq!(search_catalog(&conn, "igcse 2024", None).unwrap().len(), 1);
-        assert_eq!(search_catalog(&conn, "mathematics biology", None).unwrap().len(), 0);
+        assert_eq!(
+            search_catalog(&conn, "mathematics biology", None)
+                .unwrap()
+                .len(),
+            0
+        );
         assert!(search_catalog(&conn, "   ", None).unwrap().is_empty());
-        assert_eq!(search_catalog(&conn, "mathematics", Some(1)).unwrap().len(), 1);
+        assert_eq!(
+            search_catalog(&conn, "mathematics", Some(1)).unwrap().len(),
+            1
+        );
 
         assert_eq!(find_subject_id(&conn, "9709", None), Some(65));
         assert_eq!(find_subject_id(&conn, "9709", Some("IGCSE")), None);
@@ -814,7 +917,10 @@ mod tests {
         assert!(read_downloaded(&conn, &qp.to_string_lossy()).is_err());
 
         downloads::repair_into(&mut conn, &root).unwrap();
-        assert_eq!(read_downloaded(&conn, &qp.to_string_lossy()).unwrap(), b"%PDF-1.4\ntest\n");
+        assert_eq!(
+            read_downloaded(&conn, &qp.to_string_lossy()).unwrap(),
+            b"%PDF-1.4\ntest\n"
+        );
 
         // A sibling in the same folder was never recorded, so it stays unreachable.
         let sibling = qp.parent().unwrap().join("readme.txt");
@@ -850,7 +956,9 @@ mod tests {
         let err = read_downloaded(&conn, &as_text).unwrap_err();
         assert!(err.contains("no longer on this machine"), "{err}");
         assert!(
-            query_papers(&conn, None, None, None, Some(true), None).unwrap().is_empty(),
+            query_papers(&conn, None, None, None, Some(true), None)
+                .unwrap()
+                .is_empty(),
             "the row went with the failed read, so the Library stops claiming the paper"
         );
         // And a second attempt is the ordinary "never downloaded" answer, not the same OS error.
@@ -868,16 +976,30 @@ mod tests {
         let qp = place_pdf(&root, &conn, 9001, "qp");
         let ms = place_pdf(&root, &conn, 9001, "ms");
         downloads::repair_into(&mut conn, &root).unwrap();
-        assert_eq!(prune_missing_downloads(&conn).unwrap(), 0, "nothing is missing yet");
+        assert_eq!(
+            prune_missing_downloads(&conn).unwrap(),
+            0,
+            "nothing is missing yet"
+        );
 
         std::fs::remove_file(&ms).unwrap();
         assert_eq!(prune_missing_downloads(&conn).unwrap(), 1);
-        assert_eq!(prune_missing_downloads(&conn).unwrap(), 0, "and it is idempotent");
+        assert_eq!(
+            prune_missing_downloads(&conn).unwrap(),
+            0,
+            "and it is idempotent"
+        );
 
         let rows = query_papers(&conn, None, None, None, Some(true), None).unwrap();
         assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0].qp_path.as_deref(), Some(qp.to_string_lossy().as_ref()));
-        assert!(rows[0].ms_path.is_none(), "the mark scheme's row went, the paper's stayed");
+        assert_eq!(
+            rows[0].qp_path.as_deref(),
+            Some(qp.to_string_lossy().as_ref())
+        );
+        assert!(
+            rows[0].ms_path.is_none(),
+            "the mark scheme's row went, the paper's stayed"
+        );
 
         // A file that is merely unreadable is NOT gone: only NotFound prunes, so a locked or
         // momentarily unavailable paper keeps its record.
@@ -888,4 +1010,3 @@ mod tests {
         std::fs::remove_dir_all(&dir).ok();
     }
 }
-

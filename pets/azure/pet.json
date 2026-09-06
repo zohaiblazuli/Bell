@@ -1,0 +1,13 @@
+{
+  "id": "azure",
+  "displayName": "Azure",
+  "description": "A warm, playful anime teacher with vivid blue hair and expressive detailed animations.",
+  "spritesheetPath": "spritesheet.webp",
+  "spriteVersionNumber": 1,
+  "kind": "person",
+  "pixelDensity": 2,
+  "bellAnimation": {
+    "version": 1,
+    "definitionPath": "motion.json"
+  }
+}

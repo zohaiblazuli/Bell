@@ -904,8 +904,14 @@ export default function OnboardingView({
           </div>
         </div>
 
-        {/* Last in the stage, so he paints over the sheet (§3.5). 160px is the 256 rig at 0.625. */}
-        <Mascot size={160} mood={MOODS[step]} className="onb__bell" />
+        {/* Azure accompanies every onboarding step. Her taller character art gets its own stage size
+            while the 160px fallback keeps Mr. Bell's legacy geometry intact. */}
+        <Mascot
+          size={160}
+          petSize="clamp(320px, 42vh, 420px)"
+          mood={MOODS[step]}
+          className="onb__bell"
+        />
       </div>
     </div>
   );

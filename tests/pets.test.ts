@@ -25,6 +25,7 @@ import {
   PET_COLUMNS,
   PET_FPS,
   PET_ROWS,
+  atlasMetadataForDimensions,
   atlasVersionForHeight,
   isPetId,
   parseRegistry,
@@ -112,6 +113,28 @@ describe('the version is measured off the sheet, never read from pet.json', () =
       assert.equal(atlasVersionForHeight(height), null, `${height} is not an atlas`);
     }
   });
+
+  test('accepts integer-density atlases without changing their logical geometry', () => {
+    assert.deepEqual(atlasMetadataForDimensions(1536, 1872), { version: 1, density: 1 });
+    assert.deepEqual(atlasMetadataForDimensions(3072, 3744), { version: 1, density: 2 });
+    assert.deepEqual(atlasMetadataForDimensions(3072, 4576), { version: 2, density: 2 });
+    assert.deepEqual(atlasMetadataForDimensions(6144, 9152), { version: 2, density: 4 });
+
+    for (const dimensions of [
+      [0, 1872],
+      [1535, 1872],
+      [1536, 3744],
+      [3072, 1872],
+      [7680, 9360],
+      [3072.5, 3744],
+    ]) {
+      assert.equal(
+        atlasMetadataForDimensions(dimensions[0], dimensions[1]),
+        null,
+        `${dimensions[0]}x${dimensions[1]} is not an integer-density atlas`,
+      );
+    }
+  });
 });
 
 describe('a v1 sheet never selects a v2 row', () => {
@@ -153,16 +176,16 @@ describe('Mr. Bell’s twelve moods in a pet’s nine or eleven', () => {
     // One failure row, so both of Bell's failure moods land on it.
     assert.equal(petStateForMood(2, 'alarm'), 'failed');
     assert.equal(petStateForMood(2, 'slump'), 'failed');
-    // No spectacles to catch the light on, so the glint and the poke are both a wave.
+    // A successful beat waves, while a direct poke uses the interaction-reaction row.
     assert.equal(petStateForMood(2, 'glint'), 'waving');
-    assert.equal(petStateForMood(2, 'double-take'), 'waving');
+    assert.equal(petStateForMood(2, 'double-take'), 'jumping');
     assert.equal(petStateForMood(2, 'lens-draw-on'), 'review');
   });
 
   test('degrades down its preference list rather than off the sheet', () => {
     // The two moods that want a look-around: v2 glances, v1 does the nearest thing it has.
     assert.equal(petStateForMood(2, 'periscope'), 'look-right-side');
-    assert.equal(petStateForMood(1, 'periscope'), 'waiting');
+    assert.equal(petStateForMood(1, 'periscope'), 'review');
     assert.equal(petStateForMood(2, 'tone-handoff'), 'look-left-side');
     // In the file the crab does not move at all for a tone crossing, so standing still is right here.
     assert.equal(petStateForMood(1, 'tone-handoff'), 'idle');

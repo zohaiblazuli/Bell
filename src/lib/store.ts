@@ -240,7 +240,8 @@ export interface Settings {
    */
   updateAuto: boolean;
   /**
-   * The mascot. `null` is Mr. Bell, who ships in the binary and is what a fresh install draws.
+   * The legacy mascot selection. Azure now ships in the binary and the UI no longer changes this,
+   * but the field remains readable so older settings files and the dormant picker stay compatible.
    *
    * A Codex pet id (`isPetId` in `lib/pets.ts`), pointing at a directory under `<app data>\pets\`. It
    * is only ever a *selection*: the pet's own files are not study state and a reset leaves them on
@@ -258,7 +259,7 @@ export const SETTINGS_DEFAULTS: Settings = {
   focusAutostart: true,
   streakMinutes: 10,
   updateAuto: true,
-  pet: null,
+  pet: 'azure',
 };
 
 export function loadSettings(): Settings {

@@ -1,6 +1,6 @@
 import Icon from './Icon';
 import WindowLights from './WindowLights';
-import Lockup from '@ui/brand/Lockup';
+import Wordmark from '@ui/brand/Wordmark';
 import NavItem from '@ui/NavItem';
 import SubjectRow from '@ui/SubjectRow';
 import SubjectIcon from '@ui/icons/SubjectIcon';
@@ -8,6 +8,7 @@ import type { BellMood } from '@ui/brand/MrBell';
 import Mascot from './Mascot';
 import GitHubMark from '@ui/icons/GitHubMark';
 import type { Subject } from '@/lib/types';
+import azureAppIcon from '@/assets/azure-app-icon.png';
 
 export type View =
   | 'library'
@@ -93,10 +94,13 @@ export default function Sidebar({
     <aside className="sidebar">
       <WindowLights />
 
-      {/* Figma places a `Bell / Lockup — Horizontal` here at 0.35 scale. The lockup's box is
-          296x89, so 31px tall lands it at 103x31 — the measured size of the instance in the file. */}
+      {/* Azure is Bell's shipped identity now: the supplied app mark paired with the existing word
+          geometry keeps the desktop icon and the in-product brand unmistakably the same. */}
       <div className="brand">
-        <Lockup orientation="horizontal" size={31} className="logo-word" />
+        <div className="logo-word" role="img" aria-label="Bell">
+          <img className="brand-azure-mark" src={azureAppIcon} alt="" />
+          <Wordmark size={27} specs={false} className="brand-wordmark" />
+        </div>
       </div>
 
       <div className="nav-label t-label-section">Study</div>
@@ -180,7 +184,11 @@ export default function Sidebar({
           the dev footer pinned to the bottom. He is bottom-pinned inside it, which is why adding a
           fifth nav row above shrinks the slot without moving him. */}
       <div className="mascot" aria-hidden="true" onPointerDown={onPokeMascot}>
-        <Mascot size={160} mood={mascot} />
+        <Mascot
+          size={160}
+          petSize="clamp(300px, calc(100vh - 410px), 460px)"
+          mood={mascot}
+        />
       </div>
 
       {/* The dev footer, from `screen-library-settings.md` §3.4. The version line is a placeholder

@@ -136,6 +136,12 @@
   filter: drop-shadow(0 0 36px color-mix(in srgb, var(--bell-cap-mid) 24%, transparent))
     drop-shadow(0 10px 24px color-mix(in srgb, var(--plate) 40%, transparent));
 }
+.splash-crab > .bell-pet {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
 
 /* The box is the LANDING size and the splash pose is that box scaled up about its own centre, which
    is how B4 models the travel (1.714 -> 1 = 0.6 / 0.35). `--word-up`, `--word-w` and `--word-h` come

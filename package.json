@@ -1,7 +1,7 @@
 {
   "name": "bell",
   "private": true,
-  "version": "0.1.4",
+  "version": "0.1.5",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,7 +14,7 @@
     "ui:css": "node scripts/ui-css.mjs",
     "shot": "powershell -ExecutionPolicy Bypass -NoProfile -File scripts/shot.ps1",
     "verify:papers": "node scripts/run.mjs verify-papers.ts",
-    "icon": "node scripts/make-icon.mjs .icon-src.png && tauri icon .icon-src.png",
+    "icon": "tauri icon design/brand/azure-bell-logo-final.png",
     "drive": "powershell -ExecutionPolicy Bypass -File scripts/drive.ps1",
     "audit": "node scripts/audit.mjs",
     "dead:css": "node scripts/dead-css.mjs"

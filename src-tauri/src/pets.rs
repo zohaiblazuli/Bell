@@ -25,6 +25,7 @@
 //! is refused too, and `spritesheetPath` is overwritten rather than trusted — a manifest never gets
 //! to name a path.
 
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -40,10 +41,39 @@ const MANIFEST_FILE: &str = "pet.json";
 
 /// The format's own file name, and the only one this module will write a sheet under.
 const SHEET_FILE: &str = "spritesheet.webp";
+const MOTION_FILE: &str = "motion.json";
+
+/// Azure is a Bell asset, not a registry download. Embedding the package makes a fresh offline
+/// install identical to development; startup mirrors it into the existing pet directory so the
+/// renderer and all of the well-tested path guards keep one code path.
+const BUNDLED_AZURE_FILES: &[(&str, &[u8])] = &[
+    (MANIFEST_FILE, include_bytes!("../../pets/azure/pet.json")),
+    (SHEET_FILE, include_bytes!("../../pets/azure/spritesheet.webp")),
+    (MOTION_FILE, include_bytes!("../../pets/azure/motion.json")),
+    ("motion-idle-groom.webp", include_bytes!("../../pets/azure/motion-idle-groom.webp")),
+    ("motion-idle-phone.webp", include_bytes!("../../pets/azure/motion-idle-phone.webp")),
+    ("motion-teacher-enter.webp", include_bytes!("../../pets/azure/motion-teacher-enter.webp")),
+    ("motion-teacher-loop.webp", include_bytes!("../../pets/azure/motion-teacher-loop.webp")),
+    ("motion-wave-kiss.webp", include_bytes!("../../pets/azure/motion-wave-kiss.webp")),
+    ("motion-tickle.webp", include_bytes!("../../pets/azure/motion-tickle.webp")),
+    ("motion-jump.webp", include_bytes!("../../pets/azure/motion-jump.webp")),
+    ("motion-failed.webp", include_bytes!("../../pets/azure/motion-failed.webp")),
+    ("motion-review-look.webp", include_bytes!("../../pets/azure/motion-review-look.webp")),
+    ("motion-sleep-loop.webp", include_bytes!("../../pets/azure/motion-sleep-loop.webp")),
+];
 
 /// A v2 atlas measured 1.7 MB on the registry today. This is a ceiling on a mistake — a mislabelled
 /// video, a hostile response — not a budget: it must not be tight enough to refuse a real pet.
 const MAX_SHEET_BYTES: usize = 8 * 1024 * 1024;
+
+/// Motion is a compact timing/state description, never an image payload. Keeping this deliberately
+/// small makes a hand-copied or future registry package unable to turn one optional JSON read into
+/// an unbounded allocation.
+const MAX_MOTION_BYTES: usize = 256 * 1024;
+
+/// Bell-native cels are normally much smaller than the legacy atlas. Use the atlas ceiling anyway:
+/// it is generous enough for lossless artwork while still refusing an accidentally packaged video.
+const MAX_MOTION_ASSET_BYTES: usize = MAX_SHEET_BYTES;
 
 /// A gallery thumbnail is tens of KB. Same reasoning, smaller number.
 const MAX_PREVIEW_BYTES: usize = 4 * 1024 * 1024;
@@ -241,6 +271,21 @@ fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {
     Ok(())
 }
 
+/// Install or refresh Bell's bundled Azure package. Healthy files are left untouched, keeping an
+/// ordinary launch read-only while still repairing a missing or outdated asset without a network.
+pub fn ensure_bundled_azure(root: &Path) -> Result<(), String> {
+    let target = pet_dir(root, "azure")?;
+    std::fs::create_dir_all(&target).map_err(|e| format!("{}: {e}", target.display()))?;
+    for (name, bundled) in BUNDLED_AZURE_FILES {
+        let path = target.join(name);
+        let current = std::fs::read(&path).ok();
+        if current.as_deref() != Some(*bundled) {
+            write_atomic(&path, bundled)?;
+        }
+    }
+    Ok(())
+}
+
 /// Read one pet's manifest.
 ///
 /// The id comes from the directory, not from the file: a `pet.json` copied between directories must
@@ -410,6 +455,43 @@ fn is_webp(bytes: &[u8]) -> bool {
     bytes.len() > 12 && &bytes[..4] == RIFF && &bytes[8..12] == WEBP
 }
 
+fn valid_motion_asset_file(file: &str) -> bool {
+    let Some((stem, extension)) = file.rsplit_once('.') else {
+        return false;
+    };
+    let bytes = stem.as_bytes();
+    !bytes.is_empty()
+        && bytes.len() <= 64
+        && (bytes[0].is_ascii_lowercase() || bytes[0].is_ascii_digit())
+        && bytes
+            .iter()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || *b == b'-')
+        && !reserved(stem)
+        && matches!(extension, "webp" | "png")
+}
+
+/// Read a local package file without trusting metadata as the size check. `take(max + 1)` is the
+/// authoritative guard if the file changes between metadata and read.
+fn read_capped_file(path: &Path, max: usize, what: &str) -> Result<Vec<u8>, String> {
+    let file = std::fs::File::open(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    if file
+        .metadata()
+        .map_err(|e| format!("{}: {e}", path.display()))?
+        .len()
+        > max as u64
+    {
+        return Err(format!("that {what} is larger than Bell will accept"));
+    }
+    let mut bytes = Vec::new();
+    file.take(max as u64 + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|e| format!("{}: {e}", path.display()))?;
+    if bytes.len() > max {
+        return Err(format!("that {what} is larger than Bell will accept"));
+    }
+    Ok(bytes)
+}
+
 /// The registry's own JSON, verbatim.
 ///
 /// Not parsed here on purpose — the same call `notebooks::page_save` makes about a page. The shape is
@@ -472,6 +554,42 @@ pub fn sheet(root: &Path, id: &str) -> Result<Vec<u8>, String> {
     std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))
 }
 
+/// Optional Bell-native motion description. Legacy pets have no sidecar and deliberately return
+/// `None`, allowing the renderer to retain its existing atlas behavior without an error path.
+pub fn motion(root: &Path, id: &str) -> Result<Option<String>, String> {
+    let path = pet_dir(root, id)?.join(MOTION_FILE);
+    let bytes = match read_capped_file(&path, MAX_MOTION_BYTES, "pet motion file") {
+        Ok(bytes) => bytes,
+        Err(_) if !path.exists() => return Ok(None),
+        Err(e) => return Err(e),
+    };
+    String::from_utf8(bytes)
+        .map(Some)
+        .map_err(|_| format!("{}: motion.json is not UTF-8 text", path.display()))
+}
+
+/// One raster named by `motion.json`. The basename has a closed alphabet and fixed image suffix,
+/// so it can never introduce a separator or traversal component beneath the already-validated pet.
+pub fn motion_asset(root: &Path, id: &str, file: &str) -> Result<Vec<u8>, String> {
+    if !valid_motion_asset_file(file) {
+        return Err(format!("bad pet asset name: {file}"));
+    }
+    let path = pet_dir(root, id)?.join(file);
+    let bytes = read_capped_file(&path, MAX_MOTION_ASSET_BYTES, "pet asset")?;
+    let valid = if file.ends_with(".webp") {
+        is_webp(&bytes)
+    } else {
+        bytes.starts_with(&PNG_MAGIC)
+    };
+    if !valid {
+        return Err(format!(
+            "{}: bytes do not match the image extension",
+            path.display()
+        ));
+    }
+    Ok(bytes)
+}
+
 /// Remove a pet's directory. Irreversible here, but not a loss: the registry still has it.
 ///
 /// The directory goes before the index row. If the cache write then fails the next `list` drops the
@@ -527,6 +645,20 @@ pub fn pet_sheet(dir: State<'_, PetDir>, id: String) -> Result<tauri::ipc::Respo
 }
 
 #[tauri::command]
+pub fn pet_motion(dir: State<'_, PetDir>, id: String) -> Result<Option<String>, String> {
+    motion(&dir.0, &id)
+}
+
+#[tauri::command]
+pub fn pet_asset(
+    dir: State<'_, PetDir>,
+    id: String,
+    file: String,
+) -> Result<tauri::ipc::Response, String> {
+    Ok(tauri::ipc::Response::new(motion_asset(&dir.0, &id, &file)?))
+}
+
+#[tauri::command]
 pub async fn pet_registry() -> Result<String, String> {
     registry().await
 }
@@ -573,6 +705,92 @@ mod tests {
         out.extend_from_slice(WEBP);
         out.extend_from_slice(tail);
         out
+    }
+
+    fn png(tail: &[u8]) -> Vec<u8> {
+        let mut out = PNG_MAGIC.to_vec();
+        out.extend_from_slice(tail);
+        out
+    }
+
+    #[test]
+    fn motion_is_optional_utf8_and_capped() {
+        let root = temp_root("motion");
+        let pet = root.join("azure");
+        std::fs::create_dir_all(&pet).unwrap();
+
+        assert_eq!(
+            motion(&root, "azure").unwrap(),
+            None,
+            "legacy pets have no sidecar"
+        );
+        std::fs::write(
+            pet.join(MOTION_FILE),
+            br#"{"version":1,"idle":{"loop":true}}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            motion(&root, "azure").unwrap().as_deref(),
+            Some(r#"{"version":1,"idle":{"loop":true}}"#)
+        );
+        std::fs::write(pet.join(MOTION_FILE), [0xff, 0xfe]).unwrap();
+        assert!(motion(&root, "azure").is_err(), "motion must be UTF-8");
+        std::fs::write(pet.join(MOTION_FILE), vec![b'x'; MAX_MOTION_BYTES + 1]).unwrap();
+        assert!(motion(&root, "azure").is_err(), "motion is bounded");
+        assert!(
+            motion(&root, "../azure").is_err(),
+            "the pet id remains guarded"
+        );
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn motion_assets_are_safe_basenames_capped_and_magic_checked() {
+        let root = temp_root("motion-assets");
+        let pet = root.join("azure");
+        std::fs::create_dir_all(&pet).unwrap();
+        let sleeping = webp(b"sleeping cel");
+        let z = png(b"z cel");
+        std::fs::write(pet.join("sleep-001.webp"), &sleeping).unwrap();
+        std::fs::write(pet.join("sleep-z.png"), &z).unwrap();
+
+        assert_eq!(
+            motion_asset(&root, "azure", "sleep-001.webp").unwrap(),
+            sleeping
+        );
+        assert_eq!(motion_asset(&root, "azure", "sleep-z.png").unwrap(), z);
+        for bad in [
+            "../sleep.png",
+            "sub/sleep.png",
+            "sub\\sleep.png",
+            ".png",
+            "-sleep.png",
+            "Sleep.png",
+            "sleep_1.png",
+            "sleep.gif",
+            "sleep.png.exe",
+            "con.png",
+        ] {
+            assert!(
+                motion_asset(&root, "azure", bad).is_err(),
+                "accepted {bad:?}"
+            );
+        }
+
+        std::fs::write(pet.join("wrong.png"), webp(b"wrong container")).unwrap();
+        std::fs::write(pet.join("wrong.webp"), png(b"wrong container")).unwrap();
+        assert!(motion_asset(&root, "azure", "wrong.png").is_err());
+        assert!(motion_asset(&root, "azure", "wrong.webp").is_err());
+        std::fs::write(
+            pet.join("too-large.png"),
+            vec![0u8; MAX_MOTION_ASSET_BYTES + 1],
+        )
+        .unwrap();
+        assert!(motion_asset(&root, "azure", "too-large.png").is_err());
+        assert!(motion_asset(&root, "..", "sleep-z.png").is_err());
+
+        std::fs::remove_dir_all(root).ok();
     }
 
     /// Put a pet on disk the way a finished `install` leaves one. Synchronous, so the shelf can be

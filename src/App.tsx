@@ -135,11 +135,24 @@ export default function App() {
   const [splash, setSplash] = useState<SplashPhase>('splash');
 
   /**
-   * The sidebar mascot's mood. Five triggers live in `state/useMascot.ts`: a failure alarms him, a tone
-   * change crosses his lenses, a poke gets a double-take, a minute idle puts him to sleep, and
-   * everything else is idle. Onboarding drives its own six from its step cursor.
+   * The sidebar mascot's mood. Failures, tone changes, direct interaction, active work, successful
+   * completion, and one minute of inactivity all have distinct reactions. Onboarding drives its own
+   * six from its step cursor.
    */
-  const mascot = useMascot(tone, lib.error);
+  const mascotWorking =
+    preparing ||
+    lib.busy ||
+    lib.bulk != null ||
+    Object.keys(lib.downloading).length > 0 ||
+    up.state.phase === 'checking' ||
+    up.state.phase === 'downloading' ||
+    up.state.phase === 'installing';
+  const mascot = useMascot(
+    tone,
+    lib.error,
+    mascotWorking,
+    view === 'reader' || view === 'notebook',
+  );
 
   /* ---- routing ----------------------------------------------------------- */
 
@@ -496,6 +509,10 @@ export default function App() {
               </div>
             </div>
           )}
+
+          <div className="notebook-mascot" aria-hidden="true" onPointerDown={mascot.poke}>
+            <Mascot size={160} petSize="clamp(260px, 34vh, 400px)" mood={mascot.mood} />
+          </div>
 
           <CommandPalette
             open={palette}

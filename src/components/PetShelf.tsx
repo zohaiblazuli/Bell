@@ -103,7 +103,7 @@ function Thumb({ url, alt }: { url: string | null; alt: string }) {
 function InstalledArt({ id }: { id: string }) {
   const pet = usePet(id);
   if (!pet) return <div className="pets-thumb pets-thumb--empty" aria-hidden />;
-  return <Pet sheet={pet.url} version={pet.version} size={TILE} />;
+  return <Pet sheet={pet.url} version={pet.version} density={pet.density} size={TILE} />;
 }
 
 /* ── the shelf ─────────────────────────────────────────────────────────────────────────────────── */

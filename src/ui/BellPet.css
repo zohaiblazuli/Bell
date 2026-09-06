@@ -1,0 +1,32 @@
+/* Bell-native motion layers over the still-mounted legacy pet, so unsupported moods and broken
+   optional assets always have an immediate fallback. The 192:208 canvas keeps Pet's exact footprint. */
+.bell-pet {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.bell-pet > .bell-pet__legacy,
+.bell-pet__canvas {
+  grid-area: 1 / 1;
+}
+
+.bell-pet > .bell-pet__legacy {
+  opacity: 1;
+}
+
+.bell-pet__canvas {
+  width: 92.3077%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.bell-pet[data-canvas='visible'] > .bell-pet__legacy {
+  opacity: 0;
+}
+
+.bell-pet[data-canvas='visible'] > .bell-pet__canvas {
+  opacity: 1;
+}

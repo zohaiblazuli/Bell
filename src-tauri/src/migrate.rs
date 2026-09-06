@@ -57,12 +57,17 @@ pub fn run(new_dir: &Path) -> Result<Option<Report>, String> {
     let new_state = new_dir.join("state");
     if old_state.is_dir() {
         std::fs::create_dir_all(&new_state).map_err(|e| e.to_string())?;
-        for entry in std::fs::read_dir(&old_state).map_err(|e| e.to_string())?.flatten() {
+        for entry in std::fs::read_dir(&old_state)
+            .map_err(|e| e.to_string())?
+            .flatten()
+        {
             let from = entry.path();
             if from.extension().and_then(|e| e.to_str()) != Some("json") {
                 continue;
             }
-            let Some(name) = from.file_name() else { continue };
+            let Some(name) = from.file_name() else {
+                continue;
+            };
             let to = new_state.join(name);
             // Never overwrite: anything already here was written under the new identifier and is
             // newer than what we are copying.
@@ -112,13 +117,23 @@ mod tests {
     #[test]
     fn carries_state_and_index_across() {
         let (root, old, new) = scratch("copies");
-        std::fs::write(old.join("state").join("bookmarks.json"), r#"["9709-s24-12"]"#).unwrap();
+        std::fs::write(
+            old.join("state").join("bookmarks.json"),
+            r#"["9709-s24-12"]"#,
+        )
+        .unwrap();
         std::fs::write(old.join("state").join("focus.json"), r#"{"2026-09-02":41}"#).unwrap();
         std::fs::write(old.join("state").join("ink.9709-s24-12.json"), "[]").unwrap();
         std::fs::write(old.join("index.sqlite3"), b"not really sqlite").unwrap();
 
         let report = run(&new).unwrap().expect("should report a migration");
-        assert_eq!(report, Report { state_files: 3, index_copied: true });
+        assert_eq!(
+            report,
+            Report {
+                state_files: 3,
+                index_copied: true
+            }
+        );
         assert_eq!(
             std::fs::read_to_string(new.join("state").join("bookmarks.json")).unwrap(),
             r#"["9709-s24-12"]"#
@@ -135,7 +150,10 @@ mod tests {
         let (root, old, new) = scratch("once");
         std::fs::write(old.join("state").join("bookmarks.json"), "[]").unwrap();
         assert!(run(&new).unwrap().is_some());
-        assert!(run(&new).unwrap().is_none(), "the marker should short-circuit the second run");
+        assert!(
+            run(&new).unwrap().is_none(),
+            "the marker should short-circuit the second run"
+        );
         std::fs::remove_dir_all(&root).ok();
     }
 
@@ -161,7 +179,10 @@ mod tests {
         std::fs::remove_dir_all(&root).ok();
         let new = root.join("com.bell.study");
         assert!(run(&new).unwrap().is_none());
-        assert!(new.join(MARKER).is_file(), "even a no-op should leave the marker");
+        assert!(
+            new.join(MARKER).is_file(),
+            "even a no-op should leave the marker"
+        );
         std::fs::remove_dir_all(&root).ok();
     }
 }

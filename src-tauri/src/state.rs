@@ -44,7 +44,9 @@ pub fn state_load(dir: State<'_, StateDir>) -> Result<HashMap<String, String>, S
         if path.extension().and_then(|e| e.to_str()) != Some("json") {
             continue;
         }
-        let Some(key) = path.file_stem().and_then(|s| s.to_str()) else { continue };
+        let Some(key) = path.file_stem().and_then(|s| s.to_str()) else {
+            continue;
+        };
         if let Ok(text) = std::fs::read_to_string(&path) {
             out.insert(key.to_string(), text);
         }
@@ -154,7 +156,10 @@ pub fn reset_into(
         .query_row("SELECT COUNT(*) FROM download", [], |r| r.get(0))
         .map_err(|e| e.to_string())?;
     let state_files = clear_state_files(state_dir)?;
-    Ok(ResetReport { state_files, downloads_kept })
+    Ok(ResetReport {
+        state_files,
+        downloads_kept,
+    })
 }
 
 /// Copy the state dir into `<app data>/exports/<name>` and return where it landed.
@@ -188,7 +193,9 @@ pub fn state_export(dir: State<'_, StateDir>, name: String) -> Result<String, St
         if path.extension().and_then(|e| e.to_str()) != Some("json") {
             continue;
         }
-        let Some(file) = path.file_name() else { continue };
+        let Some(file) = path.file_name() else {
+            continue;
+        };
         std::fs::copy(&path, root.join(file)).map_err(|e| e.to_string())?;
     }
     Ok(root.to_string_lossy().into_owned())
@@ -260,7 +267,10 @@ mod tests {
         let report = reset_into(&conn, &state_dir).unwrap();
 
         assert_eq!(report.state_files, 4, "four json keys went");
-        assert_eq!(report.downloads_kept, 1, "the paper on disk is still recorded");
+        assert_eq!(
+            report.downloads_kept, 1,
+            "the paper on disk is still recorded"
+        );
 
         let count = |sql: &str| -> i64 { conn.query_row(sql, [], |r| r.get(0)).unwrap() };
         assert_eq!(count("SELECT COUNT(*) FROM catalog_paper"), 0);
@@ -274,11 +284,17 @@ mod tests {
         // treat a v2 database as brand new.
         assert!(crate::db::get_meta(&conn, "catalog_etag").is_none());
         assert!(crate::db::get_meta(&conn, "install_id").is_none());
-        assert_eq!(crate::db::get_meta(&conn, "schema_version").as_deref(), Some("2"));
+        assert_eq!(
+            crate::db::get_meta(&conn, "schema_version").as_deref(),
+            Some("2")
+        );
 
         assert!(!state_dir.join("bookmarks.json").exists());
         assert!(!state_dir.join("onboarding.json").exists());
-        assert!(state_dir.join("notes.txt").exists(), "only *.json is ours to delete");
+        assert!(
+            state_dir.join("notes.txt").exists(),
+            "only *.json is ours to delete"
+        );
 
         // Idempotent: resetting an already-reset install is a no-op, not an error.
         let again = reset_into(&conn, &state_dir).unwrap();
@@ -309,7 +325,10 @@ mod tests {
 
         let entries = std::fs::read_dir(&root).unwrap().count();
         assert_eq!(entries, 1);
-        assert_eq!(std::fs::read_to_string(&path).unwrap(), r#"{"tone":"night"}"#);
+        assert_eq!(
+            std::fs::read_to_string(&path).unwrap(),
+            r#"{"tone":"night"}"#
+        );
         std::fs::remove_dir_all(&root).ok();
     }
 

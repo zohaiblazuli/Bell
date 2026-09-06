@@ -125,7 +125,10 @@ pub struct NbStat {
 /// `root.join(id)` safe to say once. Every command that takes an id reaches the filesystem through
 /// `nb_dir`, so a crafted id is refused before a byte is read or written.
 pub fn valid_id(id: &str) -> bool {
-    id.len() == 16 && id.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
+    id.len() == 16
+        && id
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
 }
 
 /// `^[0-9a-f]{64}$`. An asset name is a sha256 this module wrote, so the same closed-charset
@@ -170,9 +173,8 @@ fn fresh_id() -> String {
         .map(|d| d.as_nanos() as u64)
         .unwrap_or(0);
     let seq = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let mut state = nanos
-        ^ seq.wrapping_mul(0x9E37_79B9_7F4A_7C15)
-        ^ ((std::process::id() as u64) << 32);
+    let mut state =
+        nanos ^ seq.wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ ((std::process::id() as u64) << 32);
     let mut out = String::with_capacity(16);
     for _ in 0..16 {
         state = state.wrapping_add(0x9E37_79B9_7F4A_7C15);
@@ -277,7 +279,10 @@ fn page_indices(pages: &Path) -> Vec<u32> {
         if path.extension().and_then(|e| e.to_str()) != Some("json") {
             continue;
         }
-        let index = path.file_stem().and_then(|s| s.to_str()).and_then(page_index_of);
+        let index = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .and_then(page_index_of);
         out.extend(index);
     }
     out
@@ -409,7 +414,9 @@ pub fn list(root: &Path) -> Result<Vec<NbEntry>, String> {
             if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
                 continue;
             }
-            let Some(id) = entry.file_name().to_str().map(str::to_string) else { continue };
+            let Some(id) = entry.file_name().to_str().map(str::to_string) else {
+                continue;
+            };
             if !valid_id(&id) {
                 continue;
             }
@@ -424,7 +431,10 @@ pub fn list(root: &Path) -> Result<Vec<NbEntry>, String> {
         refresh_index(root, &fresh);
     }
 
-    let mut out: Vec<NbEntry> = fresh.into_iter().map(|meta| entry_for(root, meta)).collect();
+    let mut out: Vec<NbEntry> = fresh
+        .into_iter()
+        .map(|meta| entry_for(root, meta))
+        .collect();
     // The id breaks a tie so the order is stable: two notebooks can share a millisecond, and a shelf
     // that reshuffles between renders would read as a bug.
     out.sort_by(|a, b| {
@@ -471,7 +481,12 @@ pub fn create(root: &Path, authored: NbAuthored) -> Result<NbEntry, String> {
     let authored = checked(authored)?;
     let id = claim_id(root)?;
     let now = now_ms();
-    let meta = NbMeta { id, created_at: now, updated_at: now, authored };
+    let meta = NbMeta {
+        id,
+        created_at: now,
+        updated_at: now,
+        authored,
+    };
     write_meta(root, &meta)?;
     cache_row(root, &meta);
     Ok(entry_for(root, meta))
@@ -521,7 +536,9 @@ pub fn delete(root: &Path, id: &str) -> Result<(), String> {
 /// swallowed on purpose: losing a timestamp reorders a shelf, whereas returning an error once the page
 /// bytes have already landed would tell the caller its drawing was lost.
 fn touch(root: &Path, id: &str) {
-    let Ok(mut meta) = read_meta(root, id) else { return };
+    let Ok(mut meta) = read_meta(root, id) else {
+        return;
+    };
     meta.updated_at = now_ms();
     if write_meta(root, &meta).is_ok() {
         cache_row(root, &meta);
@@ -532,9 +549,13 @@ fn touch(root: &Path, id: &str) {
 
 fn page_path(root: &Path, id: &str, page: u32) -> Result<PathBuf, String> {
     if page > MAX_PAGE_INDEX {
-        return Err(format!("page {page} is past the end of the four-digit page format"));
+        return Err(format!(
+            "page {page} is past the end of the four-digit page format"
+        ));
     }
-    Ok(nb_dir(root, id)?.join("pages").join(format!("{page:04}.json")))
+    Ok(nb_dir(root, id)?
+        .join("pages")
+        .join(format!("{page:04}.json")))
 }
 
 /// Refuse to write into a notebook that is not there.
@@ -648,7 +669,11 @@ pub fn asset_load(root: &Path, id: &str, sha: &str) -> Result<Vec<u8>, String> {
 /// the derived numbers are defined for that case, since a notebook always has one spread.
 pub fn stat(root: &Path, id: &str) -> Result<NbStat, String> {
     let (pages, bytes, assets) = usage(&nb_dir(root, id)?);
-    Ok(NbStat { pages, bytes, assets })
+    Ok(NbStat {
+        pages,
+        bytes,
+        assets,
+    })
 }
 
 // ─── Export ──────────────────────────────────────────────────────────────────
@@ -679,7 +704,8 @@ pub fn export(root: &Path, id: &str, name: &str) -> Result<PathBuf, String> {
         .join("exports")
         .join(name);
     std::fs::create_dir_all(&target).map_err(|e| format!("{}: {e}", target.display()))?;
-    std::fs::copy(&meta, target.join("meta.json")).map_err(|e| format!("{}: {e}", meta.display()))?;
+    std::fs::copy(&meta, target.join("meta.json"))
+        .map_err(|e| format!("{}: {e}", meta.display()))?;
     for folder in ["pages", "assets"] {
         copy_flat(&source.join(folder), &target.join(folder))?;
     }
@@ -700,7 +726,9 @@ fn copy_flat(from: &Path, to: &Path) -> Result<(), String> {
             continue;
         }
         let path = entry.path();
-        let Some(file) = path.file_name() else { continue };
+        let Some(file) = path.file_name() else {
+            continue;
+        };
         std::fs::copy(&path, to.join(file)).map_err(|e| format!("{}: {e}", path.display()))?;
     }
     Ok(())
@@ -760,10 +788,7 @@ pub fn nb_page_delete(dir: State<'_, NotebookDir>, id: String, page: u32) -> Res
 }
 
 #[tauri::command]
-pub fn nb_history_load(
-    dir: State<'_, NotebookDir>,
-    id: String,
-) -> Result<Option<String>, String> {
+pub fn nb_history_load(dir: State<'_, NotebookDir>, id: String) -> Result<Option<String>, String> {
     history_load(&dir.0, &id)
 }
 
@@ -804,11 +829,7 @@ pub fn nb_stat(dir: State<'_, NotebookDir>, id: String) -> Result<NbStat, String
 }
 
 #[tauri::command]
-pub fn nb_export(
-    dir: State<'_, NotebookDir>,
-    id: String,
-    name: String,
-) -> Result<String, String> {
+pub fn nb_export(dir: State<'_, NotebookDir>, id: String, name: String) -> Result<String, String> {
     export(&dir.0, &id, &name).map(|path| path.to_string_lossy().into_owned())
 }
 
@@ -837,7 +858,10 @@ mod tests {
             sticker: Some("physics".to_string()),
             paper: "ruled".to_string(),
             margin: true,
-            subject: Some(NbSubject { code: "9702".to_string(), name: "Physics".to_string() }),
+            subject: Some(NbSubject {
+                code: "9702".to_string(),
+                name: "Physics".to_string(),
+            }),
         }
     }
 
@@ -861,13 +885,19 @@ mod tests {
     /// than by existence alone.
     fn fingerprint(dir: &Path) -> Vec<(String, Vec<u8>)> {
         fn walk(root: &Path, dir: &Path, out: &mut Vec<(String, Vec<u8>)>) {
-            let Ok(entries) = std::fs::read_dir(dir) else { return };
+            let Ok(entries) = std::fs::read_dir(dir) else {
+                return;
+            };
             for entry in entries.flatten() {
                 let path = entry.path();
                 if path.is_dir() {
                     walk(root, &path, out);
                 } else if let Ok(bytes) = std::fs::read(&path) {
-                    let rel = path.strip_prefix(root).unwrap().to_string_lossy().into_owned();
+                    let rel = path
+                        .strip_prefix(root)
+                        .unwrap()
+                        .to_string_lossy()
+                        .into_owned();
                     out.push((rel, bytes));
                 }
             }
@@ -886,10 +916,15 @@ mod tests {
         assert_eq!(id.len(), 16, "{id}");
         assert!(valid_id(&id), "{id}");
         assert!(
-            id.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit()),
+            id.bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit()),
             "{id} must satisfy ^[a-z0-9]{{16}}$"
         );
-        assert_ne!(fresh_id(), fresh_id(), "two ids minted in one session must differ");
+        assert_ne!(
+            fresh_id(),
+            fresh_id(),
+            "two ids minted in one session must differ"
+        );
 
         assert!(!valid_id(""));
         assert!(!valid_id("abcdefghijklmno"), "fifteen");
@@ -946,10 +981,22 @@ mod tests {
             page_save(&root, &id, 0, r#"{"v":1}"#).is_err(),
             "a page write must not recreate the directory"
         );
-        assert!(history_save(&root, &id, "[]").is_err(), "nor a history write");
-        assert!(asset_put(&root, &id, &png(b"clip")).is_err(), "nor an asset");
-        assert!(!root.join(&id).exists(), "and must leave nothing behind on the way out");
-        assert!(list(&root).unwrap().is_empty(), "so nothing is stranded where the shelf cannot look");
+        assert!(
+            history_save(&root, &id, "[]").is_err(),
+            "nor a history write"
+        );
+        assert!(
+            asset_put(&root, &id, &png(b"clip")).is_err(),
+            "nor an asset"
+        );
+        assert!(
+            !root.join(&id).exists(),
+            "and must leave nothing behind on the way out"
+        );
+        assert!(
+            list(&root).unwrap().is_empty(),
+            "so nothing is stranded where the shelf cannot look"
+        );
 
         // The same guard cannot lock out a notebook that DOES exist — that is the whole difference.
         let live = create(&root, authored("Waves")).unwrap().meta.id;
@@ -966,7 +1013,11 @@ mod tests {
     /// start disagreeing about the same notebook.
     #[test]
     fn the_page_count_is_derived_from_the_highest_page_file() {
-        assert_eq!(page_count_from_max_index(-1), 2, "nothing written is still one spread");
+        assert_eq!(
+            page_count_from_max_index(-1),
+            2,
+            "nothing written is still one spread"
+        );
         assert_eq!(page_count_from_max_index(0), 2);
         assert_eq!(page_count_from_max_index(1), 2);
         assert_eq!(page_count_from_max_index(2), 4);
@@ -1039,7 +1090,10 @@ mod tests {
         std::fs::write(state_dir.join("bookmarks.json"), b"[]").unwrap();
 
         let before = fingerprint(&notebooks);
-        assert!(before.len() >= 5, "meta, index, two pages, history and an asset");
+        assert!(
+            before.len() >= 5,
+            "meta, index, two pages, history and an asset"
+        );
 
         crate::db::clear_catalog(&conn).unwrap();
         let report = crate::state::reset_into(&conn, &state_dir).unwrap();
@@ -1049,7 +1103,11 @@ mod tests {
             .unwrap();
         assert_eq!(subjects, 0, "and the catalogue really did go");
 
-        assert_eq!(fingerprint(&notebooks), before, "notebooks\\ is byte for byte as it was");
+        assert_eq!(
+            fingerprint(&notebooks),
+            before,
+            "notebooks\\ is byte for byte as it was"
+        );
         let nb = notebooks.join(&id);
         assert!(nb.join("meta.json").exists());
         assert!(nb.join("pages").join("0000.json").exists());
@@ -1074,8 +1132,14 @@ mod tests {
         let created = create(&root, authored("  Mechanics  ")).unwrap();
         let id = created.meta.id.clone();
         assert!(valid_id(&id), "{id}");
-        assert_eq!(created.meta.authored.name, "Mechanics", "the stored name is trimmed");
-        assert_eq!(created.meta.created_at, created.meta.updated_at, "never edited");
+        assert_eq!(
+            created.meta.authored.name, "Mechanics",
+            "the stored name is trimmed"
+        );
+        assert_eq!(
+            created.meta.created_at, created.meta.updated_at,
+            "never edited"
+        );
         assert_eq!(created.pages, 2, "one spread before anything is written");
         assert_eq!(created.bytes, 0);
 
@@ -1117,8 +1181,16 @@ mod tests {
         // which a modification time cannot on a machine this fast.
         let asset = root.join(&id).join("assets").join(format!("{sha}.png"));
         std::fs::write(&asset, png(b"sentinel")).unwrap();
-        assert_eq!(asset_put(&root, &id, &image).unwrap(), sha, "the same bytes, the same name");
-        assert_eq!(std::fs::read(&asset).unwrap(), png(b"sentinel"), "left exactly as it was");
+        assert_eq!(
+            asset_put(&root, &id, &image).unwrap(),
+            sha,
+            "the same bytes, the same name"
+        );
+        assert_eq!(
+            std::fs::read(&asset).unwrap(),
+            png(b"sentinel"),
+            "left exactly as it was"
+        );
         std::fs::write(&asset, &image).unwrap();
 
         let stats = stat(&root, &id).unwrap();
@@ -1152,13 +1224,20 @@ mod tests {
         assert!(history_load(&root, &id).unwrap().is_some());
         assert_eq!(asset_load(&root, &id, &sha).unwrap(), image);
         assert!(asset_load(&root, &id, "nope").is_err(), "not a sha");
-        assert!(asset_load(&root, &id, &"f".repeat(64)).is_err(), "a sha for a file that is not there");
+        assert!(
+            asset_load(&root, &id, &"f".repeat(64)).is_err(),
+            "a sha for a file that is not there"
+        );
 
         // A rename keeps the stored createdAt and stamps updatedAt.
         let renamed = meta_save(
             &root,
             &id,
-            NbAuthored { name: "Waves".to_string(), cover: 8, ..authored("ignored") },
+            NbAuthored {
+                name: "Waves".to_string(),
+                cover: 8,
+                ..authored("ignored")
+            },
         )
         .unwrap();
         assert_eq!(renamed.meta.id, id);
@@ -1177,26 +1256,89 @@ mod tests {
 
         // What the New Notebook dialog must not be able to store. A rejected create claims no id, so
         // none of these leaves a directory behind.
-        assert!(create(&root, NbAuthored { name: "   ".to_string(), ..authored("x") }).is_err());
-        assert!(create(&root, NbAuthored { name: "x".repeat(81), ..authored("x") }).is_err());
-        assert!(create(&root, NbAuthored { cover: 0, ..authored("Mechanics") }).is_err());
-        assert!(create(&root, NbAuthored { cover: 9, ..authored("Mechanics") }).is_err());
-        assert!(create(&root, NbAuthored { paper: "squared".to_string(), ..authored("M") }).is_err());
-        assert!(meta_save(&root, &id, NbAuthored { name: String::new(), ..authored("x") }).is_err());
-        let survivor = create(&root, NbAuthored { name: "x".repeat(80), ..authored("x") }).unwrap();
+        assert!(create(
+            &root,
+            NbAuthored {
+                name: "   ".to_string(),
+                ..authored("x")
+            }
+        )
+        .is_err());
+        assert!(create(
+            &root,
+            NbAuthored {
+                name: "x".repeat(81),
+                ..authored("x")
+            }
+        )
+        .is_err());
+        assert!(create(
+            &root,
+            NbAuthored {
+                cover: 0,
+                ..authored("Mechanics")
+            }
+        )
+        .is_err());
+        assert!(create(
+            &root,
+            NbAuthored {
+                cover: 9,
+                ..authored("Mechanics")
+            }
+        )
+        .is_err());
+        assert!(create(
+            &root,
+            NbAuthored {
+                paper: "squared".to_string(),
+                ..authored("M")
+            }
+        )
+        .is_err());
+        assert!(meta_save(
+            &root,
+            &id,
+            NbAuthored {
+                name: String::new(),
+                ..authored("x")
+            }
+        )
+        .is_err());
+        let survivor = create(
+            &root,
+            NbAuthored {
+                name: "x".repeat(80),
+                ..authored("x")
+            },
+        )
+        .unwrap();
 
         // An unchecked blob under a .png name is how a page ends up with an image nothing can decode.
         assert!(asset_put(&root, &id, b"<!DOCTYPE html><title>404</title>").is_err());
-        assert!(asset_put(&root, &id, b"\x89PNG").is_err(), "half a signature");
+        assert!(
+            asset_put(&root, &id, b"\x89PNG").is_err(),
+            "half a signature"
+        );
         assert!(asset_put(&root, &id, &[]).is_err());
-        assert!(asset_put(&root, &id, &vec![0u8; MAX_ASSET_BYTES + 1]).is_err(), "over the cap");
+        assert!(
+            asset_put(&root, &id, &vec![0u8; MAX_ASSET_BYTES + 1]).is_err(),
+            "over the cap"
+        );
 
         delete(&root, &id).unwrap();
         assert!(!root.join(&id).exists());
         assert!(page_load(&root, &id, 0).unwrap().is_none());
-        assert!(read_index(&root).iter().all(|r| r.id != id), "the index entry went with it");
+        assert!(
+            read_index(&root).iter().all(|r| r.id != id),
+            "the index entry went with it"
+        );
         let left = list(&root).unwrap();
-        assert_eq!(left.len(), 1, "only the notebook the rejected creates did not make");
+        assert_eq!(
+            left.len(),
+            1,
+            "only the notebook the rejected creates did not make"
+        );
         assert_eq!(left[0].meta.id, survivor.meta.id);
 
         std::fs::remove_dir_all(&root).ok();
@@ -1238,7 +1380,11 @@ mod tests {
         let pruned = list(&root).unwrap();
         assert_eq!(pruned.len(), 2, "the ghost is dropped");
         assert!(pruned.iter().all(|r| r.meta.id != "0000000000000000"));
-        assert_eq!(read_index(&root).len(), 2, "and the cache no longer carries it");
+        assert_eq!(
+            read_index(&root).len(),
+            2,
+            "and the cache no longer carries it"
+        );
 
         // Adoption needs a readable meta.json, and a list is a read: it deletes nothing.
         let orphan = root.join("aaaaaaaaaaaaaaaa");
@@ -1249,12 +1395,22 @@ mod tests {
         // A hand-copied notebook directory is adopted, which is the other half of the reconciliation.
         let copied = root.join("bbbbbbbbbbbbbbbb");
         std::fs::create_dir_all(&copied).unwrap();
-        std::fs::copy(root.join(&older).join("meta.json"), copied.join("meta.json")).unwrap();
+        std::fs::copy(
+            root.join(&older).join("meta.json"),
+            copied.join("meta.json"),
+        )
+        .unwrap();
         let adopted = list(&root).unwrap();
         assert_eq!(adopted.len(), 3);
-        let found = adopted.iter().find(|r| r.meta.id == "bbbbbbbbbbbbbbbb").unwrap();
+        let found = adopted
+            .iter()
+            .find(|r| r.meta.id == "bbbbbbbbbbbbbbbb")
+            .unwrap();
         assert_eq!(found.meta.authored.name, "Mechanics");
-        assert_eq!(found.meta.id, "bbbbbbbbbbbbbbbb", "the directory names it, not the copied file");
+        assert_eq!(
+            found.meta.id, "bbbbbbbbbbbbbbbb",
+            "the directory names it, not the copied file"
+        );
         assert_eq!(read_index(&root).len(), 3);
 
         // A healthy shelf render writes nothing. Compact JSON is the same rows in different text, so
@@ -1280,7 +1436,10 @@ mod tests {
         let sha = asset_put(&notebooks, &id, &png(b"clip")).unwrap();
 
         let target = export(&notebooks, &id, "bell-notebook-2026-09-05").unwrap();
-        assert_eq!(target, root.join("exports").join("bell-notebook-2026-09-05"));
+        assert_eq!(
+            target,
+            root.join("exports").join("bell-notebook-2026-09-05")
+        );
         assert!(target.join("meta.json").exists());
         assert_eq!(
             std::fs::read_to_string(target.join("pages").join("0000.json")).unwrap(),
@@ -1291,7 +1450,10 @@ mod tests {
             !target.join("history.json").exists(),
             "an export is the work, not the undo stack that produced it"
         );
-        assert!(notebooks.join(&id).join("meta.json").exists(), "a copy, so the notebook stays put");
+        assert!(
+            notebooks.join(&id).join("meta.json").exists(),
+            "a copy, so the notebook stays put"
+        );
 
         for bad in ["../elsewhere", r"..\elsewhere", "nested/name", "C:evil", ""] {
             assert!(export(&notebooks, &id, bad).is_err(), "{bad}");

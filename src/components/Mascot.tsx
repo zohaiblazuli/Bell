@@ -20,6 +20,7 @@
  * synchronous accessors are for, and it keeps the swap at each of the five call sites to one word.
  */
 import MrBell, { type BellMood } from '@ui/brand/MrBell';
+import BellPet from '@ui/BellPet';
 import Pet from '@ui/Pet';
 import { petStateForMood } from '@/lib/pets';
 import { loadSettings } from '@/lib/store';
@@ -28,19 +29,48 @@ import { usePet } from '@/state/usePet';
 export interface MascotProps {
   /** Box size in px — 160 in every sidebar and onboarding slot, 96 in a dialog. */
   size?: number;
+  /** Optional pet-only size; lets non-square atlas art use space without resizing Mr. Bell. */
+  petSize?: number | string;
   /** What the app just did, in Mr. Bell's vocabulary. Translated for a pet. */
   mood?: BellMood;
+  /** Pet-only playback multiplier. Mr. Bell keeps his authored timing. */
+  playbackRate?: number;
   className?: string;
 }
 
-export default function Mascot({ size = 160, mood = 'idle', className }: MascotProps) {
-  const pet = usePet(loadSettings().pet);
+export default function Mascot({
+  size = 160,
+  petSize,
+  mood = 'idle',
+  playbackRate,
+  className,
+}: MascotProps) {
+  const settings = loadSettings();
+  // Azure is part of Bell itself now. The selection machinery remains intact for future use, but a
+  // stale setting from an older build cannot replace the mascot shipped by this one.
+  const pet = usePet('azure');
   if (!pet) return <MrBell size={size} mood={mood} className={className} />;
+  if (pet.motion) {
+    return (
+      <BellPet
+        sheet={pet.url}
+        version={pet.version}
+        density={pet.density}
+        motion={pet.motion}
+        mood={mood}
+        size={petSize ?? size}
+        className={className}
+        reduceMotion={settings.reduceMotion}
+        playbackRate={playbackRate}
+      />
+    );
+  }
   return (
     <Pet
       sheet={pet.url}
       version={pet.version}
-      size={size}
+      density={pet.density}
+      size={petSize ?? size}
       state={petStateForMood(pet.version, mood)}
       className={className}
     />

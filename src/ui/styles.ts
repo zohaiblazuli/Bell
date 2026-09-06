@@ -2,6 +2,7 @@
    The component layer's stylesheet index, imported by main.tsx AFTER app.css so a primitive's
    rules win over the hand-written block it replaces. One import per component. */
 import './ActivityGrid.css';
+import './BellPet.css';
 import './brand/MrBell.css';
 import './Button.css';
 import './Card.css';
