@@ -1,4 +1,15 @@
-# Logs
+# ---- Dependencies ----
+node_modules
+
+# ---- Build output ----
+dist
+dist-ssr
+*.local
+# Rust/Tauri build artifacts are also covered by src-tauri/.gitignore
+src-tauri/target/
+src-tauri/gen/schemas/
+
+# ---- Logs ----
 logs
 *.log
 npm-debug.log*
@@ -7,24 +18,78 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# ---- Caches / generated ----
+*.tsbuildinfo
+.vite/
+.cache/
+.eslintcache
 
-# Editor directories and files
+# ---- Python (helper scripts under scripts/ and pets/*/tools/) ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# ---- Secrets / credentials (safety net; none currently in repo) ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.jks
+id_rsa*
+*.mtree
+# Tauri code-signing private keys (never commit these; pubkey in tauri.conf is fine)
+*.minisign
+tauri-private.key
+TAURI_SIGNING_PRIVATE_KEY*
+
+# ---- Editor / IDE ----
 .vscode/*
 !.vscode/extensions.json
 .idea
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
+# ---- OS junk ----
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ---- Project-local scratch / working files ----
+# window captures for design comparison (npm run shot)
+.shots/
 # generated app-icon source (npm run icon)
 .icon-src.png
+# local scratch: onboarding mockups + the release manifest is published to GitHub Releases, not the repo
+work/
+# impeccable hook cache (config.json stays tracked; cache is machine-local)
+.impeccable/hook.cache.json
 
-# window captures for design comparison
-.shots/
+# ---- Design references / mood-boards (local only) ----
+idea/
+media/
+demos/
+bell-mascots/
+design-layers/
+
+# ---- Internal working notes (not shipped) ----
+CLAUDE.md
+TASKS.md
+
+# ---- Design system specs (docs; not imported at build/runtime) ----
+design/specs/
+
+# ---- Pet generation scratch (kept local) ----
+# NOTE: pets/azure/ is COMPILED INTO THE BINARY via include_bytes! in src-tauri/src/pets.rs
+#       and MUST stay tracked. Everything else under pets/ is generation scratch.
+pets/*
+!pets/azure/
+# design/brand/ stays tracked: azure-bell-logo-final.png is the `npm run icon` build input.
