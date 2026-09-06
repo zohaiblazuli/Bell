@@ -76,6 +76,9 @@ work/
 # ---- Design references / mood-boards (local only) ----
 idea/
 media/
+# but the README's images live in docs/media/ and MUST ship
+!docs/media/
+!docs/media/**
 demos/
 bell-mascots/
 design-layers/
