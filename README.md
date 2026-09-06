@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/media/bell-icon.png" alt="Bell" width="140" />
+<img src="docs/media/bell-icon.png" alt="Bell" width="280" />
 
 # Bell
 
@@ -17,6 +17,10 @@ Browse the entire CAIE catalogue, pull the papers you want onto your own machine
 ![Rust](https://img.shields.io/badge/Rust-Tauri%20core-000000?style=flat-square&logo=rust&logoColor=white)
 ![Version](https://img.shields.io/badge/version-0.1.7-blue?style=flat-square)
 
+<br />
+
+<img src="docs/media/jump.gif" alt="" width="260" />
+
 </div>
 
 <br />
@@ -29,11 +33,19 @@ Browse the entire CAIE catalogue, pull the papers you want onto your own machine
 
 ## What it is
 
+<table><tr><td valign="top" width="72%">
+
 Bell is a downloadable Windows desktop app for focused studying of Cambridge (CAIE) exam papers. It downloads the papers you ask for onto your own machine and then gets out of the way so you can work.
 
 Everything that matters happens locally. Browsing, searching, reading, annotating, timing, and drawing all keep working with the network unplugged — off the cached catalogue and the files already on disk.
 
+</td><td valign="top" align="center" width="28%">
+<img src="docs/media/teacher-loop.gif" alt="" width="200" />
+</td></tr></table>
+
 ## Features
+
+<table><tr><td valign="top" width="72%">
 
 - **The whole CAIE catalogue, searchable.** A Level, IGCSE, and O Level — every subject, session, and variant. Filter by level, exam series, or your own done / revision flags, and jump anywhere with `⌘K`.
 - **Papers you actually own.** Bell fetches PDFs onto your machine into a clean, human-browsable folder tree. Once a paper is down, it opens with the network off.
@@ -43,7 +55,13 @@ Everything that matters happens locally. Browsing, searching, reading, annotatin
 - **Track the year.** A contribution-style activity grid, per-subject progress, session coverage, and a "due for review" queue on the dashboard.
 - **Day and Night.** A product-level tone toggle — not a system setting — with a design system tuned so the bright white PDF is always the clearest thing on screen.
 
+</td><td valign="top" align="center" width="28%">
+<img src="docs/media/review-look.gif" alt="" width="200" />
+</td></tr></table>
+
 ## A look around
+
+<table><tr><td valign="top" width="72%">
 
 <div align="center">
 
@@ -54,13 +72,17 @@ Everything that matters happens locally. Browsing, searching, reading, annotatin
 
 **Reader with live annotation and the focus timer**
 
-<img src="docs/media/reader-night.png" alt="Bell reader with annotation tools" width="85%" />
+<img src="docs/media/reader-night.png" alt="Bell reader with annotation tools" width="98%" />
 
 **Dashboard — the year at a glance**
 
-<img src="docs/media/dashboard-night.png" alt="Bell dashboard" width="85%" />
+<img src="docs/media/dashboard-night.png" alt="Bell dashboard" width="98%" />
 
 </div>
+
+</td><td valign="top" align="center" width="28%">
+<img src="docs/media/idle-playlist.gif" alt="" width="200" />
+</td></tr></table>
 
 ## Built with
 
@@ -75,6 +97,8 @@ Everything that matters happens locally. Browsing, searching, reading, annotatin
 The frontend never touches the network directly. All HTTP lives in Rust, which keeps the webview as network-isolated as it was when the app had no network at all.
 
 ## Getting started
+
+<table><tr><td valign="top" width="72%">
 
 > **Prerequisites:** [Node.js](https://nodejs.org) (with npm) and the [Rust toolchain](https://www.rust-lang.org/tools/install), plus the [Tauri v2 system dependencies](https://v2.tauri.app/start/prerequisites/) for your platform.
 
@@ -97,6 +121,10 @@ npm test               # unit tests (Node's own test runner)
 npm run tokens         # regenerate design tokens from the Figma-measured table
 npm run verify:papers  # end-to-end check of the catalogue API and download redirect
 ```
+
+</td><td valign="top" align="center" width="28%">
+<img src="docs/media/teacher-enter.gif" alt="" width="200" />
+</td></tr></table>
 
 ## How it fits together
 
@@ -130,7 +158,9 @@ Bell is **source-available, not open-source**. The code is public to read and le
 ---
 
 <div align="center">
-  <img src="docs/media/wave-kiss.gif" alt="" width="420" />
-  <br />
+  <img src="docs/media/sleep-loop.gif" alt="" width="260" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/media/wave-kiss.gif" alt="" width="260" />
+  <br /><br />
   <sub>Built with ♥ by <a href="https://github.com/zohaiblazuli">zohaiblazuli</a></sub>
 </div>
