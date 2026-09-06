@@ -29,7 +29,7 @@ Browse the entire CAIE catalogue, pull the papers you want onto your own machine
 
 ## What it is
 
-Bell is a downloadable Windows desktop app for focused studying of Cambridge (CAIE) exam papers. It reads its catalogue from the ShinyPapers web app, downloads the papers you ask for onto your own machine, and then gets out of the way so you can work.
+Bell is a downloadable Windows desktop app for focused studying of Cambridge (CAIE) exam papers. It downloads the papers you ask for onto your own machine and then gets out of the way so you can work.
 
 Everything that matters happens locally. Browsing, searching, reading, annotating, timing, and drawing all keep working with the network unplugged — off the cached catalogue and the files already on disk.
 
@@ -42,7 +42,6 @@ Everything that matters happens locally. Browsing, searching, reading, annotatin
 - **Time yourself.** A focus stopwatch lives in the top bar and feeds your weekly focus minutes.
 - **Track the year.** A contribution-style activity grid, per-subject progress, session coverage, and a "due for review" queue on the dashboard.
 - **Day and Night.** A product-level tone toggle — not a system setting — with a design system tuned so the bright white PDF is always the clearest thing on screen.
-- **Mr. Bell, and friends.** The pixel-art crab mascot lives at the foot of the sidebar. Bring in your own [Codex pet](https://codex-pets.net) and it takes his place.
 
 ## A look around
 
@@ -108,7 +107,7 @@ GET /api/desktop/v1/catalog                  the whole catalogue (~70 KB gzipped
 GET /api/desktop/v1/file/{paperId}/{qp|ms}   redirects to the real PDF, resolved server-side
 ```
 
-Downloads land under `Documents\ShinyPapers` in a browsable tree:
+Downloads land under `Documents\Bell` in a browsable tree:
 
 ```
 A Level\Mathematics (9709)\Feb-Mar (m16)\9709_m16_qp_62.pdf
@@ -120,18 +119,12 @@ A catalogue resync only ever replaces the catalogue tables — the record of wha
 
 Bell's interface is authored as a measured design system in the spirit of the OS-glass lineage (Aqua → visionOS → Liquid Glass), used as a material and an accent rather than wallpaper. Glass is chrome, never content; a single blue accent is spent as a line, not a wash; and difficulty carries its own separate warm heat scale. The hero of every screen is the bright white exam PDF.
 
-## Roadmap
-
-- An AI answer-checker — the seam for it already exists in the codebase, waiting behind a clean interface.
-
 ## License
 
 Bell is **source-available, not open-source**. The code is public to read and learn from, but it is not licensed for redistribution or commercial use — in part because it vendors third-party assets (the SF Pro typeface and Cambridge marks) that are not ours to relicense. See [LICENSE](LICENSE) for the full terms.
 
 ## Acknowledgements
 
-- Exam-paper catalogue and difficulty ratings from the ShinyPapers web app.
-- Pet format and ecosystem by [codex-pets.net](https://codex-pets.net).
 - Cambridge, CAIE, and the Cambridge Assessment International Education name and logo belong to Cambridge University Press & Assessment. Bell is an independent study tool and is not affiliated with or endorsed by Cambridge.
 
 ---
