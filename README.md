@@ -153,6 +153,7 @@ Bell is **source-available, not open-source**. The code is public to read and le
 
 ## Acknowledgements
 
+- [Hadeed Adeel](https://github.com/hadeed67) — for occasionally sharing his Codex account and making development a little smoother.
 - Cambridge, CAIE, and the Cambridge Assessment International Education name and logo belong to Cambridge University Press & Assessment. Bell is an independent study tool and is not affiliated with or endorsed by Cambridge.
 
 ---
