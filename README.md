@@ -19,7 +19,7 @@ Browse the entire CAIE catalogue, pull the papers you want onto your own machine
 
 <br />
 
-<img src="docs/media/jump.gif" alt="" width="260" />
+<img src="docs/media/jump.gif" alt="" width="380" />
 
 </div>
 
@@ -40,7 +40,7 @@ Bell is a downloadable Windows desktop app for focused studying of Cambridge (CA
 Everything that matters happens locally. Browsing, searching, reading, annotating, timing, and drawing all keep working with the network unplugged — off the cached catalogue and the files already on disk.
 
 </td><td valign="top" align="center" width="28%">
-<img src="docs/media/teacher-loop.gif" alt="" width="200" />
+<img src="docs/media/teacher-loop.gif" alt="" width="280" />
 </td></tr></table>
 
 ## Features
@@ -56,7 +56,7 @@ Everything that matters happens locally. Browsing, searching, reading, annotatin
 - **Day and Night.** A product-level tone toggle — not a system setting — with a design system tuned so the bright white PDF is always the clearest thing on screen.
 
 </td><td valign="top" align="center" width="28%">
-<img src="docs/media/review-look.gif" alt="" width="200" />
+<img src="docs/media/review-look.gif" alt="" width="280" />
 </td></tr></table>
 
 ## A look around
@@ -81,7 +81,7 @@ Everything that matters happens locally. Browsing, searching, reading, annotatin
 </div>
 
 </td><td valign="top" align="center" width="28%">
-<img src="docs/media/idle-playlist.gif" alt="" width="200" />
+<img src="docs/media/idle-playlist.gif" alt="" width="280" />
 </td></tr></table>
 
 ## Built with
@@ -98,7 +98,9 @@ The frontend never touches the network directly. All HTTP lives in Rust, which k
 
 ## Getting started
 
-<table><tr><td valign="top" width="72%">
+<div align="center">
+  <img src="docs/media/teacher-enter.gif" alt="" width="300" />
+</div>
 
 > **Prerequisites:** [Node.js](https://nodejs.org) (with npm) and the [Rust toolchain](https://www.rust-lang.org/tools/install), plus the [Tauri v2 system dependencies](https://v2.tauri.app/start/prerequisites/) for your platform.
 
@@ -121,10 +123,6 @@ npm test               # unit tests (Node's own test runner)
 npm run tokens         # regenerate design tokens from the Figma-measured table
 npm run verify:papers  # end-to-end check of the catalogue API and download redirect
 ```
-
-</td><td valign="top" align="center" width="28%">
-<img src="docs/media/teacher-enter.gif" alt="" width="200" />
-</td></tr></table>
 
 ## How it fits together
 
@@ -158,9 +156,9 @@ Bell is **source-available, not open-source**. The code is public to read and le
 ---
 
 <div align="center">
-  <img src="docs/media/sleep-loop.gif" alt="" width="260" />
+  <img src="docs/media/sleep-loop.gif" alt="" width="340" />
   &nbsp;&nbsp;&nbsp;
-  <img src="docs/media/wave-kiss.gif" alt="" width="260" />
+  <img src="docs/media/wave-kiss.gif" alt="" width="340" />
   <br /><br />
   <sub>Built with ♥ by <a href="https://github.com/zohaiblazuli">zohaiblazuli</a></sub>
 </div>
