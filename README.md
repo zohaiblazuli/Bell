@@ -25,12 +25,6 @@ Browse the entire CAIE catalogue, pull the papers you want onto your own machine
 
 <br />
 
-<div align="center">
-  <img src="docs/media/library-night.png" alt="Bell library — Night" width="85%" />
-</div>
-
-<br />
-
 ## What it is
 
 <table><tr><td valign="top" width="72%">
@@ -47,13 +41,14 @@ Everything that matters happens locally. Browsing, searching, reading, annotatin
 
 <table><tr><td valign="top" width="72%">
 
-- **The whole CAIE catalogue, searchable.** A Level, IGCSE, and O Level — every subject, session, and variant. Filter by level, exam series, or your own done / revision flags, and jump anywhere with `⌘K`.
+- **The whole CAIE catalogue, searchable.** A Level, IGCSE, and O Level — every subject, session, and variant. Filter by level, exam series, or your own done / revision flags, and jump anywhere with `Ctrl K`.
 - **Papers you actually own.** Bell fetches PDFs onto your machine into a clean, human-browsable folder tree. Once a paper is down, it opens with the network off.
-- **A real reader.** Papers render in-app with a page rail, zoom, and the mark scheme one click away — side by side with the question paper.
-- **Annotate like paper.** A six-colour highlighter and pen with adjustable width and opacity, drawn on a canvas overlay. Ink is stored as fractions of the page, so it stays put through any zoom, resize, or move to another display.
+- **A real reader.** Papers render in-app with a page rail, zoom, focus timer, and the mark scheme one click away — side by side with the question paper.
+- **Annotate like paper.** A six-colour highlighter and freehand pen with adjustable size and opacity, drawn on a canvas overlay. Ink is stored as fractions of the page, so it stays put through any zoom or resize.
+- **Notebooks.** Blank lined pages you own — write, draw, and keep notes right inside the app.
 - **Time yourself.** A focus stopwatch lives in the top bar and feeds your weekly focus minutes.
 - **Track the year.** A contribution-style activity grid, per-subject progress, session coverage, and a "due for review" queue on the dashboard.
-- **Day and Night.** A product-level tone toggle — not a system setting — with a design system tuned so the bright white PDF is always the clearest thing on screen.
+- **Day and Night.** A product-level tone toggle tuned so the bright white exam PDF is always the clearest thing on screen.
 
 </td><td valign="top" align="center" width="28%">
 <img src="docs/media/review-look.gif" alt="" width="280" />
@@ -61,28 +56,30 @@ Everything that matters happens locally. Browsing, searching, reading, annotatin
 
 ## A look around
 
-<table><tr><td valign="top" width="72%">
+<br />
 
 <div align="center">
 
-**Library — Day & Night**
+**The Library — Day & Night**
 
-<img src="docs/media/library-day.png" alt="Bell library in Day mode" width="49%" />
-<img src="docs/media/library-night.png" alt="Bell library in Night mode" width="49%" />
+<img src="docs/media/day-mode-preview.png" alt="Bell library in Day mode" width="100%" />
+<img src="docs/media/night-mode-preview.png" alt="Bell library in Night mode" width="100%" />
 
-**Reader with live annotation and the focus timer**
+<br />
 
-<img src="docs/media/reader-night.png" alt="Bell reader with annotation tools" width="98%" />
+**Past paper reader with annotation and live mark scheme**
 
-**Dashboard — the year at a glance**
+<img src="docs/media/past-paper-preview.png" alt="Bell past paper reader with annotation and mark scheme" width="100%" />
 
-<img src="docs/media/dashboard-night.png" alt="Bell dashboard" width="98%" />
+<br />
+
+**Notebooks — blank pages, your ink**
+
+<img src="docs/media/notebooks-preview.png" alt="Bell notebooks" width="100%" />
 
 </div>
 
-</td><td valign="top" align="center" width="28%">
-<img src="docs/media/idle-playlist.gif" alt="" width="280" />
-</td></tr></table>
+<br />
 
 ## Built with
 
