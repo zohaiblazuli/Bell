@@ -137,7 +137,7 @@ Bell is **source-available, not open-source**. The code is public to read and le
 ---
 
 <div align="center">
-  <img src="docs/media/wave-kiss.gif" alt="" width="200" />
+  <img src="docs/media/wave-kiss.gif" alt="" width="420" />
   <br />
   <sub>Built with ♥ by <a href="https://github.com/zohaiblazuli">zohaiblazuli</a></sub>
 </div>
