@@ -63,11 +63,11 @@ pub fn run() {
             app.manage(notebooks::NotebookDir(notebook_dir));
 
             // Pets are their own directory for the same reason, and a stronger one: a spritesheet is
-            // 1.7 MB of image, and `state_save` is text-only. Nothing in here is needed on a fresh
-            // install — no pet selected is Mr. Bell — so the directory is only ever a cache of
-            // downloads the student chose.
+            // several MB of image, and `state_save` is text-only. Azure ships with Bell and is copied
+            // here from compiled resources; the same directory can still support the dormant picker.
             let pet_dir = dir.join("pets");
             std::fs::create_dir_all(&pet_dir)?;
+            pets::ensure_bundled_azure(&pet_dir)?;
             app.manage(pets::PetDir(pet_dir));
             Ok(())
         })
@@ -102,6 +102,8 @@ pub fn run() {
             pets::pet_install,
             pets::pet_delete,
             pets::pet_sheet,
+            pets::pet_motion,
+            pets::pet_asset,
             pets::pet_registry,
             pets::pet_preview,
             state::state_load,

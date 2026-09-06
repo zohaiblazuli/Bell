@@ -1,0 +1,5 @@
+Create one 4×2 animation board containing exactly eight separate full-body cels of Azure on flat pure green #00FF00. Use the canonical base as the strict identity reference and the approved sleep board as the exact flat cel-shaded anime style reference. The grid image is layout-only; do not reproduce grid lines.
+
+Action: one friendly acknowledgment sequence. Azure lifts one hand, gives a warm two-beat wave, brings that same hand to her lips, blows a kiss toward the viewer with a playful smile, then settles back toward neutral. Show the kiss through her hand, lips, head angle, and expression only; do not draw hearts, marks, sparkles, or floating effects.
+
+Preserve exactly: young adult woman, straight shoulder-length vivid blue hair with blunt bangs, blue eyes, curvy proportions, white ribbed tank top, navy athletic shorts with white trim, white sneakers, clean dark line art, flat cel shading. Stable scale and baseline. No interpolation, ghost images, motion arcs, motion blur, shadows, scenery, text, labels, borders, or detached effects. One centered complete pose per invisible slot, generous separation and safe padding.

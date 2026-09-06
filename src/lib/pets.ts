@@ -6,10 +6,10 @@
  * already agree on.
  *
  *     <id>\pet.json           { id, displayName, description, spritesheetPath, ... }
- *     <id>\spritesheet.webp   one 8-column atlas of 192x208 cells, one animation per ROW
+ *     <id>\spritesheet.webp   one 8-column atlas, one animation per ROW
  *
  * **Every number in `PET_*` below is the format's, not a taste call**, which is why they are
- * transcribed rather than derived: 192x208 cells, 8 columns, and a per-row frame count that varies
+ * transcribed rather than derived: 192x208 logical cells, 8 columns, and a per-row frame count that varies
  * (idle is 6 frames, `waving` only 4) so a row cannot be assumed full. Two atlas versions ship —
  * v1 is 9 rows / 1536x1872 and v2 adds the two look-around rows for 11 / 1536x2288 — and both are
  * live on the registry today, so both are read.
@@ -66,6 +66,12 @@ export interface PetRow {
 
 export type AtlasVersion = 1 | 2;
 
+/** Decoded atlas geometry. Density 2 means 384x416 source cells rendered as 192x208 logical cells. */
+export interface AtlasMetadata {
+  version: AtlasVersion;
+  density: number;
+}
+
 /** Rows a version actually has: 9, or 11. */
 export const petRows = (version: AtlasVersion): readonly PetRow[] =>
   version === 2 ? PET_ROWS : ROWS_V1;
@@ -94,6 +100,24 @@ export function atlasVersionForHeight(height: number): AtlasVersion | null {
   return null;
 }
 
+/**
+ * Read both the atlas version and its pixel density from decoded dimensions.
+ *
+ * Codex packages are 1x by default, but clean-line illustration benefits from a 2x source on HiDPI
+ * screens. The row/column contract remains unchanged: a dense atlas carries exact integer multiples
+ * of every logical dimension, and CSS still slices it into the same 192x208 logical cells.
+ */
+export function atlasMetadataForDimensions(width: number, height: number): AtlasMetadata | null {
+  const logicalWidth = PET_CELL.w * PET_COLUMNS;
+  if (width <= 0 || width % logicalWidth !== 0) return null;
+  const density = width / logicalWidth;
+  if (!Number.isSafeInteger(density) || density < 1 || density > 4) return null;
+
+  const logicalHeight = height / density;
+  const version = atlasVersionForHeight(logicalHeight);
+  return version == null ? null : { version, density };
+}
+
 /** The row a state occupies, or `null` when this version does not carry it. */
 export function petRowFor(version: AtlasVersion, state: PetState): PetRow | null {
   return petRows(version).find((r) => r.id === state) ?? null;
@@ -110,16 +134,16 @@ export function petRowFor(version: AtlasVersion, state: PetState): PetRow | null
  *
  * Each mood lists its states in order of preference and **every list ends on a row v1 carries**, so
  * a nine-row sheet degrades by walking down the list instead of selecting a row that has no pixels.
- * Three pairs collapse deliberately: a pet has one failure row, so `alarm` and `slump` share it, and
- * `glint` and `double-take` both land on the wave — a pet has no spectacles to catch the light on.
+ * A pet has one failure row, so `alarm` and `slump` share it. A poke uses `jumping` as the
+ * interaction reaction, while `glint` carries the friendly wave shown after successful work.
  */
 const MOOD_STATES: Record<BellMood, readonly PetState[]> = {
   idle: ['idle'],
   'specs-push-up': ['review', 'idle'],
-  periscope: ['look-right-side', 'waiting'],
+  periscope: ['look-right-side', 'review', 'idle'],
   'lens-draw-on': ['review'],
   alarm: ['failed'],
-  'double-take': ['waving'],
+  'double-take': ['jumping'],
   scuttle: ['running'],
   hop: ['jumping'],
   slump: ['failed'],
@@ -261,6 +285,13 @@ export const petDelete = (id: string) => invoke<void>('pet_delete', { id });
 
 /** The raw spritesheet, the efficient direction of the IPC — the same shape as `nb_asset_load`. */
 export const petSheet = (id: string) => invoke<ArrayBuffer>('pet_sheet', { id });
+
+/** Optional Bell-native motion definition. Legacy two-file pets return `null`. */
+export const petMotion = (id: string) => invoke<string | null>('pet_motion', { id });
+
+/** One image page named by a validated Bell-native motion definition. */
+export const petAsset = (id: string, file: string) =>
+  invoke<ArrayBuffer>('pet_asset', { id, file });
 
 /** The registry's JSON, verbatim. Parsed here by `parseRegistry`, never in Rust. */
 export const petRegistry = () => invoke<string>('pet_registry');

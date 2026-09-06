@@ -29,32 +29,40 @@ export interface PetProps {
    * `'self' data: blob:`, and the bytes come through `pet_sheet` for exactly that reason.
    */
   sheet: string;
-  /** Measured off the decoded image by `atlasVersionForHeight`, never read from `pet.json`. */
+  /** Measured from the decoded image, never read from `pet.json`. */
   version: AtlasVersion;
+  /** Physical source pixels per logical atlas pixel. */
+  density?: number;
   /**
    * Box height in px, the same number `MrBell` takes: 160 in every mascot slot, 96 in a dialog. A
    * cell is taller than it is wide, so the drawn box is `size` tall and `size * 192/208` wide — which
    * keeps a pet inside the square footprint Mr. Bell occupied rather than displacing the layout.
    */
-  size?: number;
+  size?: number | string;
   state?: PetState;
   className?: string;
 }
 
-export default function Pet({ sheet, version, size = 160, state = 'idle', className }: PetProps) {
+export default function Pet({
+  sheet,
+  version,
+  density = 1,
+  size = 160,
+  state = 'idle',
+  className,
+}: PetProps) {
   const rows = petRowCount(version);
   // Defensive rather than expected: `petStateForMood` only ever returns a row this version carries.
   const row = petRowFor(version, state) ?? petRowFor(version, 'idle')!;
 
-  const scale = size / PET_CELL.h;
-  const cell = PET_CELL.w * scale;
+  const cssSize = typeof size === 'number' ? `${size}px` : size;
 
   /** The whole sheet, sized past the clip on both axes and parked on `row`. */
   const sheetBox: CSSProperties = {
-    width: `${cell * PET_COLUMNS}px`,
-    height: `${size * rows}px`,
-    // Whole rows, so the Y never lands mid-pixel however odd `size` is.
-    transform: `translateY(${-row.row * size}px)`,
+    width: `${PET_COLUMNS * 100}%`,
+    height: `${rows * 100}%`,
+    // A percentage of the sheet itself: one row is exactly 100 / rows of this box.
+    transform: `translateY(${(-row.row / rows) * 100}%)`,
   };
 
   return (
@@ -62,14 +70,19 @@ export default function Pet({ sheet, version, size = 160, state = 'idle', classN
       className={className ? `pet ${className}` : 'pet'}
       /* Square, and exactly the box `MrBell` would have taken — so `<Pet>` is a pure swap for him at
          every call site and no slot's CSS has to learn that a cell is 192 wide and 208 tall. */
-      style={{ width: `${size}px`, height: `${size}px` }}
+      style={{ width: cssSize, height: cssSize }}
       /* Nearest-neighbour is only right on the way up — see the note in Pet.css. */
-      data-upscaled={scale >= 1 ? '' : undefined}
+      data-upscaled={
+        typeof size === 'number' && size >= PET_CELL.h * density ? '' : undefined
+      }
       /* Decorative. Every screen that hosts a mascot also names the app somewhere, and announcing
          somebody's pixel crab by name tells a screen reader nothing it needs. Same call MrBell makes. */
       aria-hidden
     >
-      <div className="pet__clip" style={{ width: `${cell}px`, height: `${size}px` }}>
+      <div
+        className="pet__clip"
+        style={{ width: `${(PET_CELL.w / PET_CELL.h) * 100}%`, height: '100%' }}
+      >
         <div className="pet__row" style={sheetBox}>
           <div
             className="pet__strip"

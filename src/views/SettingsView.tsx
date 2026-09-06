@@ -47,6 +47,10 @@ import { petList, type PetEntry } from '@/lib/pets';
 import type { SeasonChoice, Settings, ToneChoice } from '@/lib/store';
 import type { LibraryStats, RepairReport, Subject, SyncReport } from '@/lib/types';
 
+/** Azure is Bell's shipped mascot. Keep the picker implementation available for future product work,
+ * but do not expose a control that can replace her in the current app. */
+const MASCOT_PICKER_VISIBLE = false;
+
 /**
  * `tone choice` `534:387` — Day (sun) · Night (moon) · Match system (no glyph). `glyph` is the
  * sprite name to clone, or `null` for the row that carries none — `sun` `163:2` and `moon` `163:5`
@@ -428,13 +432,15 @@ export default function SettingsView({
                 {/* The file draws a `Show Mr. Bell` switch here (`534:431`) and this screen has always
                     left it out, because a switch that only hides him had nothing behind it. This is
                     what belongs in that slot: which mascot, rather than whether. */}
-                <CardRow
-                  label="Mascot"
-                  helper="Mr. Bell ships with Bell. Pets are imported from codex-pets.net and kept on this machine."
-                  onClick={() => setPetShelf(true)}
-                >
-                  <span className="set-value t-body-small">{mascotName}</span>
-                </CardRow>
+                {MASCOT_PICKER_VISIBLE ? (
+                  <CardRow
+                    label="Mascot"
+                    helper="Mr. Bell ships with Bell. Pets are imported from codex-pets.net and kept on this machine."
+                    onClick={() => setPetShelf(true)}
+                  >
+                    <span className="set-value t-body-small">{mascotName}</span>
+                  </CardRow>
+                ) : null}
               </Card>
             </section>
 
@@ -807,12 +813,14 @@ export default function SettingsView({
       </div>
 
       {/* Last in the view, so it paints over both columns. It renders nothing while closed. */}
-      <PetShelf
-        open={petShelf}
-        onClose={() => setPetShelf(false)}
-        selected={settings.pet}
-        onSelect={(pet) => onChange({ pet })}
-      />
+      {MASCOT_PICKER_VISIBLE ? (
+        <PetShelf
+          open={petShelf}
+          onClose={() => setPetShelf(false)}
+          selected={settings.pet}
+          onSelect={(pet) => onChange({ pet })}
+        />
+      ) : null}
     </div>
   );
 }

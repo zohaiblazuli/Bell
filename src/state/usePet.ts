@@ -17,25 +17,43 @@
  * would pull the sheet out from under a live element to reclaim a handle nobody is short of.
  */
 import { useEffect, useState } from 'react';
-import { atlasVersionForHeight, isPetId, petSheet, petSheetSize } from '@/lib/pets';
+import { parsePetMotion, type PetMotionManifest } from '@/lib/petMotion';
+import {
+  atlasMetadataForDimensions,
+  isPetId,
+  petAsset,
+  petMotion,
+  petSheet,
+  petSheetSize,
+} from '@/lib/pets';
 import type { AtlasVersion } from '@/lib/pets';
+
+export interface LoadedPetMotion {
+  manifest: PetMotionManifest;
+  /** Blob URL for every validated page id. Kept for the same lifetime as the legacy sheet. */
+  pages: Readonly<Record<string, string>>;
+}
 
 export interface LoadedPet {
   id: string;
   /** A `blob:` URL — the only kind `img-src 'self' data: blob:` will render. */
   url: string;
   version: AtlasVersion;
+  /** Physical source pixels per logical atlas pixel. */
+  density: number;
+  /** Bell's optional high-fidelity extension; null keeps the exact legacy renderer. */
+  motion: LoadedPetMotion | null;
 }
 
 const loaded = new Map<string, LoadedPet>();
 /** In flight, so three slots mounting together read the sheet once. */
 const pending = new Map<string, Promise<LoadedPet>>();
 
-/** Decode far enough to learn the sheet's real height. */
-function measure(url: string): Promise<number> {
+/** Decode far enough to learn the sheet's real dimensions. */
+function measure(url: string): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.onload = () => resolve(img.naturalHeight);
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
     img.onerror = () => reject(new Error('the spritesheet could not be decoded'));
     img.src = url;
   });
@@ -45,9 +63,36 @@ async function load(id: string): Promise<LoadedPet> {
   const bytes = await petSheet(id);
   const url = URL.createObjectURL(new Blob([bytes], { type: 'image/webp' }));
   try {
-    const version = atlasVersionForHeight(await measure(url));
-    if (version == null) throw new Error('that spritesheet is not a Codex pet atlas');
-    const entry: LoadedPet = { id, url, version };
+    const dimensions = await measure(url);
+    const atlas = atlasMetadataForDimensions(dimensions.width, dimensions.height);
+    if (atlas == null) throw new Error('that spritesheet is not a Codex pet atlas');
+    let motion: LoadedPetMotion | null = null;
+    try {
+      const definition = await petMotion(id);
+      const manifest = definition == null ? null : parsePetMotion(definition);
+      if (definition != null && manifest == null) {
+        console.warn(`[pets] ${id} has an invalid motion.json; using its legacy spritesheet.`);
+      } else if (manifest) {
+        const pageUrls: Record<string, string> = {};
+        try {
+          await Promise.all(
+            manifest.pages.map(async (page) => {
+              const bytes = await petAsset(id, page.file);
+              const mime = page.file.endsWith('.png') ? 'image/png' : 'image/webp';
+              pageUrls[page.id] = URL.createObjectURL(new Blob([bytes], { type: mime }));
+            }),
+          );
+          motion = { manifest, pages: pageUrls };
+        } catch (error) {
+          for (const pageUrl of Object.values(pageUrls)) URL.revokeObjectURL(pageUrl);
+          console.warn(`[pets] ${id} motion assets could not load; using its legacy spritesheet.`, error);
+        }
+      }
+    } catch (error) {
+      // A malformed optional extension must never take the otherwise valid pet away.
+      console.warn(`[pets] ${id} motion definition could not load; using its legacy spritesheet.`, error);
+    }
+    const entry: LoadedPet = { id, url, ...atlas, motion };
     loaded.set(id, entry);
     return entry;
   } catch (error) {
@@ -78,7 +123,7 @@ export function loadPet(id: string): Promise<LoadedPet> {
 export const petSheetSpec = () => {
   const v1 = petSheetSize(1);
   const v2 = petSheetSize(2);
-  return `${v1.w}x${v1.h} or ${v2.w}x${v2.h}`;
+  return `${v1.w}x${v1.h} or ${v2.w}x${v2.h}, at 1x–4x density`;
 };
 
 /**

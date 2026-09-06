@@ -171,16 +171,22 @@ fn resolve_target(
         .optional()
         .map_err(|e| e.to_string())?;
 
-    let (qualification, name, code, year, season, scode, component, has_ms) = row.ok_or_else(
-        || format!("paper {paper_id} is not in the catalogue — try syncing first"),
-    )?;
+    let (qualification, name, code, year, season, scode, component, has_ms) =
+        row.ok_or_else(|| format!("paper {paper_id} is not in the catalogue — try syncing first"))?;
 
     if kind == "ms" && has_ms == 0 {
         return Err("there is no mark scheme on record for this paper".to_string());
     }
 
     Ok(Target {
-        dir: root.join(paths::paper_dir(&qualification, &name, &code, year, &season, &scode)),
+        dir: root.join(paths::paper_dir(
+            &qualification,
+            &name,
+            &code,
+            year,
+            &season,
+            &scode,
+        )),
         file: paths::paper_file_name(&code, &scode, kind, &component),
         has_ms: has_ms != 0,
     })
@@ -206,7 +212,13 @@ fn record(
         "INSERT INTO download(paper_id,kind,path,size,downloaded_at) VALUES(?1,?2,?3,?4,?5)
          ON CONFLICT(paper_id,kind) DO UPDATE SET
            path=excluded.path, size=excluded.size, downloaded_at=excluded.downloaded_at",
-        rusqlite::params![paper_id, kind, as_text, size as i64, catalog::now_ms().to_string()],
+        rusqlite::params![
+            paper_id,
+            kind,
+            as_text,
+            size as i64,
+            catalog::now_ms().to_string()
+        ],
     )
     .map_err(|e| e.to_string())?;
     Ok(())
@@ -237,10 +249,16 @@ struct FetchError {
 
 impl FetchError {
     fn retry(message: impl Into<String>) -> Self {
-        Self { message: message.into(), retryable: true }
+        Self {
+            message: message.into(),
+            retryable: true,
+        }
     }
     fn permanent(message: impl Into<String>) -> Self {
-        Self { message: message.into(), retryable: false }
+        Self {
+            message: message.into(),
+            retryable: false,
+        }
     }
 }
 
@@ -282,7 +300,9 @@ async fn fetch_pdf(
         .and_then(|v| v.to_str().ok())
     {
         if content_type.contains("text/html") {
-            return Err(FetchError::permanent("that paper is not available from the source"));
+            return Err(FetchError::permanent(
+                "that paper is not available from the source",
+            ));
         }
     }
 
@@ -533,7 +553,12 @@ pub fn repair_into(conn: &mut Connection, root: &Path) -> Result<RepairReport, S
             let (id, code, scode, component) = row.map_err(|e| e.to_string())?;
             for kind in ["qp", "ms"] {
                 index.insert(
-                    (code.clone(), scode.clone(), component.clone(), kind.to_string()),
+                    (
+                        code.clone(),
+                        scode.clone(),
+                        component.clone(),
+                        kind.to_string(),
+                    ),
                     id,
                 );
             }
@@ -585,7 +610,11 @@ pub fn repair_into(conn: &mut Connection, root: &Path) -> Result<RepairReport, S
             .map_err(|e| e.to_string())?;
         let rows = st
             .query_map([], |r| {
-                Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?))
+                Ok((
+                    r.get::<_, i64>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, String>(2)?,
+                ))
             })
             .map_err(|e| e.to_string())?;
         for row in rows {
@@ -612,7 +641,12 @@ pub fn repair_into(conn: &mut Connection, root: &Path) -> Result<RepairReport, S
     }
     tx.commit().map_err(|e| e.to_string())?;
 
-    Ok(RepairReport { scanned, linked, unmatched, pruned })
+    Ok(RepairReport {
+        scanned,
+        linked,
+        unmatched,
+        pruned,
+    })
 }
 
 #[cfg(test)]
@@ -645,7 +679,10 @@ mod tests {
             .flatten()
             .filter(|e| e.file_name().to_string_lossy().ends_with(".part"))
             .collect();
-        assert!(leftovers.is_empty(), "temp files must not survive a successful write");
+        assert!(
+            leftovers.is_empty(),
+            "temp files must not survive a successful write"
+        );
 
         std::fs::remove_dir_all(&dir).ok();
     }
@@ -678,7 +715,11 @@ mod tests {
             let url = format!("{base}/api/desktop/v1/file/{paper_id}/{kind}");
             eprintln!("fetching {url}");
             let res = client.get(&url).send().expect("request");
-            assert!(res.status().is_success(), "{kind} status was {}", res.status());
+            assert!(
+                res.status().is_success(),
+                "{kind} status was {}",
+                res.status()
+            );
             let bytes = res.bytes().expect("body").to_vec();
             assert!(
                 bytes.len() > 5 && &bytes[..5] == b"%PDF-",
@@ -686,7 +727,10 @@ mod tests {
             );
             eprintln!("  {kind}: {} bytes", bytes.len());
 
-            let target = dir.join("library").join("A Level").join("Mathematics (9709)");
+            let target = dir
+                .join("library")
+                .join("A Level")
+                .join("Mathematics (9709)");
             let written = write_atomically(&target, file, &bytes).unwrap();
             assert!(is_pdf_on_disk(&written));
 
@@ -702,9 +746,11 @@ mod tests {
 
         // Two documents, one paper: the primary key is (paper_id, kind), so both coexist.
         let rows: i64 = conn
-            .query_row("SELECT COUNT(*) FROM download WHERE paper_id = ?1", [paper_id], |r| {
-                r.get(0)
-            })
+            .query_row(
+                "SELECT COUNT(*) FROM download WHERE paper_id = ?1",
+                [paper_id],
+                |r| r.get(0),
+            )
             .unwrap();
         assert_eq!(rows, 2, "a question paper and its mark scheme");
 

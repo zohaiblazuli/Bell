@@ -1,0 +1,5 @@
+Create one 4×2 animation board containing exactly eight separate full-body cels of Azure on flat pure green #00FF00. Use the canonical base as the strict identity reference and the approved sleep board as the exact flat cel-shaded anime style reference. The grid image is layout-only; do not reproduce grid lines.
+
+Action: one buoyant celebratory hop. Azure bends her knees, rises into a small controlled jump with both feet clearly airborne, reaches a clean apex, descends, lands softly, absorbs the landing, and returns toward neutral. Keep it charming and physically coherent rather than exaggerated.
+
+Preserve exactly: young adult woman, straight shoulder-length vivid blue hair with blunt bangs, blue eyes, curvy proportions, white ribbed tank top, navy athletic shorts with white trim, white sneakers, clean dark line art, flat cel shading. Keep apparent scale constant while vertical position changes. No floor shadow, dust, impact marks, speed lines, ghost images, motion blur, scenery, text, labels, borders, or detached effects. One centered complete pose per invisible slot, generous separation and safe padding.

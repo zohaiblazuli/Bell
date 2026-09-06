@@ -9,7 +9,9 @@
  *   tone-handoff  the tone crossed. 1.0s. `Motion — Mr. Bell` §3.12 draws exactly this, and in it the
  *                 crab does not move at all: his tokens are mode-invariant, so only the spectacle
  *                 lenses cross from the Day glass tint to the Night one.
- *   double-take   he was poked. 1.0s.
+ *   double-take   the mascot was poked. 1.0s; a pet uses its interaction reaction.
+ *   scuttle       real background work is active. Held until the work finishes.
+ *   glint         that work just finished successfully. 1.0s; a pet waves.
  *   sleep         nothing has happened for a while. A loop, not a beat — he stays asleep.
  *   idle          everything else.
  *
@@ -28,9 +30,10 @@ import type { Tone } from '@ui/TonePill';
 
 /** Spec durations plus a frame, so the animation finishes before the mood reverts. */
 const PULSE_MS: Partial<Record<BellMood, number>> = {
-  alarm: 950,
-  'double-take': 1050,
-  'tone-handoff': 1050,
+  alarm: 4500,
+  'double-take': 2500,
+  glint: 4100,
+  'tone-handoff': 3700,
 };
 
 /**
@@ -50,7 +53,7 @@ export interface Mascot {
   poke: () => void;
 }
 
-export function useMascot(tone: Tone, error: string | null): Mascot {
+export function useMascot(tone: Tone, error: string | null, working = false, studying = false): Mascot {
   const [pulse, setPulse] = useState<BellMood | null>(null);
   const [asleep, setAsleep] = useState(false);
   const timer = useRef<number | undefined>(undefined);
@@ -66,6 +69,20 @@ export function useMascot(tone: Tone, error: string | null): Mascot {
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
   const poke = useCallback(() => fire('double-take'), [fire]);
+
+  // Active work holds the work row. Its successful falling edge earns one friendly acknowledgment.
+  const wasWorking = useRef(false);
+  useEffect(() => {
+    if (working) {
+      wasWorking.current = true;
+      setAsleep(false);
+      return;
+    }
+    if (wasWorking.current) {
+      wasWorking.current = false;
+      if (!error) fire('glint');
+    }
+  }, [working, error, fire]);
 
   // Tone: skip the first render, then pulse on every crossing.
   const firstTone = useRef(true);
@@ -108,5 +125,7 @@ export function useMascot(tone: Tone, error: string | null): Mascot {
     };
   }, []);
 
-  return { mood: pulse ?? (asleep ? 'sleep' : 'idle'), poke };
+  // A reader/notebook session owns the teacher timeline from entry until the route is left. Keeping
+  // it above transient pulses also prevents the enter clip from restarting mid-session.
+  return { mood: studying ? 'scuttle' : pulse ?? (working ? 'scuttle' : asleep ? 'sleep' : 'idle'), poke };
 }

@@ -242,7 +242,7 @@ function faceFor(state: UpdateState, on: Record<UpdateStep, () => void>): Face |
         title: 'Checking for updates',
         body: 'Bell is asking the update server for a newer build.',
         dismiss: 'Close',
-        mood: 'idle',
+        mood: 'scuttle',
       };
 
     /**
@@ -277,7 +277,7 @@ function faceFor(state: UpdateState, on: Record<UpdateStep, () => void>): Face |
         /* "Later" would read as "cancel" here. Closing the panel abandons nothing: the download
            carries on and the pill keeps counting it. */
         dismiss: 'Close',
-        mood: 'idle',
+        mood: 'scuttle',
       };
 
     /* The measured face: title `437:105`, body `437:106`, Later + Restart now `437:107`. */
@@ -298,7 +298,7 @@ function faceFor(state: UpdateState, on: Record<UpdateStep, () => void>): Face |
         body: RESTART_BODY,
         dismiss: 'Close',
         primary: { label: 'Restarting…' },
-        mood: 'specs-push-up',
+        mood: 'scuttle',
       };
 
     case 'error':

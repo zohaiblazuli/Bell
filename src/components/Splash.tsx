@@ -61,6 +61,7 @@ export interface Props {
  *  translate with no scale track at all (spec B3). 0.625 of the 256 rig, so the 8px art grid still
  *  lands on whole pixels. */
 const CRAB = 160;
+const SPLASH_PET = 520;
 
 /* `Lockup orientation="horizontal"` is a 296 x 89 viewBox with the mark at (0, 9) scaled 1.25 and
    the word at (100, 0). That geometry is private to Lockup.tsx and restated here because the
@@ -203,7 +204,7 @@ export default function Splash({ phase, onFinished, targets = null, reduceMotion
         <div className="splash-crab">
           {/* The mascot, not necessarily the crab: the handoff hides `.mascot` and travels this box
               into that slot, so the two have to be the same animal or the landing reads as a swap. */}
-          <Mascot size={CRAB} />
+          <Mascot size={CRAB} petSize={SPLASH_PET} mood="glint" playbackRate={2} />
         </div>
 
         <div className="splash-word">

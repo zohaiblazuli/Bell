@@ -1,0 +1,5 @@
+Create one 4×2 animation board containing exactly eight separate full-body cels of Azure on flat pure green #00FF00. Use the canonical base as the strict identity reference and the approved sleep board as the exact flat cel-shaded anime style reference. The grid image is layout-only; do not reproduce grid lines.
+
+Action: a calm seamless idle cycle. Azure gently inhales and exhales through subtle chest and shoulder movement, makes one slow natural blink, lightly tucks a strand of blue hair back into place, then briefly smooths the hem of her white ribbed tank top and returns to the opening stance. Keep all movement restrained and unhurried; frames 1 and 8 must nearly match.
+
+Preserve exactly: young adult woman, straight shoulder-length vivid blue hair with blunt bangs, blue eyes, curvy proportions, white ribbed tank top, navy athletic shorts with white trim, white sneakers, clean dark line art, flat cel shading. Stable scale and foot baseline in every cel. No interpolation, ghost images, motion blur, shadows, scenery, text, labels, borders, detached effects, or extra objects. One centered complete pose per invisible slot, generous separation and safe padding.

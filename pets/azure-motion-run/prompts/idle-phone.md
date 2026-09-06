@@ -1,0 +1,5 @@
+Create one 4×2 animation board containing exactly eight separate full-body cels of Azure on flat pure green #00FF00. Use the canonical base as the strict identity reference and the approved sleep board as the exact flat cel-shaded anime style reference. The grid image is layout-only; do not reproduce grid lines.
+
+Action: one slow self-contained idle activity. Azure calmly takes a small plain dark-blue smartphone from her shorts pocket, glances down at it, makes one subtle thumb tap, gives a tiny pleased smile, puts it away, and returns to the opening neutral stance. The activity should feel casual and quiet, not busy.
+
+Preserve exactly: young adult woman, straight shoulder-length vivid blue hair with blunt bangs, blue eyes, curvy proportions, white ribbed tank top, navy athletic shorts with white trim, white sneakers, clean dark line art, flat cel shading. Keep the phone design identical wherever visible. Stable scale and foot baseline. No readable screen, text, logos, ghost images, motion blur, shadows, scenery, labels, borders, or detached effects. One centered complete pose per invisible slot, generous separation and safe padding.

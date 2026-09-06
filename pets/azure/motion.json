@@ -1,0 +1,133 @@
+{
+  "format": "bell-motion",
+  "version": 1,
+  "canvas": { "width": 192, "height": 208, "density": 3 },
+  "pages": [
+    { "id": "idle-groom", "file": "motion-idle-groom.webp", "columns": 4, "rows": 2 },
+    { "id": "idle-phone", "file": "motion-idle-phone.webp", "columns": 4, "rows": 2 },
+    { "id": "teacher-enter", "file": "motion-teacher-enter.webp", "columns": 4, "rows": 2 },
+    { "id": "teacher-loop", "file": "motion-teacher-loop.webp", "columns": 4, "rows": 2 },
+    { "id": "wave-kiss", "file": "motion-wave-kiss.webp", "columns": 4, "rows": 2 },
+    { "id": "tickle", "file": "motion-tickle.webp", "columns": 4, "rows": 2 },
+    { "id": "jump", "file": "motion-jump.webp", "columns": 4, "rows": 2 },
+    { "id": "failed", "file": "motion-failed.webp", "columns": 4, "rows": 2 },
+    { "id": "review-look", "file": "motion-review-look.webp", "columns": 4, "rows": 2 },
+    { "id": "sleep-loop", "file": "motion-sleep-loop.webp", "columns": 4, "rows": 2 }
+  ],
+  "clips": {
+    "sleep-enter": { "page": "sleep-loop", "playback": "once", "blendFraction": 0, "frames": [{ "cell": 0, "durationMs": 1 }] },
+    "sleep-loop": {
+      "page": "sleep-loop", "playback": "loop", "blendFraction": 0,
+      "frames": [
+        { "cell": 0, "durationMs": 1000 }, { "cell": 1, "durationMs": 1000 },
+        { "cell": 2, "durationMs": 1000 }, { "cell": 3, "durationMs": 1000 },
+        { "cell": 4, "durationMs": 1000 }, { "cell": 5, "durationMs": 1000 },
+        { "cell": 6, "durationMs": 1000 }, { "cell": 7, "durationMs": 1000 }
+      ]
+    },
+    "sleep-exit": { "page": "sleep-loop", "playback": "once", "blendFraction": 0, "frames": [{ "cell": 0, "durationMs": 1 }] },
+    "idle-groom": {
+      "page": "idle-groom", "playback": "once", "blendFraction": 0,
+      "frames": [
+        { "cell": 0, "durationMs": 900 }, { "cell": 1, "durationMs": 900 },
+        { "cell": 2, "durationMs": 900 }, { "cell": 3, "durationMs": 900 },
+        { "cell": 4, "durationMs": 900 }, { "cell": 5, "durationMs": 900 },
+        { "cell": 6, "durationMs": 900 }, { "cell": 7, "durationMs": 900 }
+      ]
+    },
+    "idle-phone": {
+      "page": "idle-phone", "playback": "once", "blendFraction": 0,
+      "frames": [
+        { "cell": 0, "durationMs": 850 }, { "cell": 1, "durationMs": 850 },
+        { "cell": 2, "durationMs": 850 }, { "cell": 3, "durationMs": 850 },
+        { "cell": 4, "durationMs": 850 }, { "cell": 5, "durationMs": 850 },
+        { "cell": 6, "durationMs": 850 }, { "cell": 7, "durationMs": 850 }
+      ]
+    },
+    "teacher-enter": {
+      "page": "teacher-enter", "playback": "once", "blendFraction": 0,
+      "frames": [
+        { "cell": 0, "durationMs": 500 }, { "cell": 1, "durationMs": 500 },
+        { "cell": 2, "durationMs": 500 }, { "cell": 3, "durationMs": 500 },
+        { "cell": 4, "durationMs": 500 }, { "cell": 5, "durationMs": 500 },
+        { "cell": 6, "durationMs": 500 }, { "cell": 7, "durationMs": 500 }
+      ]
+    },
+    "teacher-loop": {
+      "page": "teacher-loop", "playback": "loop", "blendFraction": 0,
+      "frames": [
+        { "cell": 0, "durationMs": 900 }, { "cell": 1, "durationMs": 900 },
+        { "cell": 2, "durationMs": 900 }, { "cell": 3, "durationMs": 900 },
+        { "cell": 4, "durationMs": 900 }, { "cell": 5, "durationMs": 900 },
+        { "cell": 6, "durationMs": 900 }, { "cell": 7, "durationMs": 900 }
+      ]
+    },
+    "wave-kiss": {
+      "page": "wave-kiss", "playback": "once", "blendFraction": 0,
+      "frames": [
+        { "cell": 0, "durationMs": 500 }, { "cell": 1, "durationMs": 500 },
+        { "cell": 2, "durationMs": 500 }, { "cell": 3, "durationMs": 500 },
+        { "cell": 4, "durationMs": 500 }, { "cell": 5, "durationMs": 500 },
+        { "cell": 6, "durationMs": 500 }, { "cell": 7, "durationMs": 500 }
+      ]
+    },
+    "tickle": {
+      "page": "tickle", "playback": "once", "blendFraction": 0,
+      "frames": [
+        { "cell": 0, "durationMs": 300 }, { "cell": 1, "durationMs": 300 },
+        { "cell": 2, "durationMs": 300 }, { "cell": 3, "durationMs": 300 },
+        { "cell": 4, "durationMs": 300 }, { "cell": 5, "durationMs": 300 },
+        { "cell": 6, "durationMs": 300 }, { "cell": 7, "durationMs": 300 }
+      ]
+    },
+    "jump": {
+      "page": "jump", "playback": "once", "blendFraction": 0,
+      "frames": [
+        { "cell": 0, "durationMs": 350 }, { "cell": 1, "durationMs": 350 },
+        { "cell": 2, "durationMs": 350 }, { "cell": 3, "durationMs": 350 },
+        { "cell": 4, "durationMs": 350 }, { "cell": 5, "durationMs": 350 },
+        { "cell": 6, "durationMs": 350 }, { "cell": 7, "durationMs": 350 }
+      ]
+    },
+    "failed": {
+      "page": "failed", "playback": "once", "blendFraction": 0,
+      "frames": [
+        { "cell": 0, "durationMs": 550 }, { "cell": 1, "durationMs": 550 },
+        { "cell": 2, "durationMs": 550 }, { "cell": 3, "durationMs": 550 },
+        { "cell": 4, "durationMs": 550 }, { "cell": 5, "durationMs": 550 },
+        { "cell": 6, "durationMs": 550 }, { "cell": 7, "durationMs": 550 }
+      ]
+    },
+    "review-look": {
+      "page": "review-look", "playback": "once", "blendFraction": 0,
+      "frames": [
+        { "cell": 0, "durationMs": 450 }, { "cell": 1, "durationMs": 450 },
+        { "cell": 2, "durationMs": 450 }, { "cell": 3, "durationMs": 450 },
+        { "cell": 4, "durationMs": 450 }, { "cell": 5, "durationMs": 450 },
+        { "cell": 6, "durationMs": 450 }, { "cell": 7, "durationMs": 450 }
+      ]
+    }
+  },
+  "states": {
+    "sleep": {
+      "enter": "sleep-enter", "loop": "sleep-loop", "exit": "sleep-exit",
+      "reducedPose": { "clip": "sleep-loop", "frame": 3 }
+    },
+    "moods": {
+      "idle": {
+        "mode": "routine",
+        "clips": ["idle-groom", "idle-groom", "idle-groom", "idle-phone", "idle-phone", "wave-kiss", "jump", "failed"]
+      },
+      "specs-push-up": { "mode": "clip", "clip": "review-look" },
+      "periscope": { "mode": "clip", "clip": "review-look" },
+      "lens-draw-on": { "mode": "clip", "clip": "review-look" },
+      "alarm": { "mode": "clip", "clip": "failed" },
+      "double-take": { "mode": "clip", "clip": "tickle" },
+      "scuttle": { "mode": "sequence", "enter": "teacher-enter", "loop": "teacher-loop" },
+      "hop": { "mode": "clip", "clip": "jump" },
+      "slump": { "mode": "clip", "clip": "failed" },
+      "glint": { "mode": "clip", "clip": "wave-kiss" },
+      "tone-handoff": { "mode": "clip", "clip": "review-look" }
+    }
+  }
+}

@@ -139,7 +139,9 @@ pub fn parse_file_name(file_name: &str) -> Option<ParsedFile> {
         .or_else(|| file_name.strip_suffix(".PDF"))
         .or_else(|| {
             let lower = file_name.to_ascii_lowercase();
-            lower.ends_with(".pdf").then(|| &file_name[..file_name.len() - 4])
+            lower
+                .ends_with(".pdf")
+                .then(|| &file_name[..file_name.len() - 4])
         })?;
 
     let parts: Vec<&str> = stem.split('_').filter(|p| !p.is_empty()).collect();
@@ -157,9 +159,18 @@ pub fn parse_file_name(file_name: &str) -> Option<ParsedFile> {
     let type_at = (2..parts.len()).find(|&i| parts[i].bytes().all(|b| b.is_ascii_alphabetic()))?;
     let doc_type = parts[type_at].to_ascii_lowercase();
     let tail: Vec<&str> = parts[type_at + 1..].to_vec();
-    let component = if tail.is_empty() { None } else { Some(tail.join("_")) };
+    let component = if tail.is_empty() {
+        None
+    } else {
+        Some(tail.join("_"))
+    };
 
-    Some(ParsedFile { code: code.to_string(), scode, doc_type, component })
+    Some(ParsedFile {
+        code: code.to_string(),
+        scode,
+        doc_type,
+        component,
+    })
 }
 
 #[cfg(test)]
@@ -184,7 +195,10 @@ mod tests {
         let dir = paper_dir("a_level", "Mathematics", "9709", 2016, "feb_mar", "m16");
         let shown = dir.to_string_lossy().replace('/', "\\");
         assert_eq!(shown, r"A Level\Mathematics (9709)\2016\Feb-Mar (m16)");
-        assert_eq!(paper_file_name("9709", "m16", "qp", "62"), "9709_m16_qp_62.pdf");
+        assert_eq!(
+            paper_file_name("9709", "m16", "qp", "62"),
+            "9709_m16_qp_62.pdf"
+        );
         assert_eq!(season_folder("may_june"), Some("May-June"));
         assert_eq!(season_folder("nonsense"), None);
     }

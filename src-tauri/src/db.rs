@@ -120,7 +120,9 @@ pub fn open(path: &PathBuf) -> rusqlite::Result<Connection> {
     conn.pragma_update(None, "foreign_keys", "ON")?;
 
     // `meta` may not exist yet on a first run, hence the COALESCE-over-subquery.
-    conn.execute_batch("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL) WITHOUT ROWID;")?;
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL) WITHOUT ROWID;",
+    )?;
     let found: i64 = conn
         .query_row(
             "SELECT COALESCE((SELECT v FROM meta WHERE k='schema_version'),'0')",
@@ -142,7 +144,10 @@ pub fn open(path: &PathBuf) -> rusqlite::Result<Connection> {
     }
 
     conn.execute_batch(SCHEMA)?;
-    conn.execute(&format!("DELETE FROM meta WHERE k IN ({LEGACY_META_KEYS})"), [])?;
+    conn.execute(
+        &format!("DELETE FROM meta WHERE k IN ({LEGACY_META_KEYS})"),
+        [],
+    )?;
     conn.execute(
         "INSERT INTO meta(k,v) VALUES('schema_version',?1)
          ON CONFLICT(k) DO UPDATE SET v=excluded.v",
@@ -171,7 +176,8 @@ pub fn set_meta(conn: &Connection, k: &str, v: &str) -> rusqlite::Result<()> {
 }
 
 pub fn get_meta(conn: &Connection, k: &str) -> Option<String> {
-    conn.query_row("SELECT v FROM meta WHERE k=?1", [k], |r| r.get(0)).ok()
+    conn.query_row("SELECT v FROM meta WHERE k=?1", [k], |r| r.get(0))
+        .ok()
 }
 
 /// A stable per-install identifier, minted on first use.
@@ -212,4 +218,3 @@ pub fn random_hex() -> String {
     out.truncate(32);
     out
 }
-

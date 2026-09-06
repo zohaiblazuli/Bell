@@ -148,7 +148,8 @@ pub fn catalog_status(db: State<'_, Db>) -> Result<CatalogStatus, String> {
 
 pub fn read_status(conn: &rusqlite::Connection) -> Result<CatalogStatus, String> {
     let one = |sql: &str| -> Result<i64, String> {
-        conn.query_row(sql, [], |r| r.get(0)).map_err(|e| e.to_string())
+        conn.query_row(sql, [], |r| r.get(0))
+            .map_err(|e| e.to_string())
     };
     Ok(CatalogStatus {
         subjects: one("SELECT COUNT(*) FROM catalog_subject")?,
@@ -191,14 +192,20 @@ pub async fn sync_catalog(app: AppHandle, db: State<'_, Db>) -> Result<SyncRepor
         let report = {
             let conn = db.0.lock().map_err(|e| e.to_string())?;
             let _ = set_meta(&conn, "catalog_synced_at", &now_ms().to_string());
-            SyncReport { changed: false, status: read_status(&conn)? }
+            SyncReport {
+                changed: false,
+                status: read_status(&conn)?,
+            }
         };
         let _ = app.emit("catalog:done", report.clone());
         return Ok(report);
     }
 
     if !res.status().is_success() {
-        return Err(format!("the catalogue answered HTTP {}", res.status().as_u16()));
+        return Err(format!(
+            "the catalogue answered HTTP {}",
+            res.status().as_u16()
+        ));
     }
 
     let new_etag = res
@@ -222,7 +229,10 @@ pub async fn sync_catalog(app: AppHandle, db: State<'_, Db>) -> Result<SyncRepor
         let _ = set_meta(&conn, "catalog_generated_at", &payload.generated_at);
         let _ = set_meta(&conn, "catalog_version", &payload.version.to_string());
         let _ = set_meta(&conn, "catalog_synced_at", &now_ms().to_string());
-        SyncReport { changed: true, status: read_status(&conn)? }
+        SyncReport {
+            changed: true,
+            status: read_status(&conn)?,
+        }
     };
 
     let _ = app.emit("catalog:done", report.clone());
@@ -358,7 +368,11 @@ mod tests {
 
         // Papers with no rating must still be present — every query helper on the
         // website filters them out, so this is the assertion that keeps them listed.
-        let unscored = payload.papers.iter().filter(|p| p.difficulty.is_none()).count();
+        let unscored = payload
+            .papers
+            .iter()
+            .filter(|p| p.difficulty.is_none())
+            .count();
         eprintln!("{unscored} paper(s) carry no rating");
 
         let dir = std::env::temp_dir().join(format!("bell-live-{}", std::process::id()));
