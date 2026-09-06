@@ -117,3 +117,47 @@
 .uflow-error {
   text-align: left;
 }
+
+/* The update control belongs to the application shell, not the sidebar. It remains in one known
+   lower-right location while its action changes from Download to Restart, avoiding a modal over
+   the work someone is already doing. */
+.uflow-corner {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  z-index: 55;
+  box-sizing: border-box;
+  width: min(360px, calc(100vw - 48px));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px;
+  background: var(--card);
+  border: 1px solid var(--card-brd);
+  border-radius: var(--r-panel);
+  box-shadow: var(--shadow-win);
+}
+
+.uflow-corner__eyebrow {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.uflow-corner__title {
+  color: var(--ink);
+}
+
+.uflow-corner__copy {
+  margin: 0;
+  max-height: 76px;
+  overflow: auto;
+  color: var(--ink-3);
+  white-space: pre-wrap;
+}
+
+.uflow-corner .uflow-progress {
+  width: 100%;
+}

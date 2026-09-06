@@ -125,6 +125,9 @@
    file's 480 x 320 frame. */
 .splash-crab {
   position: absolute;
+  /* Azure is the foreground hero of the startup composition. The wordmark can pass behind her
+     during its reveal, but never paints over her character art. */
+  z-index: 2;
   left: calc(50% - 81px);
   top: calc(50% - 116px);
   width: 160px;
@@ -143,15 +146,24 @@
   transform: translate(-50%, -50%);
 }
 
+/* Azure supplies her own illustration edge; the splash's legacy Bell halo would otherwise outline
+   her full character a second time. */
+.splash-crab:has(.bell-pet) {
+  filter: none;
+}
+
 /* The box is the LANDING size and the splash pose is that box scaled up about its own centre, which
    is how B4 models the travel (1.714 -> 1 = 0.6 / 0.35). `--word-up`, `--word-w` and `--word-h` come
    from Splash.tsx, measured off the live lockup rather than assumed at 0.35. */
 .splash-word {
   position: absolute;
+  z-index: 1;
   width: var(--word-w);
   height: var(--word-h);
   left: calc(50% - var(--word-w) / 2 + 2.8px);
-  top: calc(50% - var(--word-h) / 2 + 90.4px);
+  /* Azure's 520px splash pose extends well below the original Bell rig. Start the wordmark below
+     her feet, then let the handoff carry it to the sidebar lockup. */
+  top: calc(50% - var(--word-h) / 2 + 280px);
   transform: scale(var(--word-up));
   /* THE SHADOW IS PRE-DIVIDED BY THE SCALE, AND THAT IS NOT AN ORNAMENT. `filter` is applied to the
      element's rendered content BEFORE `transform` maps it, so a literal `0 3px 10px` on a box that

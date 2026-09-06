@@ -53,7 +53,8 @@ export function useUpdates(auto: boolean, onError: (message: string) => void): U
         // Asked for, so answered in the dialog. An AUTOMATIC check deliberately leaves only the
         // sidebar pill: a modal appearing over someone's paper unbidden is what the flow's whole
         // pill-then-dialog split exists to avoid.
-        if (manual) setDialogOpen(true);
+        // Available updates stay in the persistent lower-right update control, even after a
+        // manual check; a modal would interrupt the work the user returned to.
       } else if (found.status === 'current') {
         // Say so. This used to set `idle`, which draws no pill and no dialog — so pressing "Check
         // now" on the newest build was indistinguishable from pressing a dead button. The dialog

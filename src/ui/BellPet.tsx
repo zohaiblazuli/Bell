@@ -178,8 +178,8 @@ export default function BellPet({
         const fadeOut = 1 - smoothstep((progress - 0.68) / 0.32);
         const alpha = fadeIn * fadeOut;
         const direction = index % 2 === 0 ? -1 : 1;
-        const x = 420 + direction * (5 + 10 * progress);
-        const y = 126 - 78 * progress;
+        const x = 392 + direction * (4 + 7 * progress);
+        const y = 152 - 56 * progress;
         const fontSize = 28 + 18 * progress;
         context.save();
         context.globalAlpha = alpha;
@@ -204,8 +204,8 @@ export default function BellPet({
       context.lineWidth = 5;
       context.strokeStyle = 'rgb(241 249 255)';
       context.fillStyle = 'rgb(54 139 235)';
-      context.strokeText('Z', 420, 78);
-      context.fillText('Z', 420, 78);
+      context.strokeText('Z', 392, 116);
+      context.fillText('Z', 392, 116);
       context.restore();
     };
 
