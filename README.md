@@ -151,17 +151,17 @@ Bell's interface is authored as a measured design system in the spirit of the OS
 
 Bell is **source-available, not open-source**. The code is public to read and learn from, but it is not licensed for redistribution or commercial use — in part because it vendors third-party assets (the SF Pro typeface and Cambridge marks) that are not ours to relicense. See [LICENSE](LICENSE) for the full terms.
 
+For licensing enquiries or permissions, reach out at [zohaibkhanbhs@gmail.com](mailto:zohaibkhanbhs@gmail.com). Please use a clear, descriptive subject line — emails without one are unlikely to get a response.
+
 ## Acknowledgements
 
-- [Hadeed Adeel](https://github.com/hadeed67) — for occasionally sharing his Codex account and making development a little smoother.
+- [Hadeed Khan](https://github.com/hadeed67) — for occasionally sharing his Codex account and making development a little smoother.
 - Cambridge, CAIE, and the Cambridge Assessment International Education name and logo belong to Cambridge University Press & Assessment. Bell is an independent study tool and is not affiliated with or endorsed by Cambridge.
 
 ---
 
 <div align="center">
-  <img src="docs/media/sleep-loop.gif" alt="" width="340" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="docs/media/wave-kiss.gif" alt="" width="340" />
+  <img src="docs/media/wave-kiss.gif" alt="" width="480" />
   <br /><br />
-  <sub>Built with ♥ by <a href="https://github.com/zohaiblazuli">zohaiblazuli</a></sub>
+  <sub><strong>Built with ♥ by <a href="https://github.com/zohaiblazuli">zohaiblazuli</a></strong></sub>
 </div>
