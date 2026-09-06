@@ -72,6 +72,7 @@ Desktop.ini
 work/
 # impeccable hook cache (config.json stays tracked; cache is machine-local)
 .impeccable/hook.cache.json
+.vs
 
 # ---- Design references / mood-boards (local only) ----
 idea/
