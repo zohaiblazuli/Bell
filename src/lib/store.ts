@@ -239,16 +239,8 @@ export interface Settings {
    * user can turn it off in Settings. The Figma file also draws this switch On (`536:451`).
    */
   updateAuto: boolean;
-  /**
-   * The legacy mascot selection. Azure now ships in the binary and the UI no longer changes this,
-   * but the field remains readable so older settings files and the dormant picker stay compatible.
-   *
-   * A Codex pet id (`isPetId` in `lib/pets.ts`), pointing at a directory under `<app data>\pets\`. It
-   * is only ever a *selection*: the pet's own files are not study state and a reset leaves them on
-   * disk, so clearing data returns the mascot to Mr. Bell without throwing away a download. An id
-   * whose pet has since been removed falls back to him too, rather than failing.
-   */
-  pet: string | null;
+  /** Azure's bundled pet id, or null for the built-in Mr. Bell rig. */
+  pet: 'msbell' | 'azure' | null;
 }
 
 export const SETTINGS_DEFAULTS: Settings = {
@@ -259,7 +251,7 @@ export const SETTINGS_DEFAULTS: Settings = {
   focusAutostart: true,
   streakMinutes: 10,
   updateAuto: true,
-  pet: 'azure',
+  pet: 'msbell',
 };
 
 export function loadSettings(): Settings {
@@ -267,7 +259,13 @@ export function loadSettings(): Settings {
   // Before Settings existed the tone lived alone under `tone`, and that key survived the Foolscap
   // migration — so seed from it rather than resetting a real preference to Day.
   const seed = stored ?? { tone: read<ToneChoice>('tone', SETTINGS_DEFAULTS.tone) };
-  return { ...SETTINGS_DEFAULTS, ...seed };
+  const merged = { ...SETTINGS_DEFAULTS, ...seed };
+  // Older builds allowed arbitrary downloaded pets. The current product offers exactly its two
+  // bundled mascots, so a stale third-party id returns to the default instead of naming an option
+  // Settings can no longer represent. A legacy null remains an intentional Mr. Bell selection.
+  const validPet: Settings['pet'] =
+    merged.pet === null ? null : merged.pet === 'azure' ? 'azure' : 'msbell';
+  return { ...merged, pet: validPet };
 }
 
 export function saveSettings(value: Settings) {
