@@ -20,14 +20,11 @@
      through at all four corners while the existing overflow clip keeps every route within it. */
   border-radius: 32px;
   display: grid;
-  grid-template-columns: 238px 1fr;
+  grid-template-rows: var(--tabbar-h, 42px) minmax(0, 1fr);
+  grid-template-columns: 1fr;
   /* The top bar's height, as a var so the grid and `.topbar` cannot drift apart at two literals. */
   --topbar-h: 56px;
-  /* `minmax(0, 1fr)`, NOT `1fr`. A bare `1fr` is `minmax(auto, 1fr)`, and that `auto` floor is the
-     row's max-content contribution — so the sidebar's 34-subject list grew the row to ~1600px,
-     `.sidebar { height: 100% }` resolved against that, and everything below the fold was clipped by
-     the `overflow: hidden` here. Zero-floored, the row is the window and the column can scroll. */
-  grid-template-rows: minmax(0, 1fr);
+  --tabbar-h: 42px;
   min-height: 0;
   overflow: hidden;
   background: var(--ground);
@@ -37,10 +34,66 @@
   color: var(--ink);
 }
 
-/* Onboarding is the one surface with no sidebar: the flow *is* the first run, not a screen inside the
-   app, so it draws its own window lights and owns the whole window. Collapsing the column here rather
-   than rendering a different grid keeps one `.app` to reason about. */
+/* The application stage below the top tab bar */
+.app-stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: 238px 1fr;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.app-bare .app-stage,
+.app-stage-bare {
+  grid-template-columns: 1fr;
+}
+
+/* Individual tab panes: All tab panes stack into the content column of .app-stage (col 2, row 1),
+   or col 1 in .app-stage-bare. Inactive tabs are hidden with visibility: hidden rather than display: none
+   so that their layout boxes, scroll positions, and rendered canvas states stay fully intact. */
+.app-tab-pane {
+  grid-column: 2;
+  grid-row: 1;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.app-bare .app-stage .app-tab-pane,
+.app-stage-bare .app-tab-pane {
+  grid-column: 1;
+}
+
+.app-tab-pane[data-active='false'] {
+  visibility: hidden !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+  opacity: 0 !important;
+}
+
+.app-tab-pane[data-active='true'] {
+  visibility: visible !important;
+  pointer-events: auto !important;
+  z-index: 2 !important;
+  opacity: 1 !important;
+}
+
+.app-tab-pane > .nbs {
+  flex: 1 1 0;
+  width: 100%;
+}
+
+/* Onboarding is the one surface with no sidebar or tab bar: the flow *is* the first run, not a screen inside the
+   app, so it draws its own window lights and owns the whole window. */
 .app-bare {
+  grid-template-rows: minmax(0, 1fr);
   grid-template-columns: 1fr;
 }
 
@@ -186,7 +239,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 8px 14px;
+  padding: 10px 8px 14px;
 }
 /* The wordmark is geometry, not text, so the global `svg { fill: none; stroke: currentColor }`
    rule would erase it — it sets its own fills and must opt out. Zohaib's shadow from the Figma
@@ -233,7 +286,7 @@
    and the footer stays on the bottom for thirty-four. */
 .subj {
   flex: 1 1 0;
-  min-height: 0;
+  min-height: 60px;
   display: flex;
   flex-direction: column;
   /* Rows are 30 tall on a 31px pitch. */
@@ -254,8 +307,9 @@
    The extra height comes from the open mascot region; at short window heights the subject list
    remains the flexible, scrolling region. */
 .mascot {
-  flex: none;
-  height: clamp(300px, calc(100vh - 410px), 460px);
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 460px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -331,15 +385,15 @@
 .main {
   position: relative;
   z-index: 2;
-  grid-column: 2;
+  flex: 1 1 0;
+  height: 100%;
+  width: 100%;
+  min-height: 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
   background: transparent;
   transition: background 0.4s;
-}
-.app[data-view='workspace'] .main {
-  background: var(--ground-2);
 }
 
 /* ---------- topbar ---------- */

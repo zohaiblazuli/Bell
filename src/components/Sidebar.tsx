@@ -1,5 +1,4 @@
 import Icon from './Icon';
-import WindowLights from './WindowLights';
 import Wordmark from '@ui/brand/Wordmark';
 import NavItem from '@ui/NavItem';
 import SubjectRow from '@ui/SubjectRow';
@@ -12,6 +11,9 @@ import azureAppIcon from '@/assets/azure-app-icon.png';
 
 export type View =
   | 'library'
+  | 'community'
+  | 'workspace'
+  | 'community-reader'
   | 'bookmarks'
   | 'recent'
   | 'dashboard'
@@ -26,11 +28,11 @@ export type View =
  * every row is 214; window lights at (12,14), the logo at (12,34), then the two nav groups, the
  * subject list, the mascot slot and the dev footer.
  *
- * SIX nav rows under STUDY. Figma's Notebooks screen (`620:507`) draws five — it inserts Notebooks as
+ * The Study group also carries the local Workspace alongside the original navigation. Figma's Notebooks screen (`620:507`) draws five — it inserts Notebooks as
  * the second row and has no Settings row at all, which is a gap in the file rather than a decision.
  * The app carries Settings, so it lands on six. `screen-notebooks.md` TRAP 16 asks explicitly whether
  * that cuts Mr. Bell: it does not. The column is flexbox with the `mascot` slot as the flex spacer and
- * he is bottom-pinned inside it, so a sixth 38px row shrinks the slot rather than moving him, and the
+ * he is bottom-pinned inside it, so added 38px rows shrink the slot rather than moving him, and the
  * rig's top ~45px is empty above his spectacles. Verified by screenshot at the 680px minimum window
  * height, which is the case that would break first.
  */
@@ -62,6 +64,7 @@ interface Props {
    * `tone-handoff` through it when the tone crosses, which is the beat that mood exists for.
    */
   mascot?: BellMood;
+  studying?: boolean;
   /**
    * A press on the mascot. Deliberately a pointer-only easter egg on a decorative element rather than
    * a real control: it changes nothing, so there is no function for a keyboard user to be locked out
@@ -86,14 +89,13 @@ export default function Sidebar({
   notebookCount,
   update,
   mascot = 'idle',
+  studying = false,
   onPokeMascot,
   version = '0.1.0',
   build = 'dev',
 }: Props) {
   return (
     <aside className="sidebar">
-      <WindowLights />
-
       {/* Azure is Bell's shipped identity now: the supplied app mark paired with the existing word
           geometry keeps the desktop icon and the in-product brand unmistakably the same. */}
       <div className="brand">
@@ -111,6 +113,20 @@ export default function Sidebar({
         count={paperCount?.toLocaleString()}
         active={view === 'library'}
         onClick={() => onView('library')}
+      />
+      <NavItem
+        icon={<Icon name="doc" />}
+        label="Community Resources"
+        showCount={false}
+        active={view === 'community' || view === 'community-reader'}
+        onClick={() => onView('community')}
+      />
+      <NavItem
+        icon={<Icon name="folder" />}
+        label="Workspace"
+        showCount={false}
+        active={view === 'workspace'}
+        onClick={() => onView('workspace')}
       />
       {/* §4a inserts Notebooks as the SECOND row, above Dashboard — the shelf is a place you keep
           things, so it belongs beside the library rather than among the read-outs. `book` already
@@ -186,8 +202,9 @@ export default function Sidebar({
       <div className="mascot" aria-hidden="true" onPointerDown={onPokeMascot}>
         <Mascot
           size={160}
-          petSize="clamp(300px, calc(100vh - 410px), 460px)"
+          petSize="100%"
           mood={mascot}
+          studying={studying}
         />
       </div>
 
