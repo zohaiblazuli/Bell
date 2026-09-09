@@ -93,6 +93,7 @@ function MarkSchemePage({
     if (!el) return;
     const observer = new IntersectionObserver(
       (entries) => {
+        if (el.closest('.app-tab-pane')?.getAttribute('data-active') === 'false') return;
         if (entries.some((e) => e.isIntersecting)) setNear(true);
       },
       // A screen of slack, so a page is drawn just before it is scrolled to.
