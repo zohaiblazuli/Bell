@@ -41,15 +41,9 @@ import Switch from '@ui/Switch';
 import GitHubMark from '@ui/icons/GitHubMark';
 import SeasonIcon from '@ui/icons/SeasonIcon';
 import Icon, { type IconName } from '@/components/Icon';
-import PetShelf from '@/components/PetShelf';
 import type { UpdateState } from '@/components/UpdateFlow';
-import { petList, type PetEntry } from '@/lib/pets';
 import type { SeasonChoice, Settings, ToneChoice } from '@/lib/store';
 import type { LibraryStats, RepairReport, Subject, SyncReport } from '@/lib/types';
-
-/** Azure is Bell's shipped mascot. Keep the picker implementation available for future product work,
- * but do not expose a control that can replace her in the current app. */
-const MASCOT_PICKER_VISIBLE = false;
 
 /**
  * `tone choice` `534:387` — Day (sun) · Night (moon) · Match system (no glyph). `glyph` is the
@@ -320,33 +314,6 @@ export default function SettingsView({
   const [confirmClear, setConfirmClear] = useState(false);
   const confirmRef = useRef<HTMLSpanElement>(null);
 
-  /**
-   * The pet shelf, and just enough of the installed list to name the current mascot.
-   *
-   * `PetShelf` keeps its own copy rather than being handed this one: it installs and removes, so it
-   * needs to refresh on its own, and one shared mutable list would mean plumbing a callback up here to
-   * do what re-reading on close already does. Two cheap reads of the same directory, no shared state.
-   */
-  const [petShelf, setPetShelf] = useState(false);
-  const [pets, setPets] = useState<PetEntry[] | null>(null);
-
-  useEffect(() => {
-    // On mount, and again whenever the shelf closes — which is the only thing that can change it.
-    if (petShelf) return;
-    void petList()
-      .then(setPets)
-      .catch(() => setPets([]));
-  }, [petShelf]);
-
-  /**
-   * What the row says, which is what is actually on screen rather than what is stored: a selection
-   * whose pet has since been removed falls back to Mr. Bell, so the row has to as well.
-   */
-  const mascotName =
-    pets == null
-      ? '…'
-      : (settings.pet ? pets.find((p) => p.id === settings.pet)?.displayName : null) ?? 'Mr. Bell';
-
   useEffect(() => {
     // Swapping the pressed button for two new ones drops focus to the body, so it is moved
     // deliberately — to Cancel, which is first in DOM order, because the destructive button must
@@ -429,18 +396,25 @@ export default function SettingsView({
                   />
                 </CardRow>
 
-                {/* The file draws a `Show Mr. Bell` switch here (`534:431`) and this screen has always
-                    left it out, because a switch that only hides him had nothing behind it. This is
-                    what belongs in that slot: which mascot, rather than whether. */}
-                {MASCOT_PICKER_VISIBLE ? (
-                  <CardRow
-                    label="Mascot"
-                    helper="Mr. Bell ships with Bell. Pets are imported from codex-pets.net and kept on this machine."
-                    onClick={() => setPetShelf(true)}
-                  >
-                    <span className="set-value t-body-small">{mascotName}</span>
-                  </CardRow>
-                ) : null}
+                <CardRow label="Mascot" helper="Choose who keeps you company throughout Bell">
+                  <span className="set-choice" role="group" aria-label="Mascot">
+                    <Chip
+                      label="Ms. Bell"
+                      filled={settings.pet === 'msbell'}
+                      onClick={() => onChange({ pet: 'msbell' })}
+                    />
+                    <Chip
+                      label="Azure"
+                      filled={settings.pet === 'azure'}
+                      onClick={() => onChange({ pet: 'azure' })}
+                    />
+                    <Chip
+                      label="Mr. Bell"
+                      filled={settings.pet === null}
+                      onClick={() => onChange({ pet: null })}
+                    />
+                  </span>
+                </CardRow>
               </Card>
             </section>
 
@@ -812,15 +786,6 @@ export default function SettingsView({
         </div>
       </div>
 
-      {/* Last in the view, so it paints over both columns. It renders nothing while closed. */}
-      {MASCOT_PICKER_VISIBLE ? (
-        <PetShelf
-          open={petShelf}
-          onClose={() => setPetShelf(false)}
-          selected={settings.pet}
-          onSelect={(pet) => onChange({ pet })}
-        />
-      ) : null}
     </div>
   );
 }
