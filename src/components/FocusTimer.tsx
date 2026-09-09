@@ -17,7 +17,7 @@
  *     must not lose the minutes already counted.
  *   RESET zeroes THIS PAPER's stopwatch and nothing else. `store.resetPaperFocus` deliberately keeps
  *     the day log: those minutes were studied, and the streak, the week total and the activity grid
- *     all read that log. It asks first — one mis-click should not throw away an hour of tracking.
+ *     all read that log. Reset is immediate, matching an ordinary stopwatch.
  *
  * `Ring` is the shared primitive (`@ui/Ring`), and the arc paints through a gradient THIS COMPONENT
  * defines rather than the app-wide `#iris`. Two reasons, and the second is the load-bearing one:
@@ -29,14 +29,11 @@
  *     resolves per tone: `#1436c8 → #58c8ff` in Day, `#6aa8ff → #58c8ff` in Night. Still the accent
  *     spent as a line on a live element, which is the rule that licenses a timer ring at all.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import Ring from '@ui/Ring';
 import Icon from './Icon';
 import './FocusTimer.css';
 import { addFocusSeconds, loadFocus, resetPaperFocus } from '../lib/store';
-
-/** How long an armed reset stays armed before it forgets it was asked. */
-const CONFIRM_MS = 3000;
 
 const clock = (total: number) => {
   const s = Math.max(0, Math.floor(total));
@@ -53,8 +50,7 @@ interface Props {
 export default function FocusTimer({ paper }: Props) {
   const [elapsed, setElapsed] = useState(() => Math.floor(loadFocus().papers[paper] ?? 0));
   const [running, setRunning] = useState(true);
-  /** Reset has been asked for once and is waiting to be confirmed. */
-  const [confirming, setConfirming] = useState(false);
+  const gradientId = `bell-timer-${useId().replace(/:/g, '')}`;
   // Seconds counted but not yet written to disk.
   const unsaved = useRef(0);
 
@@ -88,20 +84,7 @@ export default function FocusTimer({ paper }: Props) {
     };
   }, [flush]);
 
-  // An armed reset disarms itself, so a confirm the user walked away from is not still live an hour
-  // later next to a button they meant to press once.
-  useEffect(() => {
-    if (!confirming) return;
-    const id = window.setTimeout(() => setConfirming(false), CONFIRM_MS);
-    return () => window.clearTimeout(id);
-  }, [confirming]);
-
   const reset = () => {
-    if (!confirming) {
-      setConfirming(true);
-      return;
-    }
-    setConfirming(false);
     // Drop the unbanked seconds FIRST: they would otherwise be flushed onto the paper a tick later
     // and the stopwatch would start from 4 instead of 0.
     unsaved.current = 0;
@@ -118,18 +101,13 @@ export default function FocusTimer({ paper }: Props) {
          moves it. */
       data-wrap={running && elapsed > 0 && elapsed % 60 === 0 ? 'true' : undefined}
     >
-      {/* Inside `.app`, which is the whole point — see the header. 0 x 0 and absolutely positioned, so
-          it is a definition and not a layout participant. */}
-      <svg className="timer-defs" aria-hidden="true">
-        <defs>
-          <linearGradient id="bell-timer-arc" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="var(--accent)" />
-            <stop offset="1" stopColor="var(--bell-cap-hi)" />
-          </linearGradient>
-        </defs>
-      </svg>
-
-      <Ring value={(elapsed % 60) / 60} size={30} stroke={3} fill="url(#bell-timer-arc)" />
+      <Ring
+        value={(elapsed % 60) / 60}
+        size={30}
+        stroke={3}
+        fill={`url(#${gradientId})`}
+        gradient={{ id: gradientId, from: 'var(--accent)', to: 'var(--bell-cap-hi)' }}
+      />
 
       <span className="timer-read t-mono-timer">{clock(elapsed)}</span>
 
@@ -148,15 +126,8 @@ export default function FocusTimer({ paper }: Props) {
         <button
           type="button"
           className="timer-btn timer-reset"
-          data-armed={confirming ? 'true' : undefined}
-          aria-label={
-            confirming ? 'Press again to reset this paper’s timer' : 'Reset this paper’s timer'
-          }
-          title={
-            confirming
-              ? 'Press again to reset'
-              : 'Reset this paper’s timer — the minutes already banked for today are kept'
-          }
+          aria-label="Reset this paper’s timer"
+          title="Reset this paper’s timer — the minutes already banked for today are kept"
           onClick={reset}
         >
           <Icon name="reset" />

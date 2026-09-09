@@ -23,15 +23,6 @@
   transition: var(--tone-chrome);
 }
 
-/* The arc's gradient lives here rather than in the app-wide sprite, because its stops read a
-   mode-paired token and the sprite is mounted outside `.app` — FocusTimer.tsx's header has the whole
-   story. A definition, never a box. */
-.timer-defs {
-  position: absolute;
-  width: 0;
-  height: 0;
-}
-
 .timer .bell-ring {
   flex: none;
 }
@@ -91,14 +82,6 @@
    element that is waiting for you. */
 .timer:not([data-running='true']) .timer-btn:first-child {
   color: var(--accent);
-}
-
-/* Reset asks first. Armed, it is the app's only destructive control outside Settings, so it takes
-   `--danger` — never `--d5`, which is the difficulty axis. */
-.timer-reset[data-armed='true'],
-.timer-reset[data-armed='true']:hover {
-  color: var(--danger);
-  background: var(--danger-soft);
 }
 
 @media (prefers-reduced-motion: reduce) {
