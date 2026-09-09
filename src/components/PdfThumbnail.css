@@ -1,0 +1,103 @@
+/* PdfThumbnail.css — First page extracted PDF thumbnail with realistic paper elevation */
+
+.pdf-thumb-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Card view preview — fills the cover area edge-to-edge */
+.pdf-thumb-card {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.pdf-thumb-card .pdf-thumb-img {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  max-width: none;
+  object-fit: cover;
+  object-position: top center;
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
+  transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1), filter 0.35s ease;
+  display: block;
+}
+
+/* Elevated hover zoom on card preview */
+.lw-card:hover .pdf-thumb-card .pdf-thumb-img {
+  transform: scale(1.05);
+  filter: brightness(1.03);
+}
+
+/* Skeleton loader */
+.pdf-thumb-skeleton {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.14) 50%, rgba(255, 255, 255, 0.06) 100%);
+  background-size: 200% 100%;
+  animation: pdf-shimmer 1.5s infinite linear;
+}
+
+@keyframes pdf-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Mini thumbnail for list view */
+.pdf-thumb-mini {
+  width: 32px;
+  height: 40px;
+  flex: none;
+}
+
+.pdf-thumb-mini .pdf-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  border-radius: 4px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 6px -1px rgba(0, 0, 0, 0.28);
+  display: block;
+}
+
+.pdf-thumb-mini.pdf-thumb-loading .pdf-thumb-skeleton {
+  width: 32px;
+  height: 40px;
+}
+
+/* Fallback glyph */
+.pdf-thumb-fallback-icon {
+  width: 44px;
+  height: 52px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+}
+
+.pdf-thumb-fallback-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.pdf-thumb-mini .pdf-thumb-fallback-icon {
+  width: 32px;
+  height: 40px;
+  border-radius: 4px;
+}
+
+.pdf-thumb-mini .pdf-thumb-fallback-icon svg {
+  width: 16px;
+  height: 16px;
+}
