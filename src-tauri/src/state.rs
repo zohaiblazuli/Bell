@@ -148,7 +148,7 @@ pub fn reset_into(
     state_dir: &std::path::Path,
 ) -> Result<ResetReport, String> {
     crate::db::clear_catalog(conn).map_err(|e| e.to_string())?;
-    // `schema_version` stays: the tables really are v2, and dropping that claim would make the
+    // `schema_version` stays: the tables really are v3, and dropping that claim would make the
     // next open treat this as a fresh database.
     conn.execute("DELETE FROM meta WHERE k <> 'schema_version'", [])
         .map_err(|e| e.to_string())?;
@@ -286,7 +286,7 @@ mod tests {
         assert!(crate::db::get_meta(&conn, "install_id").is_none());
         assert_eq!(
             crate::db::get_meta(&conn, "schema_version").as_deref(),
-            Some("2")
+            Some("3")
         );
 
         assert!(!state_dir.join("bookmarks.json").exists());

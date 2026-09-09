@@ -24,7 +24,7 @@ pub struct Db(pub Mutex<Connection>);
 ///
 /// A mismatch drops the catalogue cache and the legacy local-library tables, but
 /// deliberately preserves `download` and `meta` — see `open`.
-const SCHEMA_VERSION: i64 = 2;
+const SCHEMA_VERSION: i64 = 3;
 
 const SCHEMA: &str = r#"
 -- ─── Catalogue cache (owned by the server, replaced on every sync) ───────────
@@ -81,6 +81,31 @@ CREATE TABLE IF NOT EXISTS download (
   size          INTEGER NOT NULL,
   downloaded_at TEXT NOT NULL,
   PRIMARY KEY (paper_id, kind)
+) WITHOUT ROWID;
+
+-- Community downloads are user-owned local files too, but their remote identifiers are UUID text
+-- and their lifecycle is independent of the past-paper catalogue. A row is the read sandbox: only
+-- a PDF Bell downloaded and recorded here can cross back into the webview.
+CREATE TABLE IF NOT EXISTS community_download (
+  resource_id   TEXT NOT NULL,
+  version       INTEGER NOT NULL,
+  path          TEXT NOT NULL UNIQUE,
+  size          INTEGER NOT NULL,
+  sha256        TEXT,
+  downloaded_at TEXT NOT NULL,
+  PRIMARY KEY(resource_id, version)
+) WITHOUT ROWID;
+
+-- Files a student deliberately imports into Workspace. These rows and files are user-owned and
+-- never participate in catalogue refreshes or community network calls.
+CREATE TABLE IF NOT EXISTS workspace_document (
+  id             TEXT PRIMARY KEY,
+  title          TEXT NOT NULL,
+  original_name  TEXT NOT NULL,
+  path           TEXT NOT NULL UNIQUE,
+  size           INTEGER NOT NULL,
+  imported_at    INTEGER NOT NULL,
+  last_opened_at INTEGER
 ) WITHOUT ROWID;
 
 CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL) WITHOUT ROWID;
