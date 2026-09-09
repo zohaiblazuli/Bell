@@ -44,6 +44,8 @@ interface Props {
    * what made the bar collide. ⌘K still opens the palette from there, so nothing is lost.
    */
   showSearch?: boolean;
+  /** A downloaded community resource has no catalogue action in its reader. */
+  showSync?: boolean;
 }
 
 export default function TopBar({
@@ -57,6 +59,7 @@ export default function TopBar({
   center,
   right,
   showSearch = true,
+  showSync = true,
 }: Props) {
   return (
     <div className="topbar" data-tauri-drag-region>
@@ -78,13 +81,15 @@ export default function TopBar({
 
         <TonePill tone={tone} onToggle={onTone} />
 
-        <IconButton
-          icon="sync"
-          label="Sync the catalogue"
-          spin={busy}
-          disabled={busy}
-          onClick={onReindex}
-        />
+        {showSync && (
+          <IconButton
+            icon="sync"
+            label="Sync the catalogue"
+            spin={busy}
+            disabled={busy}
+            onClick={onReindex}
+          />
+        )}
       </div>
 
       {/* Last in DOM order and absolutely positioned, so it centres on the bar rather than on the
