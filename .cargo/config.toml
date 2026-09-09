@@ -1,0 +1,4 @@
+[env]
+BELL_COMMUNITY_API_BASE = "https://jjmkfcsakwyhpqlziztl.supabase.co/functions/v1"
+BELL_SUPABASE_URL = "https://jjmkfcsakwyhpqlziztl.supabase.co"
+BELL_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_G9vr3K10D0Rg-Lui3V0dwQ_cClf8VzG"
