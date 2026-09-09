@@ -10,6 +10,17 @@ import type {
   Subject,
   SyncReport,
 } from './types';
+import type {
+  CommunityAdminIdentity,
+  CommunityAdminInspection,
+  CommunityAdminStats,
+  CommunityCreateInput,
+  CommunityUpdateInput,
+  CommunityFilters,
+  CommunityListResponse,
+  CommunityResource,
+  CommunityResourceStatus,
+} from './community';
 
 // --- the catalogue -----------------------------------------------------------
 
@@ -92,7 +103,16 @@ export const downloadRootPath = () => invoke<string>('download_root_path');
  * Bytes of one downloaded PDF. Rust refuses any path not recorded in `download`, so
  * this is the only way to read a paper and it cannot reach anything else.
  */
-export const readDocument = (path: string) => invoke<ArrayBuffer>('read_document', { path });
+const paperDocumentReads = new Map<string, Promise<ArrayBuffer>>();
+export const readDocument = (path: string) => {
+  const pending = paperDocumentReads.get(path);
+  if (pending) return pending;
+  const request = invoke<ArrayBuffer>('read_document', { path }).finally(() => {
+    paperDocumentReads.delete(path);
+  });
+  paperDocumentReads.set(path, request);
+  return request;
+};
 
 // --- the state directory, for Settings' Data card ----------------------------
 
@@ -119,3 +139,125 @@ export const exportState = (name: string) => invoke<string>('state_export', { na
  * them is still carrying one.
  */
 export const resetApp = () => invoke<ResetReport>('reset_app');
+
+// --- Community Resources ----------------------------------------------------
+
+export interface CommunityServiceStatus {
+  configured: boolean;
+  message: string | null;
+}
+
+export interface CommunityDownloadResult {
+  resourceId: string;
+  version: number;
+  path: string;
+  size: number;
+  cached: boolean;
+}
+
+export interface CommunityVoteResult {
+  hasVoted: boolean;
+  upvotes: number;
+}
+
+export const communityStatus = () => invoke<CommunityServiceStatus>('community_status');
+
+export const listCommunityResources = (
+  filters: CommunityFilters,
+  cursor?: string | null,
+  limit = 60,
+) =>
+  invoke<CommunityListResponse>('community_list', {
+    query: {
+      query: filters.query || null,
+      qualification: filters.qualification,
+      subjectCode: filters.subjectCode,
+      resourceType: filters.resourceType,
+      sort: filters.sort,
+      cursor: cursor ?? null,
+      limit,
+    },
+  });
+
+export const getCommunityResource = (resourceId: string) =>
+  invoke<CommunityResource>('community_get', { resourceId });
+
+export const communityThumbnail = (resourceId: string) =>
+  invoke<ArrayBuffer>('community_thumbnail', { resourceId });
+
+export const setCommunityVote = (resourceId: string, desired: boolean) =>
+  invoke<CommunityVoteResult>('community_vote', { resourceId, desired });
+
+export const recordCommunityOpen = (resourceId: string) =>
+  invoke<void>('community_record_open', { resourceId });
+
+export const downloadCommunityResource = (resource: CommunityResource) =>
+  invoke<CommunityDownloadResult>('community_download', { resource });
+
+const communityDocumentReads = new Map<string, Promise<ArrayBuffer>>();
+export const readCommunityDocument = (path: string) => {
+  const pending = communityDocumentReads.get(path);
+  if (pending) return pending;
+  const request = invoke<ArrayBuffer>('community_read_document', { path }).finally(() => {
+    communityDocumentReads.delete(path);
+  });
+  communityDocumentReads.set(path, request);
+  return request;
+};
+
+export const communityAdminStatus = () =>
+  invoke<CommunityAdminIdentity | null>('community_admin_status');
+
+export const communityAdminSavedUsername = () =>
+  invoke<string | null>('community_admin_saved_username');
+
+export const communityAdminSignIn = (username: string, password: string) =>
+  invoke<CommunityAdminIdentity>('community_admin_sign_in', { username, password });
+
+export const communityAdminVerifyMfa = (code: string) =>
+  invoke<CommunityAdminIdentity>('community_admin_verify_mfa', { code });
+
+export const communityAdminSignOut = () => invoke<void>('community_admin_sign_out');
+
+export const listCommunityAdminResources = () =>
+  invoke<CommunityResource[]>('community_admin_list');
+
+export const communityAdminStats = () =>
+  invoke<CommunityAdminStats>('community_admin_stats');
+
+export const communityAdminInspection = (resourceId: string) =>
+  invoke<CommunityAdminInspection>('community_admin_inspection', { resourceId });
+
+export const createCommunityResource = (input: CommunityCreateInput) =>
+  invoke<CommunityResource>('community_admin_create', { input });
+
+export const setCommunityResourceStatus = (
+  resourceId: string,
+  status: Extract<CommunityResourceStatus, 'published' | 'unpublished' | 'rejected' | 'archived'>,
+) => invoke<CommunityResource>('community_admin_set_status', { resourceId, status });
+
+export const uploadCommunityResource = (resource: CommunityResource, filePath: string) =>
+  invoke<void>('community_admin_upload', { resource, filePath });
+
+export const previewCommunityAdminResource = (resource: CommunityResource) =>
+  invoke<CommunityDownloadResult>('community_admin_preview', { resource });
+
+export const updateCommunityResource = (
+  resourceId: string,
+  input: CommunityUpdateInput,
+) => invoke<CommunityResource>('community_admin_update', { resourceId, input });
+
+export const uploadCommunityThumbnail = (resourceId: string, filePath: string) =>
+  invoke<void>('community_admin_upload_thumbnail', { resourceId, filePath });
+
+export const communityAdminReadLocalFile = (path: string) =>
+  invoke<ArrayBuffer>('community_admin_read_local_file', { path });
+
+export const communityAdminSaveTempThumbnail = (bytes: number[]) =>
+  invoke<string>('community_admin_save_temp_thumbnail', { bytes });
+
+export const deleteCommunityResource = (resourceId: string) =>
+  invoke<void>('community_admin_delete', { resourceId });
+
+export const invalidateCommunityThumbnail = (resourceId?: string) =>
+  invoke<void>('community_invalidate_thumbnail', { resourceId: resourceId ?? null });
