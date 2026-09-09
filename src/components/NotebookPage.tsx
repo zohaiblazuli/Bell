@@ -69,7 +69,7 @@ import {
 } from '@/lib/notebooks';
 
 /** The page's own CSS box, before the spread's scale. Every fraction divides by these. */
-const BOX: PageBox = { w: PAGE.w, h: PAGE.h };
+const BOX: PageBox = { w: 580, h: PAGE.h };
 
 /** How close a press has to be to count as a hit, as a fraction of the page width. */
 const HIT_TOLERANCE = 0.012;
@@ -682,8 +682,8 @@ export default function NotebookPage({
               s: text,
               x: q4(spot.at.x),
               y: q4(spot.at.y),
-              w: q4(116 / PAGE.w),
-              h: q4(104 / PAGE.h),
+              w: q4(116 / BOX.w),
+              h: q4(104 / BOX.h),
               c: colour,
             }
           : {
@@ -694,7 +694,7 @@ export default function NotebookPage({
               y: q4(spot.at.y),
               // Floored as well as capped. A negative width is not merely a thin column: `inRect` can
               // never contain a point in one, so the object would be unselectable and undeletable.
-              w: q4(Math.max(TYPING.text.w / PAGE.w, Math.min(0.6, 1 - spot.at.x - PAGE.padX / PAGE.w))),
+              w: q4(Math.max(TYPING.text.w / BOX.w, Math.min(0.6, 1 - spot.at.x - PAGE.padX / BOX.w))),
               size: q4(widthFraction(16)),
               c: colour,
             };
@@ -730,7 +730,7 @@ export default function NotebookPage({
           /* The page's own px rather than a percentage: the box has a fixed pixel size, so a percentage
              origin is what let it hang off the right edge into `overflow: hidden`. `clampSpot` has
              already kept the origin inside. */
-          style={{ left: editing.at.x * PAGE.w, top: editing.at.y * PAGE.h }}
+          style={{ left: editing.at.x * BOX.w, top: editing.at.y * BOX.h }}
           onBlur={(e) => commitText(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Escape') {
@@ -753,10 +753,10 @@ function drawShape(
   ink: NbInkSettings,
   box: { from: Pt; to: Pt },
 ): void {
-  const x1 = box.from.x * PAGE.w;
-  const y1 = box.from.y * PAGE.h;
-  const x2 = box.to.x * PAGE.w;
-  const y2 = box.to.y * PAGE.h;
+  const x1 = box.from.x * BOX.w;
+  const y1 = box.from.y * BOX.h;
+  const x2 = box.to.x * BOX.w;
+  const y2 = box.to.y * BOX.h;
   ctx.beginPath();
   switch (ink.shape) {
     case 'line':
@@ -788,8 +788,8 @@ function shapeObject(
 ): NbObject | null {
   const w = box.to.x - box.from.x;
   const h = box.to.y - box.from.y;
-  // A click is not a shape. 4px against `PAGE`, the reference box, the same threshold the marquee uses.
-  if (Math.abs(w) * PAGE.w < 4 && Math.abs(h) * PAGE.h < 4) return null;
+  // A click is not a shape. 4px against `BOX`, the rendered page box, the same threshold the marquee uses.
+  if (Math.abs(w) * BOX.w < 4 && Math.abs(h) * BOX.h < 4) return null;
   const kind = ink.shape;
   const line = kind === 'line' || kind === 'arrow';
   return {
@@ -825,10 +825,10 @@ function selectionFrame(page: NbPage, ids: readonly string[]): Rect | null {
 
 /** The frame as page px, padding included — what is drawn, and what a handle press is measured against. */
 const framePx = (rect: Rect): Rect => ({
-  x: rect.x * PAGE.w - FRAME_PAD,
-  y: rect.y * PAGE.h - FRAME_PAD,
-  w: rect.w * PAGE.w + FRAME_PAD * 2,
-  h: rect.h * PAGE.h + FRAME_PAD * 2,
+  x: rect.x * BOX.w - FRAME_PAD,
+  y: rect.y * BOX.h - FRAME_PAD,
+  w: rect.w * BOX.w + FRAME_PAD * 2,
+  h: rect.h * BOX.h + FRAME_PAD * 2,
 });
 
 /** The four corners of a px frame, in one fixed order — so the paint and the hit test cannot disagree
@@ -855,8 +855,8 @@ const clampScale = (n: number) => Math.min(20, Math.max(0.05, n));
 /** The handle under `at`, as the anchor to scale about and the corner being pulled — both in fractions. */
 function grabHandle(rect: Rect, at: Pt): { anchor: Pt; corner: Pt } | null {
   const box = framePx(rect);
-  const px = at.x * PAGE.w;
-  const py = at.y * PAGE.h;
+  const px = at.x * BOX.w;
+  const py = at.y * BOX.h;
   const corners = cornersOf(box);
   for (let i = 0; i < corners.length; i++) {
     const [cx, cy] = corners[i];
@@ -865,8 +865,8 @@ function grabHandle(rect: Rect, at: Pt): { anchor: Pt; corner: Pt } | null {
     // than sliding while it resizes.
     const [ax, ay] = corners[3 - i];
     return {
-      anchor: { x: ax / PAGE.w, y: ay / PAGE.h },
-      corner: { x: cx / PAGE.w, y: cy / PAGE.h },
+      anchor: { x: ax / BOX.w, y: ay / BOX.h },
+      corner: { x: cx / BOX.w, y: cy / BOX.h },
     };
   }
   return null;
@@ -912,8 +912,8 @@ function drawFrame(
 function clampSpot(at: Pt, kind: 'text' | 'note'): Pt {
   const box = TYPING[kind];
   return {
-    x: Math.min(Math.max(0, at.x), (PAGE.w - box.w) / PAGE.w),
-    y: Math.min(Math.max(0, at.y), (PAGE.h - box.h) / PAGE.h),
+    x: Math.min(Math.max(0, at.x), (BOX.w - box.w) / BOX.w),
+    y: Math.min(Math.max(0, at.y), (BOX.h - box.h) / BOX.h),
   };
 }
 
