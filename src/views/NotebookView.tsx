@@ -19,7 +19,6 @@ import './NotebookView.css';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import IconButton from '@ui/IconButton';
 import TonePill, { type Tone } from '@ui/TonePill';
-import WindowLights from '../components/WindowLights';
 import ToolDock from '../components/ToolDock';
 import NotebookPage from '../components/NotebookPage';
 import Inspector from '../components/Inspector';
@@ -38,8 +37,8 @@ import {
 import { useNotebook } from '../state/useNotebook';
 import type { Subject } from '../lib/types';
 
-/** The spread's design box. Both numbers are §5c's and the scale is measured against them. */
-const SPREAD_W = 936;
+/** The spread's design box (580px page width * 2 + 4px gutter). The scale is measured against them. */
+const SPREAD_W = 1164;
 const SPREAD_H = 644;
 /**
  * Room the stage keeps around the spread. Trimmed from the design's 26 / 102 so the pages claim more
@@ -214,6 +213,7 @@ export default function NotebookView({
       // The WELL is measured, not the scroller inside it: a box that can grow scrollbars cannot be the
       // thing a scale is derived from without the two chasing each other.
       const box = el.getBoundingClientRect();
+      if (box.width === 0 || box.height === 0) return;
       // Fill the stage: the spread grows past its design size to use the window, bounded by whichever
       // of width or height runs out first, so two pages are never a small island in a large window.
       // `MAX_FIT` is only a safety bound for enormous displays; the window almost always binds first.
@@ -432,7 +432,6 @@ export default function NotebookView({
     >
       {/* §5a topbar 1320x52 — a hairline on all four sides, not a border-bottom. */}
       <header className="nbs-top" data-tauri-drag-region>
-        <WindowLights />
         <IconButton icon="left" label="Back to your notebooks" onClick={leave} />
 
         <div className="nbs-title">

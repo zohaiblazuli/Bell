@@ -218,7 +218,7 @@
 .nbs-spread {
   --nbs-scale: 1;
   position: relative;
-  width: 936px;
+  width: 1164px;
   height: 644px;
   transform: scale(var(--nbs-scale));
   /* The sizer is the scaled box, so the spread grows out of its top-left corner into exactly that. */
@@ -228,8 +228,8 @@
 }
 
 /* §5c gave each page 455 and put a 26-wide spiral binding between them. THE BINDING IS GONE, at
-   Zohaib's instruction, and its 26px went into the pages: 466 + 4 + 466 = 936, so the spread box is
-   unchanged and every page is 11px wider at the same zoom. Radius is a literal 3 — a page is not a
+   Zohaib's instruction, and pages have been widened globally: 580 + 4 + 580 = 1164 for a spacious,
+   comfortable writing area matching 16:9 widescreen desktop proportions. Radius is a literal 3 — a page is not a
    card, the same call the Reader's `.rd-paper` makes.
    The 455 in `lib/ink.ts`'s `PAGE` deliberately did NOT move with this: it is the REFERENCE box every
    stored fraction divides by, not a claim about the rendered width, so ink drawn before this change
@@ -237,7 +237,7 @@
 .nbs-page {
   position: absolute;
   top: 0;
-  width: 466px;
+  width: 580px;
   height: 644px;
   border-radius: 3px;
   background: var(--paper);
@@ -249,7 +249,7 @@
   left: 0;
 }
 .nbs-page[data-side='r'] {
-  left: 470px;
+  left: 584px;
 }
 
 /* The three stacked canvases, all filling the page. `paper` repaints only when the style or the box
@@ -281,7 +281,8 @@
   pointer-events: none;
 }
 .nbs-page[data-side='l'] .nbs-fold {
-  left: 444px;
+  left: auto;
+  right: 0;
   background: linear-gradient(
     to left,
     color-mix(in srgb, var(--page-ink) 7%, transparent),
@@ -297,7 +298,7 @@
   );
 }
 
-/* What replaced §5c's `rings`. A 4px rule at local x 466, full height, the last child so it paints
+/* What replaced §5c's `rings`. A 4px rule at local x 580, full height, the last child so it paints
    over both pages — Zohaib asked for "a small thick black line to indicate this is a separate page",
    and one rule does that where 26px of drawn spiral was charging both pages for the privilege.
    `--page-ink` rather than a raw `#000`: raw colour is a bug by the design system's own rule, and the
@@ -307,7 +308,7 @@
 .nbs-gutter {
   position: absolute;
   top: 0;
-  left: 466px;
+  left: 580px;
   width: 4px;
   height: 644px;
   background: var(--page-ink);
