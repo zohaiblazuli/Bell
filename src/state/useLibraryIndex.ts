@@ -57,6 +57,9 @@ export interface LibraryIndex {
   /** Season-code letter, not a label: `s` | `w` | `m`. Filtered in the view. */
   season: string | null;
   setSeason: (s: string | null) => void;
+  /** Cambridge paper number, e.g. 4 covers components 41, 42 and 43. Filtered in the view. */
+  paperNumber: number | null;
+  setPaperNumber: (paper: number | null) => void;
   subjectId: number | null;
   setSubjectId: (id: number | null) => void;
   /** Narrow to papers whose question paper is already on this machine. */
@@ -107,6 +110,7 @@ export function useLibraryIndex(paused: boolean): LibraryIndex {
 
   const [level, setLevel] = useState<string | null>(null);
   const [season, setSeason] = useState<string | null>(null);
+  const [paperNumber, setPaperNumber] = useState<number | null>(null);
   const [subjectId, setSubjectId] = useState<number | null>(null);
   const [downloadedOnly, setDownloadedOnly] = useState(false);
 
@@ -346,7 +350,7 @@ export function useLibraryIndex(paused: boolean): LibraryIndex {
 
   return {
     stats, subjects, sittingTotals, papers, loading,
-    level, setLevel, season, setSeason, subjectId, setSubjectId,
+    level, setLevel, season, setSeason, paperNumber, setPaperNumber, subjectId, setSubjectId,
     downloadedOnly, setDownloadedOnly,
     busy, progress, report, error, setError, runSync, synced,
     downloading, bulk, download, downloadAll, remove, repair, repairReport,
