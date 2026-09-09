@@ -7,9 +7,8 @@
  * `alarm`, `double-take`, `sleep` — because those names describe what the *app* just did. The
  * translation into a pet's nine or eleven rows happens in `petStateForMood`, once, at this boundary.
  *
- * **Mr. Bell is the fallback and stays in the binary.** He renders when no pet is selected, while a
- * sheet is still being read, and when the selected pet has gone or will not decode. A downloadable
- * mascot cannot be the thing a fresh install draws before it has ever seen a network.
+ * **Mr. Bell is a first-class choice and the fallback.** He renders when no pet is selected, while
+ * Azure's sheet is still being read, and if that sheet will not decode.
  *
  * He also stays the *brand*: `MrBellMark` is the app icon (`npm run icon` renders it), the sidebar
  * logo's mark and a notebook sticker, and the wordmark wears his spectacles. Those are the app's
@@ -22,6 +21,7 @@
 import MrBell, { type BellMood } from '@ui/brand/MrBell';
 import BellPet from '@ui/BellPet';
 import Pet from '@ui/Pet';
+import MsBell from '@ui/MsBell';
 import { petStateForMood } from '@/lib/pets';
 import { loadSettings } from '@/lib/store';
 import { usePet } from '@/state/usePet';
@@ -33,22 +33,38 @@ export interface MascotProps {
   petSize?: number | string;
   /** What the app just did, in Mr. Bell's vocabulary. Translated for a pet. */
   mood?: BellMood;
+  /** Whether currently in a study area (PDF viewer / notebook). */
+  studying?: boolean;
   /** Pet-only playback multiplier. Mr. Bell keeps his authored timing. */
   playbackRate?: number;
   className?: string;
+  /** Whether currently running in the startup splash sequence. */
+  isSplash?: boolean;
 }
 
 export default function Mascot({
   size = 160,
   petSize,
   mood = 'idle',
+  studying = false,
   playbackRate,
   className,
+  isSplash = false,
 }: MascotProps) {
   const settings = loadSettings();
-  // Azure is part of Bell itself now. The selection machinery remains intact for future use, but a
-  // stale setting from an older build cannot replace the mascot shipped by this one.
-  const pet = usePet('azure');
+  if (settings.pet === 'msbell') {
+    return (
+      <MsBell
+        size={petSize ?? size}
+        mood={mood}
+        studying={studying}
+        isSplash={isSplash}
+        className={className}
+        reduceMotion={settings.reduceMotion}
+      />
+    );
+  }
+  const pet = usePet(settings.pet);
   if (!pet) return <MrBell size={size} mood={mood} className={className} />;
   if (pet.motion) {
     return (
