@@ -27,7 +27,8 @@ section.rd {
   /* Two live columns — rail + well — and a third that is 0 until the mark scheme opens, when it
      grows to `--ms-w` and the well shrinks to make room. Transitioned, so the split animates open.
      The Questions panel that used to sit on the right has been removed. */
-  --ms-w: clamp(360px, 40%, 620px);
+  --ms-w: clamp(340px, 40%, 640px);
+  --nb-w: clamp(420px, 50%, 800px);
   grid-template-columns: 140px minmax(0, 1fr) 0px;
   grid-template-rows: minmax(0, 1fr);
   min-height: 0;
@@ -593,11 +594,25 @@ button.rd-cliphint-go {
 section.rd[data-ms='open'] {
   grid-template-columns: 140px minmax(0, 1fr) var(--ms-w);
 }
+section.rd[data-nb='open'] {
+  grid-template-columns: 140px minmax(0, 1fr) var(--nb-w);
+}
 /* Keep the floating tool bar centred on the now-narrower well: the well runs 140..(W − ms), so its
    midline is (70 − ms/2) off the frame's. On a narrow window that pill is wider than what is left of
    the well and overhangs the split — which is what `.rd-barwrap`'s z-index 8 is for. */
 section.rd[data-ms='open'] .rd-barwrap {
   transform: translateX(calc(70px - var(--ms-w) / 2));
+}
+section.rd[data-nb='open'] .rd-barwrap {
+  transform: translateX(calc(70px - var(--nb-w) / 2));
+}
+
+/* Zero-delay tracking while the user is actively dragging the divider */
+section.rd[data-resizing='true'],
+section.rd[data-resizing='true'] .rd-barwrap,
+section.rd[data-resizing='true'] .rd-ms,
+section.rd[data-resizing='true'] .rd-nb {
+  transition: none !important;
 }
 
 .rd-ms {

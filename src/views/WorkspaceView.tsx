@@ -112,6 +112,8 @@ export interface Props {
   onNewNotebook?: () => void;
   /** Open a notebook at a disk page index. The "Go there" action on the clip confirmation. */
   onOpenNotebook?: (id: string, page: number) => void;
+  /** Reload the notebooks list after a creation */
+  onRefreshNotebooks?: () => Promise<void> | void;
 }
 
 /** One entry in §5's rail: a `--paper` sheet, the real page drawn into it, and its number. */
@@ -142,6 +144,7 @@ function PageThumb({
     if (!el) return;
     const observer = new IntersectionObserver(
       (entries) => {
+        if (el.closest('.app-tab-pane')?.getAttribute('data-active') === 'false') return;
         if (entries.some((e) => e.isIntersecting)) setNear(true);
       },
       { root: el.closest('.rd-thumbs'), rootMargin: '600px 0px' },
@@ -228,6 +231,7 @@ function ReaderPage({
     if (!el) return;
     const observer = new IntersectionObserver(
       (entries) => {
+        if (el.closest('.app-tab-pane')?.getAttribute('data-active') === 'false') return;
         if (entries.some((e) => e.isIntersecting)) setNear(true);
       },
       // A screen of slack, so a page rasterises just before it is scrolled to.
