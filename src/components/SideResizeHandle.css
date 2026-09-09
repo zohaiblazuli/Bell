@@ -1,0 +1,107 @@
+/* ─── Resizable Split Handle for Side Viewers ────────────────────────────────── */
+
+.side-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  cursor: col-resize;
+  z-index: 20;
+  touch-action: none;
+  user-select: none;
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Left-docked handle on a right-docked pane */
+.side-resize-handle[data-side='left'] {
+  left: -6px;
+}
+
+/* Right-docked handle on a left-docked pane (if ever used) */
+.side-resize-handle[data-side='right'] {
+  right: -6px;
+}
+
+/* Subtle 1px vertical dividing highlight */
+.side-resize-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: transparent;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+  pointer-events: none;
+}
+
+/* Centered pill grip handle indicator */
+.side-resize-grip {
+  position: relative;
+  width: 4px;
+  height: 36px;
+  border-radius: 4px;
+  background: var(--ink-3);
+  opacity: 0;
+  transform: scaleY(0.7);
+  transition: opacity 0.18s ease, transform 0.18s ease, background 0.15s ease;
+  pointer-events: none;
+}
+
+/* Hover & Focus states */
+.side-resize-handle:hover .side-resize-line,
+.side-resize-handle:focus-visible .side-resize-line,
+.side-resize-handle[data-dragging='true'] .side-resize-line {
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+}
+
+.side-resize-handle:hover .side-resize-grip,
+.side-resize-handle:focus-visible .side-resize-grip,
+.side-resize-handle[data-dragging='true'] .side-resize-grip {
+  opacity: 0.9;
+  transform: scaleY(1);
+  background: var(--accent);
+}
+
+.side-resize-handle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Floating width pill badge readout during active drag */
+.side-resize-badge {
+  position: absolute;
+  top: 50%;
+  right: 18px;
+  transform: translateY(-50%);
+  padding: 4px 9px;
+  border-radius: 7px;
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-brd);
+  box-shadow: var(--shadow-pop);
+  color: var(--ink-1);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: badge-fade-in 0.12s ease-out;
+  z-index: 25;
+}
+
+@keyframes badge-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+}
