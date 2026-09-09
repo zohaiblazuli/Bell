@@ -127,6 +127,10 @@ export default function Sprite() {
         <symbol id="i-folder" viewBox="0 0 24 24">
           <path d="M3.5 7.5a1 1 0 0 1 1-1h4l2 2.5h8a1 1 0 0 1 1 1v8.5a1 1 0 0 1-1 1h-14a1 1 0 0 1-1-1z" />
         </symbol>
+        <symbol id="i-notebook" viewBox="0 0 24 24">
+          <path d="M5.5 4h13a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5h-13a1.5 1.5 0 0 1-1.5-1.5v-13a1.5 1.5 0 0 1 1.5-1.5z" />
+          <path d="M8.5 4v16M4 7.5h4.5M4 12h4.5M4 16.5h4.5" />
+        </symbol>
         <symbol id="i-sync" viewBox="0 0 24 24">
           <path d="M20 12a8 8 0 1 1-2.4-5.7" />
           <path d="M20 4.5V10h-5.5" />
