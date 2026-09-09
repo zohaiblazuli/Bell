@@ -23,9 +23,11 @@
  * `targets`. Without them there is no honest travel to run and the handoff degrades to the same
  * cross-fade that reduced motion gets.
  */
-import { useLayoutEffect, useRef, type AnimationEvent, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, type AnimationEvent, type CSSProperties } from 'react';
 import MrBellMark, { MARK_BOX } from '@ui/brand/MrBellMark';
 import { WORDMARK_BOX, WordmarkShapes } from '@ui/brand/Wordmark';
+import { loadSettings } from '@/lib/store';
+import { startupHandoffDurationMs, startupHoldDurationMs } from '@/lib/startup';
 import Mascot from './Mascot';
 import './Splash.css';
 
@@ -117,6 +119,21 @@ const REVEAL_ID = 'splash-wordmark-reveal';
 
 export default function Splash({ phase, onFinished, targets = null, reduceMotion = false }: Props) {
   const root = useRef<HTMLDivElement>(null);
+  const settings = loadSettings();
+  const splashDurMs = startupHoldDurationMs(settings.pet, reduceMotion);
+  const handoffDurMs = startupHandoffDurationMs(reduceMotion);
+
+  // Allow pressing Escape, Space, or Enter to skip directly to handoff
+  useEffect(() => {
+    if (phase !== 'splash') return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') {
+        onFinished('splash');
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [phase, onFinished]);
 
   /* A slot that has not been laid out yet is not a measurement, and dividing by its height would
      hand the wordmark an infinite scale. Treat a degenerate rect as absent — the cross-fade is the
@@ -183,10 +200,16 @@ export default function Splash({ phase, onFinished, targets = null, reduceMotion
       ref={root}
       className="splash"
       data-phase={phase}
+      data-pet={settings.pet ?? 'bell'}
       data-travel={landing ? 'on' : 'off'}
       data-motion={reduceMotion ? 'reduced' : undefined}
+      onClick={() => {
+        if (phase === 'splash') onFinished('splash');
+      }}
       style={
         {
+          '--splash-dur': `${splashDurMs}ms`,
+          '--handoff-dur': `${handoffDurMs}ms`,
           '--word-w': `${wordW}px`,
           '--word-h': `${wordH}px`,
           '--word-up': WORD_SPLASH_H / wordH,
@@ -206,7 +229,7 @@ export default function Splash({ phase, onFinished, targets = null, reduceMotion
         <div className="splash-crab">
           {/* The mascot, not necessarily the crab: the handoff hides `.mascot` and travels this box
               into that slot, so the two have to be the same animal or the landing reads as a swap. */}
-          <Mascot size={CRAB} petSize={SPLASH_PET} mood="glint" playbackRate={2} />
+          <Mascot size={CRAB} petSize={SPLASH_PET} mood="glint" isSplash={true} playbackRate={2} />
         </div>
 
         <div className="splash-word">
