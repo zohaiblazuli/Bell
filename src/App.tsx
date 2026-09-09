@@ -3,12 +3,14 @@ import Sprite from './components/Sprite';
 import AppBackground from './components/AppBackground';
 import Sidebar, { type View } from './components/Sidebar';
 import TopBar from './components/TopBar';
+import TabBar from './components/TabBar';
 import CommandPalette, { screenCommands, type PaletteCommand } from './components/CommandPalette';
 import Button from '@ui/Button';
 import Dialog from '@ui/Dialog';
 import Mascot from './components/Mascot';
 import * as api from './lib/api';
 import Splash, { type SplashPhase } from './components/Splash';
+import { startupWatchdogMs } from './lib/startup';
 import { UpdateCorner, UpdateDialog } from './components/UpdateFlow';
 import LibraryView from './views/LibraryView';
 import DashboardView from './views/DashboardView';
@@ -16,6 +18,9 @@ import WorkspaceView from './views/WorkspaceView';
 import NotebooksView from './views/NotebooksView';
 import NotebookView from './views/NotebookView';
 import SettingsView from './views/SettingsView';
+import CommunityView from './views/CommunityView';
+import CommunityReaderView from './views/CommunityReaderView';
+import LocalWorkspaceView from './views/LocalWorkspaceView';
 import OnboardingView, { type SessionOption } from './views/OnboardingView';
 import { usePrefs } from './state/usePrefs';
 import { useLibraryIndex } from './state/useLibraryIndex';
@@ -23,10 +28,15 @@ import { useStudyState } from './state/useStudyState';
 import { useUpdates } from './state/useUpdates';
 import { useNotebooks } from './state/useNotebooks';
 import { useMascot } from './state/useMascot';
+import { useCommunity } from './state/useCommunity';
+import { useTabs } from './state/useTabs';
+import { useWorkspace } from './state/useWorkspace';
 import { UPDATES_CONFIGURED } from './lib/updates';
 import { windowsBetween } from './lib/sessions';
 import { loadRecent, type MarkFilter } from './lib/store';
 import type { PaperRow } from './lib/types';
+import type { CommunityResource } from './lib/community';
+import { readWorkspaceDocument, recordWorkspaceOpen, workspaceReaderResource, type WorkspaceDocument } from './lib/workspace';
 
 /**
  * The router, and nothing else.
@@ -42,6 +52,9 @@ import type { PaperRow } from './lib/types';
  *  only because the union demands it — neither renders `TopBar` from `screens()`. */
 const TITLES: Record<View, string> = {
   library: 'Library',
+  community: 'Community Resources',
+  workspace: 'Workspace',
+  'community-reader': 'Community Resource',
   bookmarks: 'Bookmarks',
   recent: 'Recent',
   dashboard: 'Dashboard',
@@ -62,22 +75,32 @@ export default function App() {
   const prefs = usePrefs();
   const { settings, onboarding, tone, toggleTone } = prefs;
 
-  const [view, setView] = useState<View>(() => (onboarding.done ? 'library' : 'onboarding'));
-  const [openPaper, setOpenPaper] = useState<PaperRow | null>(null);
-  /**
-   * Which notebook is open, and at which disk page index.
-   *
-   * A pair rather than a bare id because the Reader's clip confirmation offers "Go there", and
-   * landing on the shelf and making them find the page again would waste the one gesture that makes
-   * clipping worth having. `page` seeds the spread; the notebook owns it from then on.
-   */
-  const [openNotebook, setOpenNotebook] = useState<{ id: string; page: number } | null>(null);
-  /** Set when something elsewhere asked for the New Notebook dialog — the empty clip picker does. */
+  const tabsMgr = useTabs();
   const [newNotebook, setNewNotebook] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [palette, setPalette] = useState(false);
 
-  const lib = useLibraryIndex(view === 'onboarding');
+  const currentView: View = !onboarding.done
+    ? 'onboarding'
+    : tabsMgr.activeTab.kind === 'paper'
+    ? 'reader'
+    : tabsMgr.activeTab.kind === 'book'
+    ? 'community-reader'
+    : tabsMgr.activeTab.kind === 'workspace-doc'
+    ? 'workspace'
+    : tabsMgr.activeTab.kind === 'notebook'
+    ? 'notebook'
+    : tabsMgr.activeTab.shelfView ?? 'library';
+
+  const inReader = tabsMgr.activeTab.kind === 'paper';
+  const inCommunityReader = tabsMgr.activeTab.kind === 'book' || tabsMgr.activeTab.kind === 'workspace-doc';
+  const inNotebook = tabsMgr.activeTab.kind === 'notebook';
+  const inStudyArea = inReader || inCommunityReader || inNotebook;
+  const isBare = inNotebook;
+
+  const lib = useLibraryIndex(currentView === 'onboarding');
+  const community = useCommunity(currentView === 'community');
+  const workspace = useWorkspace(currentView === 'workspace');
 
   /**
    * The sidebar lists the subjects you sit, not the whole catalogue.
@@ -151,7 +174,7 @@ export default function App() {
     tone,
     lib.error,
     mascotWorking,
-    view === 'reader' || view === 'notebook',
+    inStudyArea,
   );
 
   /* ---- routing ----------------------------------------------------------- */
@@ -160,47 +183,67 @@ export default function App() {
   const go = useCallback(
     (v: View) => {
       study.setMarkFilter(v === 'bookmarks' ? 'bookmarks' : v === 'recent' ? 'recent' : null);
-      setView(v);
+      tabsMgr.openShelf(v);
     },
-    [study],
+    [study, tabsMgr],
   );
 
   /** `revision` has no nav row, so reaching it means the library route with the filter set. */
   const showMarked = useCallback(
     (filter: MarkFilter) => {
       study.setMarkFilter(filter);
-      setView(filter === 'bookmarks' ? 'bookmarks' : filter === 'recent' ? 'recent' : 'library');
+      go(filter === 'bookmarks' ? 'bookmarks' : filter === 'recent' ? 'recent' : 'library');
     },
-    [study],
+    [go, study],
   );
 
   const openPaperAt = useCallback(
-    (paper: PaperRow) => {
+    (paper: PaperRow, options?: { background?: boolean }) => {
       study.open(paper);
-      setOpenPaper(paper);
       setFocusMode(false);
-      setView('reader');
+      tabsMgr.openPaper(paper, options);
     },
-    [study],
+    [study, tabsMgr],
+  );
+
+  const openCommunityAt = useCallback(
+    (resource: CommunityResource, options?: { background?: boolean }) => {
+      setFocusMode(false);
+      tabsMgr.openBook(resource, options);
+    },
+    [tabsMgr],
+  );
+
+  const openWorkspaceAt = useCallback(
+    (document: WorkspaceDocument, notebook = false) => {
+      setFocusMode(false);
+      tabsMgr.openWorkspaceDocument(document, { notebook });
+      void recordWorkspaceOpen(document.id);
+    },
+    [tabsMgr],
   );
 
   /**
    * Open a notebook onto its spread. Called with a page index from the Reader's clip confirmation and
    * without one from the shelf, where the whole notebook is what was asked for.
-   *
-   * The shelf's row is re-read on the way in rather than trusted: `pages` is derived from the
-   * filesystem, and a clip that just spilled onto a new page would otherwise open a spread the
-   * cached row does not know exists.
    */
   const openNotebookAt = useCallback(
-    (id: string, page = 0) => {
-      setOpenNotebook({ id, page });
+    (id: string, page = 0, options?: { background?: boolean }) => {
       setFocusMode(false);
-      setView('notebook');
+      const nbEntry = notebooks.find(id);
+      tabsMgr.openNotebook(id, nbEntry?.name, page, options);
       void notebooks.refresh();
     },
-    [notebooks],
+    [notebooks, tabsMgr],
   );
+
+  const handleNewTab = useCallback(() => {
+    if (tabsMgr.activeTab.kind === 'shelf' && tabsMgr.activeTab.shelfView === 'library') {
+      setPalette(true);
+    } else {
+      tabsMgr.openShelf('library');
+    }
+  }, [tabsMgr]);
 
   /**
    * Wipe and start over.
@@ -260,23 +303,72 @@ export default function App() {
     (id: number | null) => {
       study.setMarkFilter(null);
       lib.setSubjectId(id);
-      setView('library');
+      go('library');
     },
-    [lib, study],
+    [go, lib, study],
   );
 
-  // ⌘K / Ctrl-K from anywhere, including the Reader — but not out of onboarding, which has no
-  // library behind it to search.
+  // Browser standard shortcuts: Ctrl+Tab, Ctrl+Shift+Tab, Ctrl+W, Ctrl+T, Ctrl+1..9, Ctrl+K
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      const isMod = e.ctrlKey || e.metaKey;
+      if (!isMod) return;
+
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+      const k = e.key.toLowerCase();
+
+      // Ctrl + Tab / Ctrl + Shift + Tab (cycle tabs)
+      if (k === 'tab') {
         e.preventDefault();
-        if (view !== 'onboarding') setPalette((open) => !open);
+        if (e.shiftKey) tabsMgr.prevTab();
+        else tabsMgr.nextTab();
+        return;
+      }
+
+      // Ctrl + W (close active tab)
+      if (k === 'w') {
+        if (tabsMgr.activeTab.closable) {
+          e.preventDefault();
+          tabsMgr.closeTab(tabsMgr.activeId);
+        }
+        return;
+      }
+
+      // Ctrl + T (new tab / go to library)
+      if (k === 't') {
+        e.preventDefault();
+        handleNewTab();
+        return;
+      }
+
+      // Ctrl + 1..8
+      if (e.key >= '1' && e.key <= '8') {
+        const index = parseInt(e.key, 10) - 1;
+        if (index < tabsMgr.tabs.length) {
+          e.preventDefault();
+          tabsMgr.selectTabByIndex(index);
+        }
+        return;
+      }
+
+      // Ctrl + 9
+      if (e.key === '9') {
+        e.preventDefault();
+        tabsMgr.selectTabByIndex(tabsMgr.tabs.length - 1);
+        return;
+      }
+
+      // Ctrl + K (palette)
+      if (k === 'k') {
+        e.preventDefault();
+        if (currentView !== 'onboarding') setPalette((open) => !open);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [view]);
+  }, [currentView, tabsMgr, handleNewTab]);
 
   /* ---- startup ------------------------------------------------------------ */
 
@@ -286,17 +378,18 @@ export default function App() {
    * level does exactly that), or a slow first paint drops the event, nothing would ever advance and the
    * overlay would sit at `z-index: 90` swallowing every click on an app that looks perfectly fine. So
    * the timing lives here, as the component's own header asks: the event is the fast path, this is the
-   * floor. 2.0s hold and 0.9s handoff, plus margin.
+   * floor. The duration comes from the same timing module as Splash, plus recovery margin, so an
+   * authored mascot sequence cannot be cut short by an older watchdog.
    */
   useEffect(() => {
     if (splash === 'done') return;
-    const ms = splash === 'splash' ? 3200 : 1800;
+    const ms = startupWatchdogMs(splash, settings.pet, settings.reduceMotion);
     const timer = window.setTimeout(
       () => setSplash((p) => (p === 'splash' ? 'handoff' : 'done')),
       ms,
     );
     return () => window.clearTimeout(timer);
-  }, [splash]);
+  }, [settings.pet, settings.reduceMotion, splash]);
 
   /* ---- derived ------------------------------------------------------------ */
 
@@ -331,6 +424,7 @@ export default function App() {
     const list = screenCommands(
       {
         onLibrary: () => go('library'),
+        onCommunity: () => go('community'),
         onNotebooks: () => go('notebooks'),
         onDashboard: () => go('dashboard'),
         onBookmarks: () => go('bookmarks'),
@@ -388,17 +482,6 @@ export default function App() {
 
   /* ---- render -------------------------------------------------------------- */
 
-  const inReader = view === 'reader' && openPaper != null;
-  /**
-   * The open spread. Its row comes from the shelf's list rather than being carried in the route,
-   * because `pages` and `bytes` are derived from the filesystem — a clip that just spilled onto a new
-   * page has to be reflected, and a stale copy would open a spread the notebook does not have.
-   */
-  const openNb = openNotebook ? notebooks.find(openNotebook.id) : null;
-  const inNotebook = view === 'notebook' && openNotebook != null;
-  const libraryMode = view === 'bookmarks' ? 'bookmarks' : view === 'recent' ? 'recent' : 'library';
-  const isLibraryRoute = view === 'library' || view === 'bookmarks' || view === 'recent';
-  /** The motion gate, read by Mr. Bell's rig and by the tone crossfade. */
   const motion = settings.reduceMotion ? 'off' : 'on';
 
   const startup = (
@@ -411,11 +494,9 @@ export default function App() {
 
   /**
    * Onboarding is its own shell: no sidebar, no top bar, and its own window lights, because the flow is
-   * what a first run *is* rather than a screen inside the app. It replaces the old
-   * empty-index-means-Setup guess, which sent an established user back through Setup whenever the index
-   * was rebuilt.
+   * what a first run *is* rather than a screen inside the app.
    */
-  if (view === 'onboarding') {
+  if (currentView === 'onboarding') {
     return (
       <>
         <Sprite />
@@ -444,118 +525,53 @@ export default function App() {
     );
   }
 
-  /**
-   * The open notebook is its own shell too, and for the same kind of reason: `screen-notebooks.md` §5
-   * puts the window lights inside the notebook's own 1320-wide top bar, which is only possible if
-   * there is no sidebar to hold them. The spread, the 64px dock and the 268px inspector then divide
-   * the whole window, exactly as the file draws it. Getting back is the `back` button at x 78.
-   *
-   * The palette stays mounted, because jumping to a paper from a notebook is the same gesture in
-   * reverse as clipping one into it — and it has to sit inside `.app`, where the tone vars live.
-   */
-  if (inNotebook && openNotebook) {
-    return (
-      <>
-        <Sprite />
-        <div
-          className="app app-bare"
-          data-startup={splash}
-          data-view="notebook"
-          data-tone={tone}
-          data-motion={motion}
-          data-focus={focusMode ? 'on' : 'off'}
-        >
-          <AppBackground />
-          {openNb ? (
-            <NotebookView
-              notebook={openNb}
-              startPage={openNotebook.page}
-              subjects={lib.subjects}
-              tone={tone}
-              onTone={toggleTone}
-              focus={focusMode}
-              onToggleFocus={() => setFocusMode((f) => !f)}
-              onSearch={() => setPalette(true)}
-              onSaveMeta={(meta) => notebooks.save(openNotebook.id, meta)}
-              onDelete={async () => {
-                await notebooks.remove(openNotebook.id);
-                setOpenNotebook(null);
-                go('notebooks');
-              }}
-              onBack={() => {
-                setOpenNotebook(null);
-                setFocusMode(false);
-                go('notebooks');
-                // The shelf's `pages`, `bytes` and "most recently edited" order are all answered by the
-                // filesystem, and a session of writing changes every one of them — `NotebookView` flushes
-                // before it calls this, so what comes back is the notebook as it now stands rather than
-                // as it was when it was opened.
-                void notebooks.refresh();
-              }}
-            />
-          ) : (
-            /* The shelf is still being read, or the notebook has gone. Both are momentary and both
-               look the same from here, so say the honest thing rather than guessing which. */
-            <div className="view">
-              <div className="stub">
-                <div className="stub-inner">
-                  <h2>{notebooks.list == null ? 'Opening…' : 'That notebook is not here'}</h2>
-                  <p>
-                    {notebooks.list == null
-                      ? 'Reading it off this device.'
-                      : 'It may have been deleted. The shelf has the rest.'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="notebook-mascot" aria-hidden="true" onPointerDown={mascot.poke}>
-            <Mascot size={160} petSize="clamp(260px, 34vh, 400px)" mood={mascot.mood} />
-          </div>
-
-          <CommandPalette
-            open={palette}
-            onClose={() => setPalette(false)}
-            onOpenPaper={openPaperAt}
-            commands={commands}
-          />
-        </div>
-        {startup}
-      </>
-    );
-  }
-
   return (
     <>
       <Sprite />
       <div
         className="app"
         data-startup={splash}
-        data-view={view}
+        data-view={currentView}
         data-tone={tone}
         data-motion={motion}
-        data-focus={focusMode && inReader ? 'on' : 'off'}
+        data-focus={focusMode && (inReader || inCommunityReader || inNotebook) ? 'on' : 'off'}
       >
         <AppBackground />
 
-        <Sidebar
-          view={view}
-          onView={go}
-          version={__APP_VERSION__}
-          build={__APP_BUILD__}
-          subjects={mySubjects}
-          activeSubject={lib.subjectId}
-          onSubject={pickSubject}
-          paperCount={lib.stats ? visiblePapers : null}
-          bookmarkCount={study.marks.bookmarks.size}
-          recentCount={loadRecent().length}
-          notebookCount={notebooks.list?.length ?? null}
-          mascot={mascot.mood}
-          onPokeMascot={mascot.poke}
+        <TabBar
+          tabs={tabsMgr.tabs}
+          activeId={tabsMgr.activeId}
+          onSelectTab={tabsMgr.selectTab}
+          onCloseTab={tabsMgr.closeTab}
+          onNewTab={handleNewTab}
+          onReorderTabs={tabsMgr.reorderTabs}
+          tone={tone}
+          onTone={toggleTone}
+          onSearch={() => setPalette(true)}
         />
 
-        <div className="main">{inReader ? reader() : screens()}</div>
+        <div className={`app-stage ${isBare ? 'app-stage-bare' : ''}`}>
+          {!isBare && (
+            <Sidebar
+              view={currentView}
+              onView={go}
+              version={__APP_VERSION__}
+              build={__APP_BUILD__}
+              subjects={mySubjects}
+              activeSubject={lib.subjectId}
+              onSubject={pickSubject}
+              paperCount={lib.stats ? visiblePapers : null}
+              bookmarkCount={study.marks.bookmarks.size}
+              recentCount={loadRecent().length}
+              notebookCount={notebooks.list?.length ?? null}
+              mascot={mascot.mood}
+              studying={mascot.studying}
+              onPokeMascot={mascot.poke}
+            />
+          )}
+
+          {renderTabPanes()}
+        </div>
 
         <CommandPalette
           open={palette}
@@ -585,10 +601,6 @@ export default function App() {
                 className="dlg-danger"
                 label={resetting ? 'Resetting…' : 'Reset everything'}
                 onClick={() => void runReset()}
-                /* aria-disabled rather than disabled: a real `disabled` drops focus to <body>,
-                   where Dialog's scrim-bound key handler can no longer hold Tab inside the
-                   modal. Focusable and inert keeps the trap, and with no handler attached a
-                   second press cannot fire a second reset. */
                 aria-disabled={resetting ? 'true' : undefined}
                 aria-busy={resetting ? true : undefined}
               />
@@ -615,46 +627,223 @@ export default function App() {
     </>
   );
 
-  function reader() {
-    if (!openPaper) return null;
-    return (
-      <WorkspaceView
-        paper={openPaper}
-        focus={focusMode}
-        onToggleFocus={() => setFocusMode((f) => !f)}
-        onBack={() => {
-          setFocusMode(false);
-          go('library');
-        }}
-        tone={tone}
-        onTone={toggleTone}
-        busy={lib.busy}
-        onReindex={() => void lib.runSync()}
-        onSearch={() => setPalette(true)}
-        onDownload={lib.download}
-        notebooks={notebooks.list}
-        onNewNotebook={() => {
-          setNewNotebook(true);
-          go('notebooks');
-        }}
-        onOpenNotebook={(id, page) => openNotebookAt(id, page)}
-      />
-    );
+  function renderTabPanes() {
+    return tabsMgr.tabs.map((tab) => {
+      const isSelected = tab.id === tabsMgr.activeId;
+      // Preserve the live reader session when changing tabs. Page canvases are still viewport-evicted
+      // by the reader itself; unmounting the whole tab made page position, open panels and timer state
+      // disappear, which is not how tabs should behave.
+
+      if (tab.kind === 'shelf') {
+        const shelfView = tab.shelfView ?? 'library';
+        return (
+          <div
+            key={tab.id}
+            className="app-tab-pane"
+            data-active={isSelected ? 'true' : 'false'}
+          >
+            <div className="main">
+              {screens(shelfView)}
+            </div>
+          </div>
+        );
+      }
+
+      if (tab.kind === 'paper' && tab.paper) {
+        return (
+          <div
+            key={tab.id}
+            className="app-tab-pane"
+            data-active={isSelected ? 'true' : 'false'}
+          >
+            <div className="main">
+              <WorkspaceView
+                paper={tab.paper}
+                focus={focusMode}
+                onToggleFocus={() => setFocusMode((f) => !f)}
+                onBack={() => {
+                  setFocusMode(false);
+                  tabsMgr.openShelf('library');
+                }}
+                tone={tone}
+                onTone={toggleTone}
+                busy={lib.busy}
+                onReindex={() => void lib.runSync()}
+                onSearch={() => setPalette(true)}
+                onDownload={lib.download}
+                notebooks={notebooks.list}
+                onNewNotebook={() => {
+                  setNewNotebook(true);
+                  go('notebooks');
+                }}
+                onOpenNotebook={(id, page) => openNotebookAt(id, page)}
+                onRefreshNotebooks={notebooks.refresh}
+              />
+            </div>
+          </div>
+        );
+      }
+
+      if (tab.kind === 'book' && tab.community) {
+        return (
+          <div
+            key={tab.id}
+            className="app-tab-pane"
+            data-active={isSelected ? 'true' : 'false'}
+          >
+            <div className="main">
+              <CommunityReaderView
+                resource={tab.community}
+                tone={tone}
+                onTone={toggleTone}
+                focus={focusMode}
+                onToggleFocus={() => setFocusMode((f) => !f)}
+                busy={lib.busy}
+                onReindex={() => void lib.runSync()}
+                onSearch={() => setPalette(true)}
+                onBack={() => {
+                  setFocusMode(false);
+                  tabsMgr.openShelf('community');
+                }}
+                onDownload={community.open}
+                notebooks={notebooks.list}
+                onRefreshNotebooks={() => notebooks.refresh()}
+                onNewNotebook={() => {
+                  setNewNotebook(true);
+                  go('notebooks');
+                }}
+                onOpenNotebook={(id, page) => openNotebookAt(id, page)}
+              />
+            </div>
+          </div>
+        );
+      }
+
+      if (tab.kind === 'workspace-doc' && tab.workspace) {
+        return (
+          <div
+            key={tab.id}
+            className="app-tab-pane"
+            data-active={isSelected ? 'true' : 'false'}
+          >
+            <div className="main">
+              <CommunityReaderView
+                resource={workspaceReaderResource(tab.workspace)}
+                readDocument={readWorkspaceDocument}
+                inkKey={`workspace:${tab.workspace.id}`}
+                backLabel="Back to Workspace"
+                startNotebookOpen={Boolean(tab.notebookOpen)}
+                tone={tone}
+                onTone={toggleTone}
+                focus={focusMode}
+                onToggleFocus={() => setFocusMode((f) => !f)}
+                onSearch={() => setPalette(true)}
+                onBack={() => {
+                  setFocusMode(false);
+                  tabsMgr.openShelf('workspace');
+                }}
+                notebooks={notebooks.list}
+                onRefreshNotebooks={() => notebooks.refresh()}
+                onNewNotebook={() => {
+                  setNewNotebook(true);
+                  go('notebooks');
+                }}
+                onOpenNotebook={(id, page) => openNotebookAt(id, page)}
+              />
+            </div>
+          </div>
+        );
+      }
+
+      if (tab.kind === 'notebook' && tab.notebook) {
+        const openNb = notebooks.find(tab.notebook.id);
+        return (
+          <div
+            key={tab.id}
+            className="app-tab-pane"
+            data-active={isSelected ? 'true' : 'false'}
+          >
+            {openNb ? (
+              <NotebookView
+                notebook={openNb}
+                startPage={tab.notebook.page}
+                subjects={lib.subjects}
+                tone={tone}
+                onTone={toggleTone}
+                focus={focusMode}
+                onToggleFocus={() => setFocusMode((f) => !f)}
+                onSearch={() => setPalette(true)}
+                onSaveMeta={(meta) => notebooks.save(tab.notebook!.id, meta)}
+                onDelete={async () => {
+                  await notebooks.remove(tab.notebook!.id);
+                  tabsMgr.closeTab(tab.id);
+                  go('notebooks');
+                }}
+                onBack={() => {
+                  tabsMgr.closeTab(tab.id);
+                  setFocusMode(false);
+                  go('notebooks');
+                  void notebooks.refresh();
+                }}
+              />
+            ) : (
+              <div className="view">
+                <div className="stub">
+                  <div className="stub-inner">
+                    <h2>{notebooks.list == null ? 'Opening…' : 'That notebook is not here'}</h2>
+                    <p>
+                      {notebooks.list == null
+                        ? 'Reading it off this device.'
+                        : 'It may have been deleted. The shelf has the rest.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {isSelected && (
+              <div className="notebook-mascot" aria-hidden="true" onPointerDown={mascot.poke}>
+                <Mascot size={160} petSize="clamp(260px, 34vh, 400px)" mood={mascot.mood} studying={true} />
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      return null;
+    });
   }
 
   /** Everything that shares the top bar. Declared after the return as a closure, so the render reads
    *  as one shell with two halves rather than 150 lines of nested ternary. */
-  function screens() {
+  function screens(screenView: View) {
+    const libraryMode = screenView === 'bookmarks' ? 'bookmarks' : screenView === 'recent' ? 'recent' : 'library';
+    const isLibraryRoute = screenView === 'library' || screenView === 'bookmarks' || screenView === 'recent';
+
     return (
       <>
         <TopBar
-          title={TITLES[view]}
+          title={TITLES[screenView]}
           tone={tone}
           onTone={toggleTone}
           busy={lib.busy}
           onReindex={() => void lib.runSync()}
           onSearch={() => setPalette(true)}
+          showSearch={screenView !== 'community'}
+          showSync={screenView !== 'community'}
         />
+
+        {screenView === 'community' && (
+          <CommunityView
+            community={community}
+            subjects={lib.subjects}
+            onOpen={openCommunityAt}
+          />
+        )}
+
+        {screenView === 'workspace' && (
+          <LocalWorkspaceView workspace={workspace} onOpen={openWorkspaceAt} />
+        )}
 
         {isLibraryRoute && (
           <LibraryView
@@ -666,6 +855,8 @@ export default function App() {
             onLevel={lib.setLevel}
             season={lib.season}
             onSeason={lib.setSeason}
+            paperNumber={lib.paperNumber}
+            onPaperNumber={lib.setPaperNumber}
             subjectId={lib.subjectId}
             onSubject={lib.setSubjectId}
             downloadedOnly={lib.downloadedOnly}
@@ -679,7 +870,7 @@ export default function App() {
           />
         )}
 
-        {view === 'notebooks' && (
+        {screenView === 'notebooks' && (
           <NotebooksView
             notebooks={notebooks.list}
             error={notebooks.error}
@@ -698,7 +889,7 @@ export default function App() {
           />
         )}
 
-        {view === 'dashboard' && (
+        {screenView === 'dashboard' && (
           <DashboardView
             now={new Date()}
             name={onboarding.name || undefined}
@@ -711,7 +902,7 @@ export default function App() {
           />
         )}
 
-        {view === 'settings' && (
+        {screenView === 'settings' && (
           <SettingsView
             settings={settings}
             onChange={prefs.patchSettings}
@@ -740,17 +931,6 @@ export default function App() {
             onRevealData={() => void up.revealData()}
             onClearData={() => void up.clearData()}
           />
-        )}
-
-        {view === 'reader' && !openPaper && (
-          <div className="view">
-            <div className="stub">
-              <div className="stub-inner">
-                <h2>Pick a paper first</h2>
-                <p>Open one from the library and it lands here with the timer running.</p>
-              </div>
-            </div>
-          </div>
         )}
       </>
     );
