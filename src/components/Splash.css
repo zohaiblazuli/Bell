@@ -117,6 +117,16 @@
   inset: 0;
   /* Nothing in here is interactive; the root keeps the pointer so a drag still moves the window. */
   pointer-events: none;
+  /* Feather every edge so the animation content fades to transparent instead of hard-clipping
+     at the window boundary. Four linear gradients AND'd together, one per side. */
+  -webkit-mask-image:
+    linear-gradient(to right,  transparent, black 60px, black calc(100% - 60px), transparent),
+    linear-gradient(to bottom, transparent, black 60px, black calc(100% - 60px), transparent);
+  mask-image:
+    linear-gradient(to right,  transparent, black 60px, black calc(100% - 60px), transparent),
+    linear-gradient(to bottom, transparent, black 60px, black calc(100% - 60px), transparent);
+  -webkit-mask-composite: destination-in;
+  mask-composite: intersect;
 }
 
 /* Spec B1: 160 x 160 with its centre 1px left and 36px above the frame centre. Written as centre
@@ -139,17 +149,40 @@
   filter: drop-shadow(0 0 36px color-mix(in srgb, var(--bell-cap-mid) 24%, transparent))
     drop-shadow(0 10px 24px color-mix(in srgb, var(--plate) 40%, transparent));
 }
-.splash-crab > .bell-pet {
+.splash-crab > .bell-pet,
+.splash-crab > .ms-bell {
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
 }
 
-/* Azure supplies her own illustration edge; the splash's legacy Bell halo would otherwise outline
-   her full character a second time. */
-.splash-crab:has(.bell-pet) {
+/* Azure and Ms. Bell supply their own illustration edge; the splash's legacy Bell halo would otherwise outline
+   their full character a second time. */
+.splash-crab:has(.bell-pet),
+.splash-crab:has(.ms-bell) {
   filter: none;
+}
+
+/* Ms. Bell's startup_splash.gif can clip at its own canvas edge. A feathered mask on the image
+   fades the content to transparent over the outermost ~60px so the animation blends out rather
+   than cutting off. Two intersecting gradients — horizontal and vertical — produce the
+   all-sides feather. */
+.splash-crab .ms-bell__img {
+  -webkit-mask-image:
+    linear-gradient(to right,  transparent, black 60px, black calc(100% - 60px), transparent),
+    linear-gradient(to bottom, transparent, black 60px, black calc(100% - 60px), transparent);
+  mask-image:
+    linear-gradient(to right,  transparent, black 60px, black calc(100% - 60px), transparent),
+    linear-gradient(to bottom, transparent, black 60px, black calc(100% - 60px), transparent);
+  -webkit-mask-composite: destination-in;
+  mask-composite: intersect;
+}
+
+/* Ms. Bell writes the "Bell" wordmark directly onto the glass in startup_splash.gif.
+   Hide the redundant separate SVG wordmark during startup. */
+.splash[data-pet='msbell'] .splash-word {
+  display: none;
 }
 
 /* The box is the LANDING size and the splash pose is that box scaled up about its own centre, which
