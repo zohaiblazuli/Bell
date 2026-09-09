@@ -22,6 +22,7 @@ export type IconName =
   | 'ret'
   | 'doc'
   | 'folder'
+  | 'notebook'
   | 'sync'
   | 'reset'
   | 'warn'
