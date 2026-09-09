@@ -82,6 +82,7 @@ const APP = 'App';
 /** Handlers for what `screenCommands` builds: every screen the sidebar lists, plus one act. */
 export interface PaletteScreens {
   onLibrary: () => void;
+  onCommunity: () => void;
   onNotebooks: () => void;
   onDashboard: () => void;
   onBookmarks: () => void;
@@ -151,6 +152,15 @@ export function screenCommands(
       icon: 'book',
       keywords: 'notebook write pages spread ink clip',
       run: go.onNotebooks,
+    },
+    {
+      id: 'go-community',
+      section: GO_TO,
+      label: 'Community Resources',
+      hint: 'Approved notes and study material',
+      icon: 'doc',
+      keywords: 'community notes resources guides formula sheets',
+      run: go.onCommunity,
     },
     {
       id: 'go-dashboard',
