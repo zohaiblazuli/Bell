@@ -36,6 +36,7 @@ import SeasonIcon from '@ui/icons/SeasonIcon';
 import SubjectIcon from '@ui/icons/SubjectIcon';
 import Icon, { type IconName } from '@/components/Icon';
 import { bandFor, sessionLabel } from '@/lib/difficulty';
+import { availablePaperNumbers, filterByPaperNumber } from '@/lib/libraryFilters';
 import { loadFocus, loadRecent, paperKey, type MarkFilter, type SetName } from '@/lib/store';
 import type { PaperRow, Subject } from '@/lib/types';
 
@@ -214,7 +215,7 @@ function emptyCopy(state: {
   }
   return {
     head: 'No papers match these filters',
-    detail: 'Clear a level, a session, the subject or the Downloaded chip to widen the search.',
+    detail: 'Clear a level, session, paper, subject or the Downloaded chip to widen the search.',
   };
 }
 
@@ -243,6 +244,9 @@ export interface Props {
   /** Session-code letter, not a label: `s` | `w` | `m`. */
   season: string | null;
   onSeason: (s: string | null) => void;
+  /** Cambridge paper number: P4 includes components 41, 42, 43, and so on. */
+  paperNumber: number | null;
+  onPaperNumber: (paper: number | null) => void;
   subjectId: number | null;
   onSubject: (id: number | null) => void;
   /** Narrow to papers already on this machine. */
@@ -266,6 +270,8 @@ export default function LibraryView({
   onLevel,
   season,
   onSeason,
+  paperNumber,
+  onPaperNumber,
   subjectId,
   onSubject,
   downloadedOnly,
@@ -297,6 +303,19 @@ export default function LibraryView({
   const activeSubject = subjects.find((s) => s.id === subjectId) ?? null;
 
   /**
+   * Paper choices follow the rows already scoped by the sidebar, qualification, session and local
+   * download state. They are calculated before the paper-number pass, so selecting P4 never makes
+   * P1/P2/P3 disappear and the user can change their mind without first clearing the filter.
+   */
+  const paperNumbers = useMemo(() => {
+    if (mode !== 'library') return [];
+    let rows = papers;
+    if (level) rows = rows.filter((paper) => paper.level === level);
+    if (season) rows = rows.filter((paper) => paper.scode.startsWith(season));
+    return availablePaperNumbers(rows, paperNumber);
+  }, [papers, mode, level, season, paperNumber]);
+
+  /**
    * Level and season are applied here, not upstream: `App` narrows `listPapers` by level and
    * subject, and narrows a snapshot list by nothing at all. Running the level pass in every mode —
    * rather than only where it is load-bearing — costs one redundant walk over rows that already
@@ -308,6 +327,7 @@ export default function LibraryView({
     if (filterable) {
       if (level) rows = rows.filter((p) => p.level === level);
       if (season) rows = rows.filter((p) => p.scode.startsWith(season));
+      if (mode === 'library') rows = filterByPaperNumber(rows, paperNumber);
     }
 
     // Recent's open times. `App` resolves `loadRecent()` into rows and drops the `at` it looked them
@@ -375,13 +395,14 @@ export default function LibraryView({
     }
 
     return { groups: out, total: rows.length, openedAt: at };
-  }, [papers, mode, level, season, filterable]);
+  }, [papers, mode, level, season, paperNumber, filterable]);
 
   /** Is anything on this screen currently narrowing the list? The empty state hangs on the answer. */
   const narrowed =
     filterable &&
     (level !== null ||
       season !== null ||
+      (mode === 'library' && paperNumber !== null) ||
       downloadedOnly ||
       (mode === 'library' && subjectId !== null));
 
@@ -515,6 +536,22 @@ export default function LibraryView({
                   onClick={() => onSeason(season === s.key ? null : s.key)}
                 />
               ))}
+
+              {mode === 'library' && paperNumbers.length > 0 && (
+                <>
+                  <span className="lv-chip-strut" aria-hidden="true" />
+                  <span className="lv-paper-filters" role="group" aria-label="Paper number">
+                    {paperNumbers.map((paper) => (
+                      <Chip
+                        key={paper}
+                        label={`P${paper}`}
+                        filled={paperNumber === paper}
+                        onClick={() => onPaperNumber(paperNumber === paper ? null : paper)}
+                      />
+                    ))}
+                  </span>
+                </>
+              )}
 
               {/* Bookmarks heads its groups by subject, so a subject chip there would only repeat
                   what the headers say — and `App` never narrows a snapshot list by it. */}

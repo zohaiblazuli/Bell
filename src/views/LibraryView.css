@@ -74,6 +74,14 @@
   height: 1px;
 }
 
+/* One semantic group inside the wrapping filter rail. It keeps the paper options together when
+   there is room, but can wrap internally at the minimum window instead of pushing P5/P6 off-screen. */
+.lv-paper-filters {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 /* ---------- Recent's head (§6) ---------- */
 
 /* `head` 1020 x 36: HORIZONTAL, gap 12, align CENTER. The 36 comes from the segmented control, so
