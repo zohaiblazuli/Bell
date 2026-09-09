@@ -1,0 +1,53 @@
+/* ─── Page Jumper Input & Indicator ────────────────────────────────────────── */
+
+.rd-page-jumper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 54px;
+  color: var(--ink-2);
+  user-select: none;
+}
+
+.rd-page-input {
+  min-width: 26px;
+  height: 22px;
+  padding: 0 4px;
+  margin: 0;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink-1);
+  font: inherit;
+  font-size: 12px;
+  line-height: 22px;
+  text-align: center;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  cursor: text;
+}
+
+.rd-page-input:hover {
+  background: var(--surface-hover);
+  border-color: var(--hair);
+}
+
+.rd-page-input:focus {
+  background: var(--surface);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+  color: var(--ink-1);
+}
+
+.rd-page-slash {
+  color: var(--ink-3);
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+.rd-page-total {
+  color: var(--ink-2);
+  font-weight: 500;
+}
