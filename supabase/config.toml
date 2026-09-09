@@ -1,0 +1,7 @@
+[functions.community-public]
+verify_jwt = false
+
+[functions.community-admin]
+# The function verifies the Supabase session itself, then requires the allowlisted UUID and AAL2.
+verify_jwt = false
+
