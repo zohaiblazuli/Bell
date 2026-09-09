@@ -49,6 +49,7 @@ const WAKING = ['pointerdown', 'pointermove', 'keydown', 'wheel'] as const;
 
 export interface Mascot {
   mood: BellMood;
+  studying: boolean;
   /** Fire the double-take. Bound to a press on the mascot slot — see Sidebar for why it is not a button. */
   poke: () => void;
 }
@@ -127,5 +128,5 @@ export function useMascot(tone: Tone, error: string | null, working = false, stu
 
   // A reader/notebook session owns the teacher timeline from entry until the route is left. Keeping
   // it above transient pulses also prevents the enter clip from restarting mid-session.
-  return { mood: studying ? 'scuttle' : pulse ?? (working ? 'scuttle' : asleep ? 'sleep' : 'idle'), poke };
+  return { mood: studying ? 'scuttle' : pulse ?? (working ? 'scuttle' : asleep ? 'sleep' : 'idle'), studying, poke };
 }
