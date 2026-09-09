@@ -19,7 +19,7 @@
  * What it supersedes in app.css: `.btn`, `.btn:hover`, `.btn svg`, `.btn.on`, `.btn.primary`,
  * `.btn.primary:hover`, `.btn:disabled`.
  */
-import type { ComponentPropsWithoutRef, ReactNode } from 'react';
+import { forwardRef, type ComponentPropsWithoutRef, type ReactNode } from 'react';
 import Icon, { type IconName } from '../components/Icon';
 
 /** Figma `Style`. The set's own default is `Secondary`, and so is this component's. */
@@ -49,7 +49,7 @@ export interface ButtonProps extends ComponentPropsWithoutRef<'button'> {
   active?: boolean;
 }
 
-export default function Button({
+const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button({
   variant = 'secondary',
   icon,
   showIcon = true,
@@ -59,7 +59,7 @@ export default function Button({
   children,
   type = 'button',
   ...rest
-}: ButtonProps) {
+}: ButtonProps, ref) {
   const classes = ['bell-btn', 't-body-strong'];
   if (variant === 'primary') classes.push('bell-btn--primary');
   if (variant === 'toggle' && active) classes.push('bell-btn--on');
@@ -67,6 +67,7 @@ export default function Button({
 
   return (
     <button
+      ref={ref}
       type={type}
       /* A toggle reports its state even when it is off; the other two variants are not toggles
          and must not carry the attribute at all. Sits before the spread so a call site can still
@@ -79,4 +80,6 @@ export default function Button({
       {label ?? children}
     </button>
   );
-}
+});
+
+export default Button;

@@ -39,6 +39,8 @@ export interface RingProps {
   track?: string;
   /** Arc paint. The brand line, via the gradient `components/Sprite` mounts once. */
   fill?: string;
+  /** Optional local paint server. Keeping it inside this SVG avoids cross-SVG URL resolution bugs. */
+  gradient?: { id: string; from: string; to: string };
   className?: string;
 }
 
@@ -48,6 +50,7 @@ export default function Ring({
   stroke = 3,
   track = 'var(--hair)',
   fill = 'url(#iris)',
+  gradient,
   className,
 }: RingProps) {
   const r = (size - stroke) / 2;
@@ -66,6 +69,14 @@ export default function Ring({
       viewBox={`0 0 ${size} ${size}`}
       aria-hidden="true"
     >
+      {gradient && (
+        <defs>
+          <linearGradient id={gradient.id} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor={gradient.from} />
+            <stop offset="1" stopColor={gradient.to} />
+          </linearGradient>
+        </defs>
+      )}
       <circle
         className="bell-ring__trk"
         cx={centre}
