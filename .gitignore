@@ -82,6 +82,8 @@ media/
 !docs/media/**
 demos/
 bell-mascots/
+msbell/
+public/msbell/
 design-layers/
 
 # ---- Internal working notes (not shipped) ----
