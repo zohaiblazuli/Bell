@@ -36,8 +36,14 @@
   display: block;
   pointer-events: none;
   -webkit-user-drag: none;
-  transition: opacity 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Transition is set via inline styles — the incoming slot fades in immediately
+     while the outgoing slot holds at full opacity with a delay, preventing the
+     cross-dissolve transparency flash. */
   will-change: opacity;
+  /* GPU layer promotion: keeps decoded GIF frames in GPU memory so the Chromium
+     decoder doesn't blank the composited layer when the animation loops. */
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 @media (prefers-reduced-motion: reduce) {

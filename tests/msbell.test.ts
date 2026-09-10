@@ -39,6 +39,13 @@ describe('Ms. Bell mascot configuration and assets', () => {
   test('public/msbell GIF assets exist and are non-empty', () => {
     const requiredFiles = [
       'msbell_idle.gif',
+      'msbell_idle_2.gif',
+      'msbell_idle_3.gif',
+      'msbell_idle_4.gif',
+      'msbell_idle_5.gif',
+      'msbell_interact_1.gif',
+      'msbell_interact_2.gif',
+      'msbell_interact_3.gif',
       'msbell_sleeping.gif',
       'msbell_study_start.gif',
       'msbell_study_loop.gif',
@@ -53,46 +60,66 @@ describe('Ms. Bell mascot configuration and assets', () => {
     }
   });
 
-  test('startup_splash.gif has no zero/empty initial frame', () => {
-    const filePath = path.resolve('public/msbell/startup_splash.gif');
-    assert.ok(fs.existsSync(filePath), 'startup_splash.gif must exist');
+  test('all Ms. Bell GIF animations have non-empty initial frames (no loop flash)', () => {
+    const gifFiles = [
+      'msbell_idle.gif',
+      'msbell_idle_2.gif',
+      'msbell_idle_3.gif',
+      'msbell_idle_4.gif',
+      'msbell_idle_5.gif',
+      'msbell_interact_1.gif',
+      'msbell_interact_2.gif',
+      'msbell_interact_3.gif',
+      'msbell_sleeping.gif',
+      'msbell_study_start.gif',
+      'msbell_study_loop.gif',
+      'startup_splash.gif',
+    ];
 
-    const buf = fs.readFileSync(filePath);
-    let pos = 13;
-    const gctFlag = buf[10] & 0x80;
-    if (gctFlag) {
-      const gctSize = 3 * (1 << ((buf[10] & 0x07) + 1));
-      pos += gctSize;
-    }
+    for (const file of gifFiles) {
+      const filePath = path.resolve('public/msbell', file);
+      assert.ok(fs.existsSync(filePath), `${file} must exist`);
 
-    // Find first image descriptor block (0x2C) and check sub-block size
-    let firstFrameBytes = 0;
-    while (pos < buf.length) {
-      const block = buf[pos++];
-      if (block === 0x3B) break;
-      if (block === 0x21) {
-        pos++; // skip extType
-        const blockSize = buf[pos++];
-        pos += blockSize;
-        while (buf[pos] !== 0) pos += buf[pos] + 1;
-        pos++;
-      } else if (block === 0x2C) {
-        const lctFlag = buf[pos + 8] & 0x80;
-        pos += 9;
-        if (lctFlag) {
-          const lctSize = 3 * (1 << ((buf[pos - 1] & 0x07) + 1));
-          pos += lctSize;
-        }
-        pos++; // lzw code size
-        while (buf[pos] !== 0) {
-          firstFrameBytes += buf[pos];
-          pos += buf[pos] + 1;
-        }
-        break;
+      const buf = fs.readFileSync(filePath);
+      let pos = 13;
+      const gctFlag = buf[10] & 0x80;
+      if (gctFlag) {
+        const gctSize = 3 * (1 << ((buf[10] & 0x07) + 1));
+        pos += gctSize;
       }
+
+      // Find first image descriptor block (0x2C) and check sub-block size
+      let firstFrameBytes = 0;
+      while (pos < buf.length) {
+        const block = buf[pos++];
+        if (block === 0x3B) break;
+        if (block === 0x21) {
+          pos++; // skip extType
+          const blockSize = buf[pos++];
+          pos += blockSize;
+          while (buf[pos] !== 0) pos += buf[pos] + 1;
+          pos++;
+        } else if (block === 0x2C) {
+          const lctFlag = buf[pos + 8] & 0x80;
+          pos += 9;
+          if (lctFlag) {
+            const lctSize = 3 * (1 << ((buf[pos - 1] & 0x07) + 1));
+            pos += lctSize;
+          }
+          pos++; // lzw code size
+          while (buf[pos] !== 0) {
+            firstFrameBytes += buf[pos];
+            pos += buf[pos] + 1;
+          }
+          break;
+        }
+      }
+      // A blank/empty transparent frame is ~3KB; a rendered 2189x1207 character frame is > 300KB
+      assert.ok(
+        firstFrameBytes > 100000,
+        `${file} first frame must not be empty (got ${firstFrameBytes} bytes)`
+      );
     }
-    // A blank/empty transparent frame is ~3KB; a rendered 2189x1207 character frame is > 500KB
-    assert.ok(firstFrameBytes > 100000, `First frame must not be empty (got ${firstFrameBytes} bytes)`);
   });
 
   test('startup watchdog cannot cut off the authored Ms. Bell sequence', () => {
