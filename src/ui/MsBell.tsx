@@ -58,7 +58,6 @@ const STARTUP_SPLASH_GIF = '/msbell/startup_splash.gif';
 const STUDY_START_DURATION_MS = 7840;
 
 const cssSize = (size: number | string) => (typeof size === 'number' ? `${size}px` : size);
-const pick = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
 const FADE = 'opacity 0.24s cubic-bezier(0.4, 0, 0.2, 1)';
 const FADE_DELAYED = 'opacity 0.24s 0.18s cubic-bezier(0.4, 0, 0.2, 1)';
@@ -146,6 +145,9 @@ export default function MsBell({
   // Handle poke visual reaction + interact GIF
   const pokeTimerRef = useRef<number | undefined>(undefined);
   const interactTimerRef = useRef<number | undefined>(undefined);
+  const lastInteractIdxRef = useRef<number>(-1);
+  const interactDeckRef = useRef<number[]>([]);
+
   const handlePointerDown = useCallback(() => {
     setPoked(true);
     window.clearTimeout(pokeTimerRef.current);
@@ -153,7 +155,23 @@ export default function MsBell({
 
     // Trigger the interact GIF (only when not in splash, study, or sleep)
     if (!isSplash && !isStudy && !isSleep) {
-      const picked = pick(INTERACT_VARIANTS);
+      // Fair shuffle deck: guarantees all 3 interact variants play equally
+      // without repeats or bias toward any single animation.
+      if (interactDeckRef.current.length === 0) {
+        const indices = [0, 1, 2];
+        for (let i = indices.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [indices[i], indices[j]] = [indices[j], indices[i]];
+        }
+        if (indices[0] === lastInteractIdxRef.current) {
+          indices.push(indices.shift()!);
+        }
+        interactDeckRef.current = indices;
+      }
+      const nextIdx = interactDeckRef.current.shift()!;
+      lastInteractIdxRef.current = nextIdx;
+      const picked = INTERACT_VARIANTS[nextIdx];
+
       // Cache-bust forces restart from frame 0.
       setInteractSrc(`${picked.src}?t=${Date.now()}`);
       window.clearTimeout(interactTimerRef.current);
