@@ -75,7 +75,7 @@ export default function StarGateView({ onComplete, userName }: StarGateViewProps
       }
     } catch (err: unknown) {
       setMood('specs-push-up');
-      const msg = typeof err === 'string' ? err : 'Could not verify star. Please check your connection or use the link below.';
+      const msg = typeof err === 'string' ? err : 'Could not verify star. Please check your connection and try again.';
       setFeedback({
         type: 'error',
         text: msg,
@@ -153,16 +153,6 @@ export default function StarGateView({ onComplete, userName }: StarGateViewProps
               <span>{feedback.text}</span>
             </div>
           )}
-        </div>
-
-        <div className="stargate__footer">
-          <button
-            type="button"
-            className="stargate__fallback-btn"
-            onClick={onComplete}
-          >
-            Already starred, or don't have a GitHub account? Continue to Bell →
-          </button>
         </div>
       </div>
     </div>

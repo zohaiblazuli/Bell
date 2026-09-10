@@ -54,7 +54,7 @@ pub async fn check_github_star(username: String) -> Result<bool, String> {
     }
 
     if status == reqwest::StatusCode::FORBIDDEN || status == reqwest::StatusCode::TOO_MANY_REQUESTS {
-        return Err("GitHub rate limit reached. Please use the 'Continue' button below.".to_string());
+        return Err("GitHub rate limit reached. Please wait a few moments and try again.".to_string());
     }
 
     if !status.is_success() {

@@ -196,30 +196,3 @@
   border: 1px solid rgba(59, 130, 246, 0.25);
   color: var(--accent);
 }
-
-.stargate__footer {
-  margin-top: 24px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-.stargate__fallback-btn {
-  background: none;
-  border: none;
-  padding: 6px 12px;
-  color: var(--ink-3);
-  font-family: var(--font-ui);
-  font-size: 12px;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: color 0.15s ease, background-color 0.15s ease;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.stargate__fallback-btn:hover {
-  color: var(--ink);
-  background: rgba(0, 0, 0, 0.04);
-}
