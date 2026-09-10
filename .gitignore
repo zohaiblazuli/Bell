@@ -84,17 +84,27 @@ htmlcov/
 core
 
 # ---- Secrets, Credentials & Project Theft Prevention ----
+# Ignore rules do not protect secrets pasted into tracked source or remove Git history.
+# Keep real credentials in ignored local files or the deployment secret store.
 # Environment variables (API keys, Supabase service role, Google Drive secrets)
 .env
 .env.*
-!.env.example
 *.env
+*.env.*
+# Only sanitized examples belong in source control.
+!.env.example
+.envrc
+.direnv/
 env.json
 secrets.json
 secret.json
 secrets.yaml
 secrets.yml
 secrets.toml
+.secrets/
+secrets/
+.credentials/
+credentials/
 local.settings.json
 appsettings.*.json
 !appsettings.json
@@ -107,8 +117,18 @@ service_account*.json
 *service-account*.json
 *service_account*.json
 credentials.json
+credentials.*.json
+*-credentials.json
+*_credentials.json
 token.json
 tokens.json
+token.*.json
+tokens.*.json
+oauth-token*.json
+oauth_token*.json
+oauth-credentials*.json
+oauth_credentials*.json
+application_default_credentials.json
 *drive_token*.json
 *gdrive*.json
 .aws/
@@ -120,17 +140,63 @@ tokens.json
 .netlify/
 .supabase/
 supabase/.branches/
+supabase/.temp/
+.config/gcloud/
+.config/gh/
+.docker/config.json
+.kube/
+.npmrc
+.pypirc
+.git-credentials
+.gitcookies
 .pgpass
+.pg_service.conf
 .my.cnf
 .netrc
+_netrc
+
+# Browser sessions, cookies, and network captures can contain working account tokens.
+.auth/
+playwright/.auth/
+storageState*.json
+storage-state*.json
+storage_state*.json
+cookies.txt
+cookies.json
+cookies.sqlite*
+*.har
+browser-profile/
+browser-profiles/
+user-data-dir/
 
 # Database dumps & production snapshots
 *.sql.dump
 dump*.sql
 backup*.sql
 *.psql
+*.sql.gz
+*.sql.zip
+*.sqlite-journal
+*.sqlite3-journal
+*.db-journal
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+*.tfplan
+# Local exports and archives may bundle files which Git otherwise ignores.
+backups/
+private/
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.tgz
 
 # SSH keys & Git personal access tokens
+.ssh/
 id_rsa*
 id_ed25519*
 id_ecdsa*
@@ -143,11 +209,17 @@ pat_*
 .cargo/credentials.toml
 
 # Desktop Code-Signing & Publisher Identity (prevents publishing malicious updates or spoofing app)
+.tauri/
+*.pass
+*.password
 *.minisign
 tauri-private.key
 TAURI_SIGNING_PRIVATE_KEY*
 *.key
 *.pem
+*.p8
+*.pk8
+*.pkcs12
 *.p12
 *.pfx
 *.snk
@@ -212,6 +284,16 @@ ROADMAP_INTERNAL*.md
 .cursor/
 .windsurf/
 .claude/
+.codex/
+.bash_history
+.zsh_history
+.python_history
+ConsoleHost_history.txt
+# Secret-scan reports may include matched credentials unless explicitly redacted.
+gitleaks-report*
+gitleaks*.json
+gitleaks*.sarif
+trufflehog*.json
 
 # ---- OS junk ----
 # macOS
