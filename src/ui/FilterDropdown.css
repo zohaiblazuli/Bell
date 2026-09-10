@@ -1,0 +1,218 @@
+/* FilterDropdown — Collapsible filter button with glassmorphic option menu */
+
+.filter-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.filter-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--r-pill, 9999px);
+  border: 1px solid var(--outline, rgba(255, 255, 255, 0.15));
+  background: var(--plate, rgba(255, 255, 255, 0.08));
+  color: var(--text-2, rgba(255, 255, 255, 0.7));
+  font-family: var(--font-ui, system-ui, sans-serif);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.12s ease;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.filter-dropdown-trigger:hover {
+  color: var(--text, #ffffff);
+  border-color: var(--accent, #7dd3fc);
+  background: var(--plate-hover, rgba(255, 255, 255, 0.14));
+}
+
+.filter-dropdown-trigger:active {
+  transform: scale(0.98);
+}
+
+.filter-dropdown-trigger[data-active='true'] {
+  color: var(--text, #ffffff);
+  border-color: var(--chip-edge-0, var(--accent, #7dd3fc));
+  background: var(--chip-wash, var(--accent-soft, rgba(125, 211, 252, 0.22)));
+}
+
+.filter-dropdown-trigger[data-open='true'] {
+  border-color: var(--accent, #7dd3fc);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #7dd3fc) 25%, transparent);
+}
+
+.filter-dropdown-prefix {
+  opacity: 0.75;
+  font-weight: 400;
+}
+
+.filter-dropdown-value {
+  font-weight: 600;
+  color: var(--text, #ffffff);
+}
+
+.filter-dropdown-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+}
+
+.filter-dropdown-chev {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  opacity: 0.65;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.filter-dropdown-trigger[data-open='true'] .filter-dropdown-chev {
+  transform: rotate(180deg);
+  opacity: 1;
+}
+
+/* Palette washes matching Chip palettes */
+.filter-dropdown-trigger[data-palette='a-level'] {
+  --chip-wash: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--board-a-level-a, #7dd3fc) 36%, transparent),
+    color-mix(in srgb, var(--board-a-level-b, #818cf8) 36%, transparent)
+  );
+  --chip-edge-0: color-mix(in srgb, var(--board-a-level-a, #7dd3fc) 80%, transparent);
+}
+
+.filter-dropdown-trigger[data-palette='igcse'] {
+  --chip-wash: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--bell-cap-mid, #f472b6) 32%, transparent),
+    color-mix(in srgb, var(--bell-cap-deep, #c084fc) 32%, transparent)
+  );
+  --chip-edge-0: color-mix(in srgb, var(--bell-cap-mid, #f472b6) 80%, transparent);
+}
+
+.filter-dropdown-trigger[data-palette='o-level'] {
+  --chip-wash: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--cover-2, #0f6b6b) 45%, transparent),
+    color-mix(in srgb, var(--cover-3, #1f6b3a) 45%, transparent)
+  );
+  --chip-edge-0: color-mix(in srgb, var(--cover-3, #1f6b3a) 80%, transparent);
+}
+
+.filter-dropdown-trigger[data-palette='may-june'] {
+  --chip-wash: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--season-s-a, #38bdf8) 32%, transparent),
+    color-mix(in srgb, var(--season-s-b, #3b82f6) 32%, transparent)
+  );
+  --chip-edge-0: color-mix(in srgb, var(--season-s-a, #38bdf8) 80%, transparent);
+}
+
+.filter-dropdown-trigger[data-palette='oct-nov'] {
+  --chip-wash: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--season-w-a, #fb923c) 32%, transparent),
+    color-mix(in srgb, var(--season-w-b, #f43f5e) 32%, transparent)
+  );
+  --chip-edge-0: color-mix(in srgb, var(--season-w-a, #fb923c) 80%, transparent);
+}
+
+.filter-dropdown-trigger[data-palette='feb-march'] {
+  --chip-wash: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--season-m-a, #a855f7) 32%, transparent),
+    color-mix(in srgb, var(--season-m-b, #ec4899) 32%, transparent)
+  );
+  --chip-edge-0: color-mix(in srgb, var(--season-m-a, #a855f7) 80%, transparent);
+}
+
+/* Floating popover menu */
+.filter-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 175px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 12px;
+  background: var(--plate, #1e2230);
+  border: 1px solid var(--outline, rgba(255, 255, 255, 0.16));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.36), 0 2px 8px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  animation: filter-dropdown-in 0.15s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+@keyframes filter-dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.filter-dropdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-2, rgba(255, 255, 255, 0.75));
+  font-family: var(--font-ui, system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.filter-dropdown-item:hover {
+  background: var(--plate-hover, rgba(255, 255, 255, 0.1));
+  color: var(--text, #ffffff);
+}
+
+.filter-dropdown-item[data-selected='true'] {
+  background: var(--accent-soft, rgba(125, 211, 252, 0.16));
+  color: var(--text, #ffffff);
+  font-weight: 600;
+}
+
+.filter-dropdown-item-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-dropdown-item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+}
+
+.filter-dropdown-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  color: var(--accent, #7dd3fc);
+}

@@ -10,7 +10,7 @@ const host = process.env.TAURI_DEV_HOST;
 // The version the app SHOWS is read from the one place the shipped exe is stamped from —
 // `tauri.conf.json` — so the Settings string can never drift from the real build the way the
 // hand-typed literal in `App.tsx` could. The build stamp uses the matching release tag
-// (`v0.2.0`, for example), so the label identifies the installed release. Both bake in at
+// (`v0.2.1`, for example), so the label identifies the installed release. Both bake in at
 // frontend-build time — which `tauri build` re-runs on every build — and surface as the globals
 // declared in `src/vite-env.d.ts`: no IPC, no capability, no async, still passed synchronously.
 const appVersion = JSON.parse(

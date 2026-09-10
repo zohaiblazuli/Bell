@@ -16,8 +16,9 @@ const HANDOFF_MS = 900;
 const REDUCED_HANDOFF_MS = 320;
 
 export function startupHoldDurationMs(pet: StartupPet, reduceMotion: boolean): number {
+  if (pet === 'msbell') return MS_BELL_HOLD_MS;
   if (reduceMotion) return REDUCED_HOLD_MS;
-  return pet === 'msbell' ? MS_BELL_HOLD_MS : DEFAULT_HOLD_MS;
+  return DEFAULT_HOLD_MS;
 }
 
 export function startupHandoffDurationMs(reduceMotion: boolean): number {

@@ -28,11 +28,12 @@ import './LibraryView.css';
 import { useMemo, useState } from 'react';
 import Card from '@ui/Card';
 import Chip, { type ChipPalette } from '@ui/Chip';
+import FilterDropdown from '@ui/FilterDropdown';
 import Notice from '@ui/Notice';
 import PaperCard from '@ui/PaperCard';
 import SectionLabel from '@ui/SectionLabel';
 import SegmentedControl from '@ui/SegmentedControl';
-import SeasonIcon from '@ui/icons/SeasonIcon';
+import SeasonIcon, { seasonKeyOf } from '@ui/icons/SeasonIcon';
 import SubjectIcon from '@ui/icons/SubjectIcon';
 import Icon, { type IconName } from '@/components/Icon';
 import { bandFor, sessionLabel } from '@/lib/difficulty';
@@ -511,45 +512,51 @@ export default function LibraryView({
 
           {showChips && (
             <div className="lv-filters">
-              <Chip label="All levels" filled={level === null} onClick={() => onLevel(null)} />
-              {LEVELS.map((l) => (
-                <Chip
-                  key={l}
-                  label={l}
-                  palette={LEVEL_PALETTE[l]}
-                  filled={level === l}
-                  onClick={() => onLevel(level === l ? null : l)}
-                />
-              ))}
+              <FilterDropdown
+                label="Level"
+                value={level}
+                valueLabel={level ?? 'All levels'}
+                palette={level && level in LEVEL_PALETTE ? LEVEL_PALETTE[level as keyof typeof LEVEL_PALETTE] : undefined}
+                items={[
+                  { value: null, label: 'All levels' },
+                  ...LEVELS.map((l) => ({ value: l, label: l, palette: LEVEL_PALETTE[l] })),
+                ]}
+                onChange={onLevel}
+              />
 
-              {/* §5.1 hides an 8x1 strut here: with the row's own 8px gap either side of it, the
-                  level-to-season break measures 24px rather than 8. */}
               <span className="lv-chip-strut" aria-hidden="true" />
 
-              {SEASONS.map((s) => (
-                <Chip
-                  key={s.key}
-                  label={s.label}
-                  palette={s.palette}
-                  filled={season === s.key}
-                  icon={<SeasonIcon season={s.key} />}
-                  onClick={() => onSeason(season === s.key ? null : s.key)}
-                />
-              ))}
+              <FilterDropdown
+                label="Season"
+                value={season}
+                valueLabel={SEASONS.find((s) => s.key === season)?.label ?? 'All seasons'}
+                palette={SEASONS.find((s) => s.key === season)?.palette}
+                icon={seasonKeyOf(season) ? <SeasonIcon season={seasonKeyOf(season)!} /> : undefined}
+                items={[
+                  { value: null, label: 'All seasons' },
+                  ...SEASONS.map((s) => ({
+                    value: s.key,
+                    label: s.label,
+                    palette: s.palette,
+                    icon: <SeasonIcon season={s.key} />,
+                  })),
+                ]}
+                onChange={onSeason}
+              />
 
               {mode === 'library' && paperNumbers.length > 0 && (
                 <>
                   <span className="lv-chip-strut" aria-hidden="true" />
-                  <span className="lv-paper-filters" role="group" aria-label="Paper number">
-                    {paperNumbers.map((paper) => (
-                      <Chip
-                        key={paper}
-                        label={`P${paper}`}
-                        filled={paperNumber === paper}
-                        onClick={() => onPaperNumber(paperNumber === paper ? null : paper)}
-                      />
-                    ))}
-                  </span>
+                  <FilterDropdown
+                    label="Paper"
+                    value={paperNumber}
+                    valueLabel={paperNumber !== null ? `P${paperNumber}` : 'All papers'}
+                    items={[
+                      { value: null, label: 'All papers' },
+                      ...paperNumbers.map((p) => ({ value: p, label: `Paper ${p} (P${p})` })),
+                    ]}
+                    onChange={onPaperNumber}
+                  />
                 </>
               )}
 

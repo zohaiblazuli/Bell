@@ -13,6 +13,7 @@ import './Dialog.css';
 import './DifficultyBadge.css';
 import './DocBadge.css';
 import './Field.css';
+import './FilterDropdown.css';
 import './IconButton.css';
 import './Kbd.css';
 import './Meter.css';

@@ -123,9 +123,9 @@ export default function Splash({ phase, onFinished, targets = null, reduceMotion
   const splashDurMs = startupHoldDurationMs(settings.pet, reduceMotion);
   const handoffDurMs = startupHandoffDurationMs(reduceMotion);
 
-  // Allow pressing Escape, Space, or Enter to skip directly to handoff
+  // Allow pressing Escape, Space, or Enter to skip directly to handoff (disabled for Ms. Bell to ensure full authored animation is seen)
   useEffect(() => {
-    if (phase !== 'splash') return;
+    if (phase !== 'splash' || settings.pet === 'msbell') return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') {
         onFinished('splash');
@@ -133,7 +133,7 @@ export default function Splash({ phase, onFinished, targets = null, reduceMotion
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [phase, onFinished]);
+  }, [phase, onFinished, settings.pet]);
 
   /* A slot that has not been laid out yet is not a measurement, and dividing by its height would
      hand the wordmark an infinite scale. Treat a degenerate rect as absent — the cross-fade is the
@@ -204,7 +204,7 @@ export default function Splash({ phase, onFinished, targets = null, reduceMotion
       data-travel={landing ? 'on' : 'off'}
       data-motion={reduceMotion ? 'reduced' : undefined}
       onClick={() => {
-        if (phase === 'splash') onFinished('splash');
+        if (phase === 'splash' && settings.pet !== 'msbell') onFinished('splash');
       }}
       style={
         {

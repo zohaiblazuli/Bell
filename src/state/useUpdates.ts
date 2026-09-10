@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import * as api from '@/lib/api';
 import * as updates from '@/lib/updates';
+import { APP_VERSION } from '@/lib/version';
 import type { UpdateState } from '@/components/UpdateFlow';
 
 export interface Updates {
@@ -60,7 +61,7 @@ export function useUpdates(auto: boolean, onError: (message: string) => void): U
         // now" on the newest build was indistinguishable from pressing a dead button. The dialog
         // opens only for a check somebody asked for; the launch check just leaves the phase behind
         // for the Settings card to read.
-        setState({ phase: 'current', version: __APP_VERSION__ });
+        setState({ phase: 'current', version: APP_VERSION });
         if (manual) setDialogOpen(true);
       } else {
         // The pill has no face for this, so the dialog carries the explanation.

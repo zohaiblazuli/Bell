@@ -613,6 +613,12 @@
   animation: none !important;
 }
 
+/* Ms. Bell's startup splash is an authored sequence that plays in full */
+.splash[data-pet='msbell'],
+.splash[data-pet='msbell'][data-motion='reduced'] {
+  --splash-dur: 8480ms !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .splash {
     --splash-dur: 700ms;
@@ -621,5 +627,12 @@
   }
   .splash .splash-art * {
     animation: none !important;
+  }
+  .splash[data-pet='msbell'] {
+    --splash-dur: 8480ms !important;
+  }
+  .splash[data-pet='msbell'] .splash-art .ms-bell,
+  .splash[data-pet='msbell'] .splash-art .ms-bell * {
+    animation: inherit !important;
   }
 }

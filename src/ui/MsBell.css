@@ -62,10 +62,557 @@
 }
 
 /* While the interact overlay is playing, hide the A/B slots so the idle/sleep GIF does not
-   bleed through Ms. Bell's transparent areas. Instant hide, instant reveal on unmount. */
-.ms-bell:has(.ms-bell__interact) .ms-bell__frame .ms-bell__img {
+   bleed through Ms. Bell's transparent areas. Keep the motion trail active behind it. */
+.ms-bell:has(.ms-bell__interact) .ms-bell__frame .ms-bell__img:not(.ms-bell__trail) {
   opacity: 0 !important;
   transition: none !important;
+}
+
+/* Ethereal motion trail / silhouette afterimage echo */
+.ms-bell__trail {
+  z-index: 0;
+  opacity: 0.38;
+  filter: blur(5px) brightness(1.22) saturate(1.3)
+          drop-shadow(-2px -1px 4px rgba(125, 211, 252, 0.45))
+          drop-shadow(2px 1px 4px rgba(244, 114, 182, 0.45));
+  transform: scale(1.028) translateY(-1.5px);
+  transform-origin: center bottom;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  will-change: transform, opacity;
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-bell__trail {
+    display: none !important;
+  }
+}
+
+/* ── Artistic Electric Pastel Reveal Variations (6 Styles) ────────── */
+
+/* 1. Base / Shared Reveal State */
+.ms-bell__frame[data-glitch='true'] .ms-bell__img:not(.ms-bell__trail) {
+  filter: url(#ms-bell-mosaic-glitch)
+          blur(0.6px)
+          drop-shadow(-3px -1px 2px rgba(125, 211, 252, 0.8))
+          drop-shadow(3px 1px 2px rgba(244, 114, 182, 0.8))
+          drop-shadow(0 0 12px rgba(192, 132, 252, 0.65));
+  animation: ms-bell-electric-flicker 0.76s steps(8, jump-none) both;
+}
+
+.ms-bell__frame[data-glitch='true'] .ms-bell__trail {
+  opacity: 0.65;
+  filter: blur(7px) brightness(1.45) saturate(1.7)
+          drop-shadow(-6px -2px 10px rgba(125, 211, 252, 0.85))
+          drop-shadow(6px 2px 10px rgba(244, 114, 182, 0.85))
+          drop-shadow(0 0 16px rgba(192, 132, 252, 0.75));
+  transform: scale(1.045) translate3d(2px, -2px, 0);
+}
+
+/* ── Variation 1: Crystalline Mosaic Pixel Glitch (mosaic) ───────────── */
+.ms-bell__frame[data-reveal='mosaic'] .ms-bell__img:not(.ms-bell__trail) {
+  filter: url(#ms-bell-mosaic-glitch)
+          blur(0.6px)
+          drop-shadow(-3px -1px 2px rgba(125, 211, 252, 0.85))
+          drop-shadow(3px 1px 2px rgba(244, 114, 182, 0.85))
+          drop-shadow(0 0 14px rgba(192, 132, 252, 0.7));
+  animation: ms-bell-electric-flicker 0.76s steps(8, jump-none) both;
+}
+
+/* ── Variation 2: Diagonal Laser Aurora Sweep (aurora) ───────────────── */
+.ms-bell__frame[data-reveal='aurora'] .ms-bell__img:not(.ms-bell__trail) {
+  filter: blur(0.6px)
+          drop-shadow(-4px 2px 6px rgba(125, 211, 252, 0.95))
+          drop-shadow(4px -2px 6px rgba(244, 114, 182, 0.95))
+          brightness(1.22);
+  animation: ms-bell-aurora-shear 0.76s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.ms-bell__frame[data-reveal='aurora'] .ms-bell__electric-halo {
+  border-radius: 0;
+  filter: blur(14px);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 50%, #000 65%, transparent 95%);
+  mask-image: radial-gradient(ellipse at 50% 50%, #000 65%, transparent 95%);
+  background: linear-gradient(
+    135deg,
+    transparent 15%,
+    rgba(125, 211, 252, 0.85) 42%,
+    rgba(255, 255, 255, 0.98) 50%,
+    rgba(244, 114, 182, 0.85) 58%,
+    transparent 85%
+  );
+  animation: ms-bell-aurora-laser 0.76s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.ms-bell__frame[data-reveal='aurora'] .ms-bell__glitch-slice--1 {
+  clip-path: polygon(0 0, 100% 0, 85% 45%, 0 45%);
+  transform: skewX(-14deg) translate3d(-6px, 0, 0);
+  animation: ms-bell-aurora-slice-1 0.76s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.ms-bell__frame[data-reveal='aurora'] .ms-bell__glitch-slice--2 {
+  clip-path: polygon(15% 45%, 100% 45%, 100% 100%, 0 100%);
+  transform: skewX(14deg) translate3d(6px, 0, 0);
+  animation: ms-bell-aurora-slice-2 0.76s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+@keyframes ms-bell-aurora-shear {
+  0% { transform: skewX(-8deg) scale(0.96); opacity: 0.7; }
+  35% { transform: skewX(6deg) scale(1.03); opacity: 0.95; }
+  70% { transform: skewX(-3deg) scale(0.99); opacity: 0.88; }
+  100% { transform: skewX(0deg) scale(1); opacity: 1; }
+}
+
+@keyframes ms-bell-aurora-laser {
+  0% { opacity: 0; transform: translate3d(-60%, -60%, 0) rotate(-15deg); }
+  45% { opacity: 1; transform: translate3d(0, 0, 0) rotate(0deg); }
+  100% { opacity: 0; transform: translate3d(60%, 60%, 0) rotate(15deg); }
+}
+
+@keyframes ms-bell-aurora-slice-1 {
+  0% { transform: translate3d(-20px, -10px, 0) skewX(-14deg); opacity: 0; }
+  45% { transform: translate3d(4px, 2px, 0) skewX(-5deg); opacity: 0.92; }
+  100% { transform: translate3d(0, 0, 0) skewX(0); opacity: 0; }
+}
+
+@keyframes ms-bell-aurora-slice-2 {
+  0% { transform: translate3d(20px, 10px, 0) skewX(14deg); opacity: 0; }
+  45% { transform: translate3d(-4px, -2px, 0) skewX(5deg); opacity: 0.92; }
+  100% { transform: translate3d(0, 0, 0) skewX(0); opacity: 0; }
+}
+
+/* ── Variation 3: Cyber Matrix Voxel Dissolve (matrix) ───────────────── */
+.ms-bell__frame[data-reveal='matrix'] .ms-bell__img:not(.ms-bell__trail) {
+  filter: url(#ms-bell-filter-matrix)
+          blur(0.5px)
+          drop-shadow(0 0 8px rgba(125, 211, 252, 0.9))
+          drop-shadow(0 0 16px rgba(192, 132, 252, 0.75));
+  animation: ms-bell-matrix-dissolve 0.76s steps(10, jump-none) both;
+}
+
+.ms-bell__frame[data-reveal='matrix'] .ms-bell__glitch-scanlines {
+  background:
+    repeating-linear-gradient(
+      to right,
+      transparent,
+      transparent 4px,
+      rgba(125, 211, 252, 0.3) 4px,
+      rgba(125, 211, 252, 0.3) 6px
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      transparent,
+      transparent 3px,
+      rgba(244, 114, 182, 0.22) 3px,
+      rgba(244, 114, 182, 0.22) 5px
+    );
+}
+
+@keyframes ms-bell-matrix-dissolve {
+  0% { opacity: 0.4; transform: translate3d(0, -6px, 0); }
+  25% { opacity: 0.85; transform: translate3d(4px, 2px, 0); }
+  50% { opacity: 0.6; transform: translate3d(-3px, -2px, 0); }
+  75% { opacity: 0.95; transform: translate3d(2px, 1px, 0); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+/* ── Variation 4: High-Voltage Electric Arc Flash (lightning) ────────── */
+.ms-bell__frame[data-reveal='lightning'] .ms-bell__img:not(.ms-bell__trail) {
+  filter: blur(0.5px)
+          drop-shadow(0 0 14px rgba(186, 230, 253, 0.98))
+          drop-shadow(0 0 24px rgba(244, 114, 182, 0.95))
+          contrast(1.3) brightness(1.3);
+  animation: ms-bell-lightning-strobe 0.76s steps(9, jump-none) both;
+}
+
+.ms-bell__frame[data-reveal='lightning'] .ms-bell__glitch-slice--1 {
+  filter: blur(1.5px) invert(0.22) hue-rotate(180deg) drop-shadow(0 0 12px rgba(125, 211, 252, 0.9));
+  animation: ms-bell-lightning-arc 0.76s steps(7, jump-none) both;
+}
+
+.ms-bell__frame[data-reveal='lightning'] .ms-bell__electric-sparks {
+  animation: ms-bell-lightning-sparks 0.76s steps(9, jump-none) both;
+}
+
+@keyframes ms-bell-lightning-strobe {
+  0% { opacity: 0.2; transform: translate3d(-4px, 2px, 0) scale(1.03); }
+  15% { opacity: 1; transform: translate3d(3px, -3px, 0) scale(0.97); }
+  30% { opacity: 0.35; transform: translate3d(-2px, -1px, 0) scale(1.02); }
+  50% { opacity: 1; transform: translate3d(4px, 1px, 0) scale(0.98); }
+  70% { opacity: 0.5; transform: translate3d(-1px, 2px, 0) scale(1.01); }
+  85% { opacity: 0.95; transform: translate3d(1px, -1px, 0) scale(1); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes ms-bell-lightning-arc {
+  0% { clip-path: inset(10% 0 60% 0); transform: translate3d(-8px, 4px, 0); opacity: 0.9; }
+  30% { clip-path: inset(50% 0 15% 0); transform: translate3d(6px, -4px, 0); opacity: 0.95; }
+  60% { clip-path: inset(25% 0 45% 0); transform: translate3d(-4px, 2px, 0); opacity: 0.85; }
+  100% { clip-path: inset(100% 0 0 0); transform: translate3d(0, 0, 0); opacity: 0; }
+}
+
+@keyframes ms-bell-lightning-sparks {
+  0% { opacity: 0; transform: scale(0.9); }
+  20% { opacity: 1; transform: scale(1.08) translate3d(-4px, 2px, 0); }
+  45% { opacity: 0.3; transform: scale(0.95) translate3d(4px, -3px, 0); }
+  70% { opacity: 1; transform: scale(1.06) translate3d(-2px, -2px, 0); }
+  100% { opacity: 0; transform: scale(1) translate3d(0, 0, 0); }
+}
+
+/* ── Variation 5: Venetian Prismatic Slat Shutter (shutter) ──────────── */
+.ms-bell__frame[data-reveal='shutter'] .ms-bell__img:not(.ms-bell__trail) {
+  filter: blur(0.5px)
+          drop-shadow(-3px 0 0 rgba(125, 211, 252, 0.85))
+          drop-shadow(3px 0 0 rgba(244, 114, 182, 0.85));
+  animation: ms-bell-shutter-in 0.76s cubic-bezier(0.2, 0.85, 0.25, 1) both;
+}
+
+.ms-bell__frame[data-reveal='shutter'] .ms-bell__glitch-slice--1 {
+  clip-path: polygon(0 0, 100% 0, 100% 20%, 0 20%, 0 40%, 100% 40%, 100% 60%, 0 60%, 0 80%, 100% 80%, 100% 100%, 0 100%);
+  animation: ms-bell-shutter-slats-1 0.76s cubic-bezier(0.2, 0.85, 0.25, 1) both;
+}
+
+.ms-bell__frame[data-reveal='shutter'] .ms-bell__glitch-slice--2 {
+  clip-path: polygon(0 20%, 100% 20%, 100% 40%, 0 40%, 0 60%, 100% 60%, 100% 80%, 0 80%);
+  animation: ms-bell-shutter-slats-2 0.76s cubic-bezier(0.2, 0.85, 0.25, 1) both;
+}
+
+@keyframes ms-bell-shutter-in {
+  0% { opacity: 0.3; transform: scale(0.96); }
+  50% { opacity: 0.88; transform: scale(1.015); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ms-bell-shutter-slats-1 {
+  0% { transform: translate3d(-24px, 0, 0); opacity: 0.9; }
+  55% { transform: translate3d(3px, 0, 0); opacity: 0.75; }
+  100% { transform: translate3d(0, 0, 0); opacity: 0; }
+}
+
+@keyframes ms-bell-shutter-slats-2 {
+  0% { transform: translate3d(24px, 0, 0); opacity: 0.9; }
+  55% { transform: translate3d(-3px, 0, 0); opacity: 0.75; }
+  100% { transform: translate3d(0, 0, 0); opacity: 0; }
+}
+
+/* ── Variation 6: Ethereal Radial Pastel Vortex (vortex) ─────────────── */
+.ms-bell__frame[data-reveal='vortex'] .ms-bell__img:not(.ms-bell__trail) {
+  filter: url(#ms-bell-filter-vortex)
+          blur(0.6px)
+          drop-shadow(0 0 12px rgba(192, 132, 252, 0.85))
+          drop-shadow(0 0 22px rgba(125, 211, 252, 0.65));
+  animation: ms-bell-vortex-twist 0.76s cubic-bezier(0.22, 0.8, 0.25, 1) both;
+}
+
+.ms-bell__frame[data-reveal='vortex'] .ms-bell__electric-halo {
+  border-radius: 50%;
+  filter: blur(16px);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 50%, #000 65%, transparent 95%);
+  mask-image: radial-gradient(ellipse at 50% 50%, #000 65%, transparent 95%);
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    rgba(125, 211, 252, 0.65),
+    rgba(244, 114, 182, 0.65),
+    rgba(192, 132, 252, 0.65),
+    rgba(186, 230, 253, 0.65),
+    rgba(125, 211, 252, 0.65)
+  );
+  animation: ms-bell-vortex-spin 0.76s ease-out both;
+}
+
+@keyframes ms-bell-vortex-twist {
+  0% { transform: rotate(-14deg) scale(0.9); opacity: 0.5; }
+  45% { transform: rotate(6deg) scale(1.06); opacity: 0.92; }
+  80% { transform: rotate(-2deg) scale(0.99); opacity: 0.88; }
+  100% { transform: rotate(0deg) scale(1); opacity: 1; }
+}
+
+@keyframes ms-bell-vortex-spin {
+  0% { transform: rotate(0deg) scale(0.7); opacity: 0; }
+  50% { transform: rotate(180deg) scale(1.15); opacity: 0.95; }
+  100% { transform: rotate(360deg) scale(1); opacity: 0; }
+}
+
+/* ── Keyframes & Slices Base ─────────────────────────────────────────── */
+
+@keyframes ms-bell-electric-flicker {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  16% {
+    opacity: 0.86;
+    transform: translate3d(-3px, 1.5px, 0) scale(1.018);
+  }
+  33% {
+    opacity: 0.72;
+    transform: translate3d(4px, -1.5px, 0) scale(0.982);
+  }
+  50% {
+    opacity: 0.95;
+    transform: translate3d(-2px, -2px, 0) scale(1.022);
+  }
+  66% {
+    opacity: 0.8;
+    transform: translate3d(3px, 2px, 0) scale(0.99);
+  }
+  83% {
+    opacity: 0.92;
+    transform: translate3d(-1px, 0.5px, 0) scale(1.008);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+/* Luminous Electric Pastel Aurora Halo */
+.ms-bell__electric-halo {
+  position: absolute;
+  inset: -14%;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(125, 211, 252, 0.5) 0%,
+    rgba(244, 114, 182, 0.45) 42%,
+    rgba(192, 132, 252, 0.35) 68%,
+    rgba(251, 207, 232, 0.15) 82%,
+    transparent 95%
+  );
+  filter: blur(18px);
+  mix-blend-mode: screen;
+  animation: ms-bell-halo-burst 0.76s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+@keyframes ms-bell-halo-burst {
+  0% {
+    opacity: 0;
+    transform: scale(0.85) rotate(-8deg);
+  }
+  30% {
+    opacity: 0.95;
+    transform: scale(1.16) rotate(4deg);
+  }
+  65% {
+    opacity: 0.6;
+    transform: scale(1.06) rotate(-2deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+/* Prismatic Chromatic Aberration Slices (Feathered & Edge-Blurred) */
+.ms-bell__glitch-slice {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  overflow: visible;
+  /* Soft edge-feathering prevents any hard cutoffs or clipping outside frame boundaries */
+  -webkit-mask-image: radial-gradient(ellipse at 50% 50%, #000 64%, rgba(0, 0, 0, 0.45) 85%, transparent 98%);
+  mask-image: radial-gradient(ellipse at 50% 50%, #000 64%, rgba(0, 0, 0, 0.45) 85%, transparent 98%);
+}
+
+/* Slice 1: Electric Ice / Sky Blue (Soft Feathered Blur) */
+.ms-bell__glitch-slice--1 {
+  filter: blur(1.5px)
+          drop-shadow(-4px -1px 0 rgba(125, 211, 252, 0.95))
+          drop-shadow(-1px 0 10px rgba(56, 189, 248, 0.75))
+          brightness(1.18) hue-rotate(25deg);
+  mix-blend-mode: screen;
+  animation: ms-bell-slice-1 0.76s steps(7, jump-none) both;
+}
+
+/* Slice 2: Cotton Candy Pastel Pink (Soft Feathered Blur) */
+.ms-bell__glitch-slice--2 {
+  filter: blur(1.5px)
+          drop-shadow(4px 1px 0 rgba(244, 114, 182, 0.95))
+          drop-shadow(1px 0 10px rgba(244, 63, 94, 0.75))
+          brightness(1.18) hue-rotate(-25deg);
+  mix-blend-mode: screen;
+  animation: ms-bell-slice-2 0.76s steps(7, jump-none) both;
+}
+
+/* Slice 3: Electric Lavender / Violet Prism (Soft Feathered Blur) */
+.ms-bell__glitch-slice--3 {
+  filter: blur(1.5px)
+          drop-shadow(0 -3px 0 rgba(192, 132, 252, 0.95))
+          drop-shadow(0 0 12px rgba(216, 180, 254, 0.8))
+          brightness(1.3) contrast(1.1);
+  mix-blend-mode: color-dodge;
+  animation: ms-bell-slice-3 0.76s steps(6, jump-none) both;
+}
+
+@keyframes ms-bell-slice-1 {
+  0% {
+    clip-path: inset(8% 0 76% 0);
+    transform: translate3d(-6px, 0, 0);
+    opacity: 0.92;
+  }
+  20% {
+    clip-path: inset(46% 0 30% 0);
+    transform: translate3d(7px, 0, 0);
+    opacity: 0.85;
+  }
+  40% {
+    clip-path: inset(20% 0 54% 0);
+    transform: translate3d(-5px, 0, 0);
+    opacity: 0.92;
+  }
+  60% {
+    clip-path: inset(66% 0 14% 0);
+    transform: translate3d(6px, 0, 0);
+    opacity: 0.88;
+  }
+  80% {
+    clip-path: inset(30% 0 44% 0);
+    transform: translate3d(-3px, 0, 0);
+    opacity: 0.75;
+  }
+  100% {
+    clip-path: inset(0 0 100% 0);
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes ms-bell-slice-2 {
+  0% {
+    clip-path: inset(56% 0 20% 0);
+    transform: translate3d(6px, 0, 0);
+    opacity: 0.88;
+  }
+  20% {
+    clip-path: inset(10% 0 70% 0);
+    transform: translate3d(-7px, 0, 0);
+    opacity: 0.92;
+  }
+  40% {
+    clip-path: inset(70% 0 10% 0);
+    transform: translate3d(5px, 0, 0);
+    opacity: 0.8;
+  }
+  60% {
+    clip-path: inset(36% 0 40% 0);
+    transform: translate3d(-6px, 0, 0);
+    opacity: 0.92;
+  }
+  80% {
+    clip-path: inset(2% 0 84% 0);
+    transform: translate3d(4px, 0, 0);
+    opacity: 0.85;
+  }
+  100% {
+    clip-path: inset(100% 0 0 0);
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes ms-bell-slice-3 {
+  0% {
+    clip-path: inset(24% 0 56% 0);
+    transform: translate3d(2px, -3px, 0) scale(1.02);
+    opacity: 0.85;
+  }
+  25% {
+    clip-path: inset(64% 0 16% 0);
+    transform: translate3d(-3px, 2px, 0) scale(0.99);
+    opacity: 0.9;
+  }
+  50% {
+    clip-path: inset(6% 0 74% 0);
+    transform: translate3d(4px, -1px, 0) scale(1.01);
+    opacity: 0.8;
+  }
+  75% {
+    clip-path: inset(44% 0 36% 0);
+    transform: translate3d(-2px, 1px, 0) scale(1.02);
+    opacity: 0.85;
+  }
+  100% {
+    clip-path: inset(100% 0 0 0);
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+}
+
+/* Electric Pastel Scanline Lattice (Feathered Edge Mask) */
+.ms-bell__glitch-scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  -webkit-mask-image: radial-gradient(ellipse at 50% 50%, #000 58%, rgba(0, 0, 0, 0.35) 82%, transparent 96%);
+  mask-image: radial-gradient(ellipse at 50% 50%, #000 58%, rgba(0, 0, 0, 0.35) 82%, transparent 96%);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(125, 211, 252, 0.25) 0%,
+      rgba(244, 114, 182, 0.22) 50%,
+      rgba(192, 132, 252, 0.25) 100%
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.18) 2px,
+      rgba(125, 211, 252, 0.28) 4px
+    );
+  mix-blend-mode: screen;
+  animation: ms-bell-scanline-flicker 0.76s linear both;
+}
+
+@keyframes ms-bell-scanline-flicker {
+  0% { opacity: 0; }
+  15% { opacity: 0.95; }
+  35% { opacity: 0.45; }
+  55% { opacity: 1; }
+  75% { opacity: 0.55; }
+  100% { opacity: 0; }
+}
+
+/* Electric Sparks / Ionized Micro-Arcs (Feathered Perimeter) */
+.ms-bell__electric-sparks {
+  position: absolute;
+  inset: -4%;
+  pointer-events: none;
+  z-index: 6;
+  -webkit-mask-image: radial-gradient(ellipse at 50% 50%, #000 65%, transparent 95%);
+  mask-image: radial-gradient(ellipse at 50% 50%, #000 65%, transparent 95%);
+  background-image:
+    radial-gradient(1.5px 1.5px at 22% 28%, rgba(255, 255, 255, 0.95), transparent),
+    radial-gradient(2px 2px at 78% 22%, rgba(125, 211, 252, 0.95), transparent),
+    radial-gradient(1.5px 1.5px at 62% 68%, rgba(244, 114, 182, 0.95), transparent),
+    radial-gradient(2.5px 2.5px at 32% 78%, rgba(192, 132, 252, 0.95), transparent),
+    radial-gradient(1.5px 1.5px at 82% 58%, rgba(186, 230, 253, 0.9), transparent),
+    radial-gradient(2px 2px at 18% 62%, rgba(251, 207, 232, 0.9), transparent);
+  mix-blend-mode: screen;
+  animation: ms-bell-sparks-flicker 0.76s steps(8, jump-none) both;
+}
+
+@keyframes ms-bell-sparks-flicker {
+  0% { opacity: 0; transform: scale(0.96) translate3d(0, 0, 0); }
+  18% { opacity: 0.95; transform: scale(1.025) translate3d(-3px, 1px, 0); }
+  36% { opacity: 0.4; transform: scale(0.975) translate3d(3px, -2px, 0); }
+  54% { opacity: 1; transform: scale(1.035) translate3d(-2px, -1px, 0); }
+  72% { opacity: 0.6; transform: scale(1.01) translate3d(2px, 2px, 0); }
+  100% { opacity: 0; transform: scale(1) translate3d(0, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-bell__glitch-slice,
+  .ms-bell__glitch-scanlines,
+  .ms-bell__electric-halo,
+  .ms-bell__electric-sparks {
+    display: none !important;
+  }
 }
 
 /* Feathered bottom fade and blur for sidebar / mascot slots so she blends seamlessly towards dev text */

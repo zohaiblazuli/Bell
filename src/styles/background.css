@@ -93,6 +93,9 @@
      the motion spec §6.3 — the incoming ground leads at 0.28s, and the ordering (ground and chrome
      first, content gated behind them) matters more than the number. */
   transition: opacity 0.28s ease-out;
+  will-change: opacity;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
 }
 
 /* The two blooms per tone.

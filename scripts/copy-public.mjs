@@ -6,18 +6,18 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const mascotFiles = [
-  'msbell_idle.gif',
-  'msbell_idle_2.gif',
-  'msbell_idle_3.gif',
-  'msbell_idle_4.gif',
-  'msbell_idle_5.gif',
-  'msbell_interact_1.gif',
-  'msbell_interact_2.gif',
-  'msbell_interact_3.gif',
-  'msbell_sleeping.gif',
-  'msbell_study_start.gif',
-  'msbell_study_loop.gif',
-  'startup_splash.gif',
+  'msbell_idle.webp',
+  'msbell_idle_2.webp',
+  'msbell_idle_3.webp',
+  'msbell_idle_4.webp',
+  'msbell_idle_5.webp',
+  'msbell_interact_1.webp',
+  'msbell_interact_2.webp',
+  'msbell_interact_3.webp',
+  'msbell_sleeping.webp',
+  'msbell_study_start.webp',
+  'msbell_study_loop.webp',
+  'startup_splash.webp',
 ];
 
 const assets = mascotFiles.map((name) => `msbell/${name}`);

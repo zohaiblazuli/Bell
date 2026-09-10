@@ -1,31 +1,20 @@
 import SearchField from '@ui/SearchField';
-import TonePill, { type Tone } from '@ui/TonePill';
+import type { Tone } from '@ui/TonePill';
 import IconButton from '@ui/IconButton';
 
 /**
  * The top bar. Geometry: `design/specs/screen-library-settings.md` §4 — 1082 x 56, padding 0/16,
- * gap 12, and the sum that the layout has to hit:
- *
- *     16 + title + 12 + 420 search + 12 + [spacer grows] + 12 + tone + 12 + 34 + 16 = 1082
- *
- * The spacer is a real element rather than `margin-left: auto` because Figma models it as a 1px
- * frame with `layoutGrow 1`, and keeping it lets the bar's parts stay in DOM order.
+ * gap 12, and the sum that the layout has to hit.
  *
  * `data-tauri-drag-region` lives here and only here: `decorations: false` means this bar *is* the
  * title bar, so it has to be the drag handle. Anything interactive inside it must stop the drag
  * from swallowing its clicks, which is why the controls are real buttons.
- *
- * One bar, not two. `WorkspaceView` used to inline a second implementation of this; the Reader now
- * composes this one instead — and three of its props exist for that: `left` for the back button the
- * Reader puts *before* the title, `title` taking a node so the Reader can draw §4's three-style
- * identity row, and `showSearch` because the Reader's composition has no search field. Without
- * them the Reader's controls and the 420px search competed for the same 1,098px and overlapped.
  */
 interface Props {
   /** A string for the plain screens; a node for the Reader's three-style identity row. */
   title: React.ReactNode;
-  tone: Tone;
-  onTone: () => void;
+  tone?: Tone;
+  onTone?: () => void;
   busy: boolean;
   onReindex: () => void;
   onSearch: () => void;
@@ -50,8 +39,6 @@ interface Props {
 
 export default function TopBar({
   title,
-  tone,
-  onTone,
   busy,
   onReindex,
   onSearch,
@@ -78,8 +65,6 @@ export default function TopBar({
 
         <div className="spacer" />
         {right}
-
-        <TonePill tone={tone} onToggle={onTone} />
 
         {showSync && (
           <IconButton

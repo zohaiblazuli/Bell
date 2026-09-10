@@ -18,7 +18,6 @@
 import './NotebookView.css';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import IconButton from '@ui/IconButton';
-import TonePill, { type Tone } from '@ui/TonePill';
 import ToolDock from '../components/ToolDock';
 import NotebookPage from '../components/NotebookPage';
 import Inspector from '../components/Inspector';
@@ -81,8 +80,6 @@ export interface Props {
   /** Disk page index to open at — the Reader's clip confirmation lands the student on its page. */
   startPage?: number;
   subjects: Subject[];
-  tone: Tone;
-  onTone: () => void;
   focus: boolean;
   onToggleFocus: () => void;
   onSearch: () => void;
@@ -95,8 +92,6 @@ export default function NotebookView({
   notebook,
   startPage = 0,
   subjects,
-  tone,
-  onTone,
   focus,
   onToggleFocus,
   onSearch,
@@ -458,7 +453,6 @@ export default function NotebookView({
 
         <span className="nbs-top-gap" />
 
-        <TonePill tone={tone} onToggle={onTone} />
         <IconButton
           icon="search"
           label="Search"

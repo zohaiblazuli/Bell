@@ -38,6 +38,7 @@ import { loadRecent, type MarkFilter } from './lib/store';
 import type { PaperRow } from './lib/types';
 import type { CommunityResource } from './lib/community';
 import { readWorkspaceDocument, recordWorkspaceOpen, workspaceReaderResource, type WorkspaceDocument } from './lib/workspace';
+import { APP_VERSION, APP_BUILD } from './lib/version';
 
 /**
  * The router, and nothing else.
@@ -580,8 +581,8 @@ export default function App() {
             <Sidebar
               view={currentView}
               onView={go}
-              version={__APP_VERSION__}
-              build={__APP_BUILD__}
+              version={APP_VERSION}
+              build={APP_BUILD}
               subjects={mySubjects}
               activeSubject={lib.subjectId}
               onSubject={pickSubject}
@@ -793,8 +794,6 @@ export default function App() {
                 notebook={openNb}
                 startPage={tab.notebook.page}
                 subjects={lib.subjects}
-                tone={tone}
-                onTone={toggleTone}
                 focus={focusMode}
                 onToggleFocus={() => setFocusMode((f) => !f)}
                 onSearch={() => setPalette(true)}
@@ -946,8 +945,8 @@ export default function App() {
             onBoard={(board) => prefs.answerOnboarding('board', board)}
             chosenSubjects={onboarding.subjects}
             onToggleSubject={toggleSubject}
-            version={__APP_VERSION__}
-            build={__APP_BUILD__}
+            version={APP_VERSION}
+            build={APP_BUILD}
             onCheckUpdates={() => void up.check(true)}
             checkingUpdates={up.state.phase === 'checking'}
             updateState={up.state}

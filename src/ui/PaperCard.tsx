@@ -33,7 +33,7 @@
  * end, and our bookmark is not in that row at all; the gutter it left behind is `padding-right`.
  */
 
-import type { ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 import Icon, { type IconName } from '../components/Icon';
 import DifficultyBadge from './DifficultyBadge';
 import type { DifficultyBand } from '../lib/difficulty';
@@ -112,7 +112,7 @@ export interface PaperCardProps {
   className?: string;
 }
 
-export default function PaperCard({
+function PaperCard({
   subject,
   subjectCode,
   variant,
@@ -192,3 +192,5 @@ export default function PaperCard({
     </div>
   );
 }
+
+export default memo(PaperCard);

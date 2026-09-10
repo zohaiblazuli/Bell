@@ -260,16 +260,13 @@ export function loadSettings(): Settings {
   // migration — so seed from it rather than resetting a real preference to Day.
   const seed = stored ?? { tone: read<ToneChoice>('tone', SETTINGS_DEFAULTS.tone) };
   const merged = { ...SETTINGS_DEFAULTS, ...seed };
-  // Older builds allowed arbitrary downloaded pets. The current product offers exactly its two
-  // bundled mascots, so a stale third-party id returns to the default instead of naming an option
-  // Settings can no longer represent. A legacy null remains an intentional Mr. Bell selection.
-  const validPet: Settings['pet'] =
-    merged.pet === null ? null : merged.pet === 'azure' ? 'azure' : 'msbell';
-  return { ...merged, pet: validPet };
+  // Ms. Bell is the sole mascot across all new & existing users.
+  // Any legacy or previously saved pet value (e.g. azure or null) strictly normalizes to 'msbell'.
+  return { ...merged, pet: 'msbell' };
 }
 
 export function saveSettings(value: Settings) {
-  write('settings', value);
+  write('settings', { ...value, pet: 'msbell' });
 }
 
 // --- onboarding -------------------------------------------------------------
