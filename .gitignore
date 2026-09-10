@@ -1,16 +1,23 @@
 # ---- Dependencies ----
-node_modules
+node_modules/
+.pnpm-store/
+.npm/
 
 # ---- Build output ----
-dist
-dist-ssr
+dist/
+dist-ssr/
+build/
+out/
 *.local
-# Rust/Tauri build artifacts are also covered by src-tauri/.gitignore
+# Rust/Tauri build artifacts (target at root or in src-tauri)
+target/
 src-tauri/target/
 src-tauri/gen/schemas/
+Crashpad/
+**/*.rs.bk
 
 # ---- Logs ----
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -18,50 +25,215 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# ---- Caches / generated ----
+# ---- Caches / bundlers / generated ----
 *.tsbuildinfo
 .vite/
 .cache/
 .eslintcache
+.turbo/
+.parcel-cache/
+.swc/
+
+# ---- Testing & Coverage ----
+coverage/
+*.lcov
+.nyc_output/
+test-results/
+playwright-report/
+playwright/.cache/
 
 # ---- Python (helper scripts under scripts/ and pets/*/tools/) ----
 __pycache__/
 *.py[cod]
+*$py.class
 .venv/
 venv/
+env/
+ENV/
 *.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
-# ---- Secrets / credentials (safety net; none currently in repo) ----
+# ---- Databases / Local state (safety net) ----
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-wal
+*.sqlite3-shm
+*.db
+*.db-wal
+*.db-shm
+
+# ---- Temporary, backup, patch & dump files ----
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+*.patch
+*.diff
+*.dmp
+*.dump
+*.stackdump
+core
+
+# ---- Secrets, Credentials & Project Theft Prevention ----
+# Environment variables (API keys, Supabase service role, Google Drive secrets)
 .env
 .env.*
 !.env.example
-*.pem
-*.key
-*.p12
-*.pfx
-*.keystore
-*.jks
+*.env
+env.json
+secrets.json
+secret.json
+secrets.yaml
+secrets.yml
+secrets.toml
+local.settings.json
+appsettings.*.json
+!appsettings.json
+
+# Cloud & Service Account credentials (GCP, Google Drive, AWS, Azure, Supabase, Vercel)
+client_secret*.json
+client_secrets*.json
+service-account*.json
+service_account*.json
+*service-account*.json
+*service_account*.json
+credentials.json
+token.json
+tokens.json
+*drive_token*.json
+*gdrive*.json
+.aws/
+.azure/
+*.publishsettings
+.gcloud/
+.wrangler/
+.vercel/
+.netlify/
+.supabase/
+supabase/.branches/
+.pgpass
+.my.cnf
+.netrc
+
+# Database dumps & production snapshots
+*.sql.dump
+dump*.sql
+backup*.sql
+*.psql
+
+# SSH keys & Git personal access tokens
 id_rsa*
+id_ed25519*
+id_ecdsa*
+id_dsa*
+gh_token*
+github_token*
+pat_*
 *.mtree
-# Tauri code-signing private keys (never commit these; pubkey in tauri.conf is fine)
+.cargo/credentials
+.cargo/credentials.toml
+
+# Desktop Code-Signing & Publisher Identity (prevents publishing malicious updates or spoofing app)
 *.minisign
 tauri-private.key
 TAURI_SIGNING_PRIVATE_KEY*
+*.key
+*.pem
+*.p12
+*.pfx
+*.snk
+*.spc
+*.cer
+*.crt
+*.der
+*.keystore
+*.jks
+*.keychain
+*.keychain-db
+AuthKey_*.p8
+*.mobileprovision
+*.provisionprofile
+*.gpg
+secring.*
 
-# ---- Editor / IDE ----
+# Proprietary master design sources & trade secrets
+*.psd
+*.ai
+*.fig
+*.sketch
+*.blend
+*.blend1
+INTERNAL*.md
+PRIVATE*.md
+ROADMAP_INTERNAL*.md
+
+# ---- Editor / IDE / Tools ----
+# VS Code
 .vscode/*
 !.vscode/extensions.json
-.idea
+*.code-workspace
+.history/
+# Visual Studio
+.vs/
+*.user
+*.userosv
 *.suo
+*.userprefs
+*.sln.docstates
 *.ntvs*
 *.njsproj
 *.sln
+# JetBrains
+.idea/
+*.iml
+*.iws
+*.ipr
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+# Vim / Emacs
 *.sw?
+*.swp
+*.swo
+*.swn
+*~
+.#*
+#*#
+# AI editors & IDE scratch
+.cursor/
+.windsurf/
+.claude/
 
 # ---- OS junk ----
+# macOS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.AppleDouble
+.LSOverride
+# Windows
 Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
 Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+# Linux
+.fuse_hidden*
+.directory
+.Trash-*
 
 # ---- Project-local scratch / working files ----
 # window captures for design comparison (npm run shot)
@@ -72,7 +244,6 @@ Desktop.ini
 work/
 # impeccable hook cache (config.json stays tracked; cache is machine-local)
 .impeccable/hook.cache.json
-.vs
 
 # ---- Design references / mood-boards (local only) ----
 idea/
