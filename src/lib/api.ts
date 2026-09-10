@@ -261,3 +261,12 @@ export const deleteCommunityResource = (resourceId: string) =>
 
 export const invalidateCommunityThumbnail = (resourceId?: string) =>
   invoke<void>('community_invalidate_thumbnail', { resourceId: resourceId ?? null });
+
+// --- star gate --------------------------------------------------------------
+
+/**
+ * Check if a GitHub user has starred the Bell repository (zohaiblazuli/Bell).
+ * Runs natively in Rust to adhere to the desktop app's strict CSP.
+ */
+export const checkGitHubStar = (username: string) =>
+  invoke<boolean>('check_github_star', { username });

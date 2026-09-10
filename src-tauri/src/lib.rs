@@ -7,6 +7,7 @@ pub mod migrate;
 pub mod notebooks;
 pub mod paths;
 pub mod pets;
+pub mod stargate;
 pub mod state;
 pub mod workspace;
 
@@ -186,6 +187,7 @@ pub fn run() {
             state::state_clear,
             state::state_export,
             state::reset_app,
+            stargate::check_github_star,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

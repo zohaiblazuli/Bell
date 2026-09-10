@@ -22,6 +22,7 @@ import CommunityView from './views/CommunityView';
 import CommunityReaderView from './views/CommunityReaderView';
 import LocalWorkspaceView from './views/LocalWorkspaceView';
 import OnboardingView, { type SessionOption } from './views/OnboardingView';
+import StarGateView from './views/StarGateView';
 import { usePrefs } from './state/usePrefs';
 import { useLibraryIndex } from './state/useLibraryIndex';
 import { useStudyState } from './state/useStudyState';
@@ -516,6 +517,30 @@ export default function App() {
             onBuild={() => void prepareLibrary()}
             onFinish={() => {
               prefs.answerOnboarding('done', true);
+              go('library');
+            }}
+          />
+        </div>
+        {startup}
+      </>
+    );
+  }
+
+  /**
+   * One-time GitHub Star gate: once onboarding is complete, the user cannot continue
+   * into the app until verifying or completing the star gate. Once verified, this
+   * is saved to disk and never shown again.
+   */
+  if (!prefs.starGateVerified) {
+    return (
+      <>
+        <Sprite />
+        <div className="app app-bare" data-startup={splash} data-view="stargate" data-tone={tone} data-motion={motion}>
+          <AppBackground />
+          <StarGateView
+            userName={onboarding.name}
+            onComplete={() => {
+              prefs.setStarGateVerified(true);
               go('library');
             }}
           />

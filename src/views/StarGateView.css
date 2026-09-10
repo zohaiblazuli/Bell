@@ -1,0 +1,225 @@
+/* StarGateView — One-time GitHub Star verification gate for Bell */
+
+.stargate {
+  position: absolute;
+  inset: 0;
+  z-index: 35;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+
+.stargate::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--ground-veil);
+  opacity: 0.24;
+}
+
+.stargate__lights {
+  position: absolute;
+  left: 12px;
+  top: 14px;
+  z-index: 10;
+}
+
+.stargate__panel {
+  position: relative;
+  z-index: 1;
+  width: min(560px, 100%);
+  background: var(--card);
+  border: 1px solid var(--hair);
+  border-radius: 20px;
+  box-shadow: var(--shadow-win);
+  backdrop-filter: blur(16px);
+  padding: 40px 36px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.stargate__mascot {
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  user-select: none;
+}
+
+.stargate__header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.stargate__title {
+  color: var(--ink);
+  margin: 0;
+}
+
+.stargate__desc {
+  color: var(--ink-2);
+  margin: 0;
+  line-height: 1.5;
+  max-width: 440px;
+}
+
+.stargate__actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+}
+
+.stargate__star-btn {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  justify-content: center;
+}
+
+.stargate__star-btn button {
+  width: 100%;
+  height: 42px;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.stargate__divider {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink-3);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stargate__divider::before,
+.stargate__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--hair);
+}
+
+.stargate__verify-row {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.stargate__input-wrap {
+  flex: 1;
+  position: relative;
+}
+
+.stargate__input {
+  width: 100%;
+  height: 40px;
+  box-sizing: border-box;
+  background: var(--ground);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-btn);
+  padding: 0 12px 0 28px;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.stargate__input:focus {
+  border-color: var(--accent);
+}
+
+.stargate__input-at {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-3);
+  font-size: 13px;
+  pointer-events: none;
+  font-family: var(--font-mono);
+}
+
+.stargate__verify-btn {
+  height: 40px;
+}
+
+.stargate__notice {
+  width: 100%;
+  max-width: 420px;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: left;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.stargate__notice--error {
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  color: #dc2626;
+}
+
+.stargate__notice--success {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #16a34a;
+}
+
+.stargate__notice--info {
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  color: var(--accent);
+}
+
+.stargate__footer {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.stargate__fallback-btn {
+  background: none;
+  border: none;
+  padding: 6px 12px;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.stargate__fallback-btn:hover {
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.04);
+}

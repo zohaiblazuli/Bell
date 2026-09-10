@@ -335,3 +335,17 @@ function hasHistory(): boolean {
 }
 
 export const saveOnboarding = (value: Onboarding) => write('onboarding', value);
+
+// --- star gate --------------------------------------------------------------
+
+/**
+ * Gate requiring a star on the GitHub repository before entering the main app.
+ * Persisted as a one-time gate: once verified or passed, never shown again.
+ */
+export function loadStarGateVerified(): boolean {
+  return read<boolean>('stargate.verified', false);
+}
+
+export function saveStarGateVerified(verified: boolean) {
+  write('stargate.verified', verified);
+}

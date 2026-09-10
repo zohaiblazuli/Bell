@@ -11,8 +11,10 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   loadOnboarding,
   loadSettings,
+  loadStarGateVerified,
   saveOnboarding,
   saveSettings,
+  saveStarGateVerified,
   type Onboarding,
   type Settings,
 } from '@/lib/store';
@@ -25,6 +27,9 @@ export interface Prefs {
   onboarding: Onboarding;
   /** One answer at a time, keyed by field name — which is also the `onboarding.<key>` state key. */
   answerOnboarding: <K extends keyof Onboarding>(key: K, value: Onboarding[K]) => void;
+  /** Whether the user has passed or verified the GitHub star gate. */
+  starGateVerified: boolean;
+  setStarGateVerified: (verified: boolean) => void;
   /** The RESOLVED tone, which is what `data-tone` gets. `settings.tone` is only the choice. */
   tone: Tone;
   /** Toggles to an explicit tone, so one press also leaves `system` behind. */
@@ -34,6 +39,12 @@ export interface Prefs {
 export function usePrefs(): Prefs {
   const [settings, setSettings] = useState<Settings>(() => loadSettings());
   const [onboarding, setOnboarding] = useState<Onboarding>(() => loadOnboarding());
+  const [starGateVerified, setStarGateVerifiedState] = useState<boolean>(() => loadStarGateVerified());
+
+  const setStarGateVerified = useCallback((verified: boolean) => {
+    setStarGateVerifiedState(verified);
+    saveStarGateVerified(verified);
+  }, []);
 
   const patchSettings = useCallback((patch: Partial<Settings>) => {
     setSettings((prev) => {
@@ -81,5 +92,14 @@ export function usePrefs(): Prefs {
     [patchSettings, tone],
   );
 
-  return { settings, patchSettings, onboarding, answerOnboarding, tone, toggleTone };
+  return {
+    settings,
+    patchSettings,
+    onboarding,
+    answerOnboarding,
+    starGateVerified,
+    setStarGateVerified,
+    tone,
+    toggleTone,
+  };
 }
