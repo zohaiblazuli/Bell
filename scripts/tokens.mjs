@@ -105,7 +105,7 @@ const GROUPS = [
     tokens: {
       '--ink': { day: '#1b1d27', night: '#ffffff' },
       '--ink-2': { day: '#4c5165', night: '#dfe3ef' },
-      '--ink-3': { day: '#62677c', night: '#b9bece' },
+      '--ink-3': { day: '#000000', night: '#ffffff' },
     },
   },
   {

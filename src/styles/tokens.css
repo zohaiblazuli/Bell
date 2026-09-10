@@ -74,7 +74,7 @@
      --ink-3 was #8a8fa4), which is a real contrast improvement. */
   --ink: #1b1d27;
   --ink-2: #4c5165;
-  --ink-3: #62677c;
+  --ink-3: #000000;
 
   /* Glass — chrome only, never content: sidebar, top bar, palette, sheets, popovers. */
   --glass: rgba(255, 255, 255, .58);
@@ -215,7 +215,7 @@
   --scrim: rgba(5, 6, 12, .549);
   --ink: #ffffff;
   --ink-2: #dfe3ef;
-  --ink-3: #b9bece;
+  --ink-3: #ffffff;
   --glass: rgba(32, 34, 48, .522);
   --glass-strong: rgba(38, 40, 58, .698);
   --glass-brd: rgba(255, 255, 255, .122);
