@@ -1,11 +1,11 @@
 {
   "name": "bell",
   "private": true,
-  "version": "0.1.7",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && node scripts/copy-public.mjs",
     "test": "node scripts/test.mjs",
     "preview": "vite preview",
     "tauri": "tauri",

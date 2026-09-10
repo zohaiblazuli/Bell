@@ -9,19 +9,23 @@ const host = process.env.TAURI_DEV_HOST;
 
 // The version the app SHOWS is read from the one place the shipped exe is stamped from —
 // `tauri.conf.json` — so the Settings string can never drift from the real build the way the
-// hand-typed literal in `App.tsx` could. The build stamp follows that same release version and adds
-// `-public`, so the label users see always matches the installer they are running. Both bake in at
+// hand-typed literal in `App.tsx` could. The build stamp uses the matching release tag
+// (`v0.2.0`, for example), so the label identifies the installed release. Both bake in at
 // frontend-build time — which `tauri build` re-runs on every build — and surface as the globals
 // declared in `src/vite-env.d.ts`: no IPC, no capability, no async, still passed synchronously.
 const appVersion = JSON.parse(
   readFileSync(fileURLToPath(new URL('./src-tauri/tauri.conf.json', import.meta.url)), 'utf8'),
 ).version as string;
 
-const appBuild = `${appVersion}-public`;
+const appBuild = `v${appVersion}`;
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
+
+  // public/msbell is a local artwork junction that also contains originals and backups.
+  // Copy only runtime assets after Vite finishes (scripts/copy-public.mjs).
+  build: { copyPublicDir: false },
 
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),
