@@ -17,8 +17,15 @@ use tauri::Manager;
 static DEV_NAVIGATION_RECOVERED: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
+#[cfg(mobile)]
+#[tauri::mobile_entry_point]
 pub fn run() {
+    run_with_context(tauri::generate_context!());
+}
+
+// Desktop assets are generated in the executable. Embedding the large animation
+// set in this library also exports it into rlib metadata, exceeding Rust's limits.
+pub fn run_with_context(context: tauri::Context<tauri::Wry>) {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         // The auto-updater and the restart it needs. Both reach the network from RUST, not the
@@ -189,6 +196,6 @@ pub fn run() {
             state::reset_app,
             stargate::check_github_star,
         ])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running tauri application");
 }
