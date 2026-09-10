@@ -24,26 +24,49 @@ permissions:
 
 jobs:
   release:
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[ci skip]')"
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # so `git describe` in vite.config.ts sees tags for the build stamp
 
+      - name: Check if release assets are already published
+        id: check_release
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          try {
+            $count = (gh release view $tag --json assets -q ".assets | length" 2>$null)
+            if ($count -and [int]$count -gt 0) {
+              Write-Host "Release $tag already has $count assets published. Skipping redundant CI build."
+              echo "skip=true" >> $env:GITHUB_OUTPUT
+              exit 0
+            }
+          } catch {}
+          echo "skip=false" >> $env:GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: actions/setup-node@v4
+        if: steps.check_release.outputs.skip != 'true'
         with:
           node-version: 20
           cache: npm
 
       - uses: dtolnay/rust-toolchain@stable
+        if: steps.check_release.outputs.skip != 'true'
 
       - uses: swatinem/rust-cache@v2
+        if: steps.check_release.outputs.skip != 'true'
         with:
           workspaces: src-tauri
 
       - run: npm ci
+        if: steps.check_release.outputs.skip != 'true'
 
       - uses: tauri-apps/tauri-action@v0
+        if: steps.check_release.outputs.skip != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
