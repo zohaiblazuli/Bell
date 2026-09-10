@@ -396,6 +396,8 @@ export default function SettingsView({
                   />
                 </CardRow>
 
+                {/* Mascot switcher hidden: Ms. Bell is the default shipped and cannot be changed. Code preserved. */}
+                {/*
                 <CardRow label="Mascot" helper="Choose who keeps you company throughout Bell">
                   <span className="set-choice" role="group" aria-label="Mascot">
                     <Chip
@@ -415,6 +417,7 @@ export default function SettingsView({
                     />
                   </span>
                 </CardRow>
+                */}
               </Card>
             </section>
 
