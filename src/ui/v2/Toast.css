@@ -1,0 +1,137 @@
+/* Toast (v2) — §18. Fixed bottom-right region rendered on <body>; sits above app chrome but below
+   tooltips. The region is click-through except over the cards themselves, so it never traps pointer
+   events over the canvas. Colours/space/radius/motion are v2 tokens only; the card shadow is composed
+   with color-mix on --text-primary (no raw hex). The tone accent is exposed as --tone per card. */
+
+.v2-toast-region {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  width: min(360px, calc(100vw - var(--space-8)));
+  pointer-events: none;
+}
+
+.v2-toast {
+  --tone: var(--info);
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  padding-left: calc(var(--space-3) + 3px);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--text-primary) 14%, transparent);
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+/* Left accent strip in the tone colour. */
+.v2-toast::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--tone);
+}
+
+.v2-toast[data-tone='success'] {
+  --tone: var(--success);
+}
+.v2-toast[data-tone='info'] {
+  --tone: var(--info);
+}
+.v2-toast[data-tone='warning'] {
+  --tone: var(--warning);
+}
+.v2-toast[data-tone='error'] {
+  --tone: var(--danger);
+}
+
+.v2-toast__icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  color: var(--tone);
+}
+
+.v2-toast__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.v2-toast__title {
+  color: var(--text-primary);
+}
+
+.v2-toast__msg {
+  color: var(--text-secondary);
+  overflow-wrap: break-word;
+}
+
+.v2-toast__actions {
+  margin-top: var(--space-1);
+  display: flex;
+}
+
+.v2-toast__close {
+  flex: none;
+  margin: -4px -4px 0 0;
+}
+
+/* The tone word is for assistive tech only; sighted users read the distinct tone icon + accent. */
+.v2-toast__tone-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .v2-toast {
+    animation: v2-toast-in var(--motion-standard) var(--ease-enter);
+  }
+  .v2-toast[data-leaving] {
+    animation: v2-toast-out var(--motion-fast) var(--ease-exit) forwards;
+  }
+
+  @keyframes v2-toast-in {
+    from {
+      opacity: 0;
+      transform: translateX(16px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes v2-toast-out {
+    from {
+      opacity: 1;
+      transform: none;
+    }
+    to {
+      opacity: 0;
+      transform: translateX(16px);
+    }
+  }
+}

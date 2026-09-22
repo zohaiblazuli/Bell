@@ -1,0 +1,61 @@
+/* SegmentedControl (v2) — §8.3. A --surface-hover track with 2px padding; the selected segment
+   lifts onto --bg-panel. Element-qualified focus selector so index.css's global :focus-visible
+   can't tie. */
+
+.v2-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  box-sizing: border-box;
+  padding: 2px;
+  background: var(--surface-hover);
+  border-radius: var(--radius-control);
+}
+
+button.v2-seg__item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-sizing: border-box;
+  height: var(--control-h-default);
+  padding: 0 var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex: none;
+  cursor: default;
+}
+
+.v2-seg--dense button.v2-seg__item {
+  height: var(--control-h-dense);
+  padding: 0 var(--space-2);
+}
+
+.v2-seg__icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.v2-seg--dense .v2-seg__icon {
+  width: 14px;
+  height: 14px;
+}
+
+button.v2-seg__item.is-selected {
+  background: var(--bg-panel);
+  color: var(--text-primary);
+}
+
+button.v2-seg__item:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  button.v2-seg__item {
+    transition: background-color var(--motion-fast), color var(--motion-fast);
+  }
+}

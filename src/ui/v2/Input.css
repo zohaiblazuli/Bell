@@ -1,0 +1,79 @@
+/* Input (v2) — §8.2. The border lives on the wrapper (__box) so leading/trailing affixes sit
+   inside the same 1px frame and the focus ring wraps the whole control. */
+
+.v2-input {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.v2-input__label {
+  color: var(--text-secondary);
+}
+
+.v2-input__box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  height: var(--control-h-default);
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--bg-panel);
+}
+.v2-input--comfortable .v2-input__box {
+  height: var(--control-h-comfortable);
+}
+
+.v2-input__box:focus-within {
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+.v2-input__box[data-invalid] {
+  border-color: var(--danger);
+}
+.v2-input__box[data-invalid]:focus-within {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger) 45%, transparent);
+}
+
+.v2-input__field {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--text-primary);
+  outline: none;
+}
+.v2-input__field::placeholder {
+  color: var(--text-tertiary);
+}
+
+.v2-input__affix {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-tertiary);
+  flex: none;
+}
+.v2-input__affix svg {
+  width: 16px;
+  height: 16px;
+}
+
+.v2-input__msg {
+  color: var(--text-tertiary);
+}
+.v2-input__msg[data-error] {
+  color: var(--danger);
+}
+
+.v2-input[data-disabled] {
+  opacity: 0.55;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .v2-input__box {
+    transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
+  }
+}

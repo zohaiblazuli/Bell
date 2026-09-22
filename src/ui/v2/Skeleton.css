@@ -1,0 +1,34 @@
+/* Skeleton (v2) — §19.1. Base is a flat --surface-hover block; the moving highlight lives in a
+   ::after that only exists under no-preference, so reduced-motion users get a static block. The
+   highlight tint is token-derived via color-mix (no raw hex). */
+
+.v2-skeleton {
+  display: block;
+  box-sizing: border-box;
+  background-color: var(--surface-hover);
+  border-radius: var(--radius-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .v2-skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--text-primary) 8%, transparent),
+      transparent
+    );
+    animation: v2-skeleton-shimmer 1.4s var(--ease-standard) infinite;
+  }
+
+  @keyframes v2-skeleton-shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+}

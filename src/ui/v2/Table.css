@@ -1,0 +1,160 @@
+/* Table (v2) — §8.4/§9.2. The body scrolls; the header stays put above it (no sticky needed since
+   the header sits outside the scroll container). Rows are CSS grid; the template is set inline from
+   the column widths so header and body columns always line up. */
+
+.v2-table {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+}
+
+.v2-table__head {
+  border-bottom: 1px solid var(--border-default);
+  background: var(--bg-panel);
+}
+
+.v2-table__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.v2-table__row {
+  display: grid;
+  align-items: center;
+  min-height: var(--control-h-prominent);
+  border-bottom: 1px solid var(--border-muted);
+}
+.v2-table__row--head {
+  min-height: var(--control-h-comfortable);
+}
+.v2-table__body .v2-table__row:last-child {
+  border-bottom: 0;
+}
+
+.v2-table__cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-2);
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+}
+.v2-table__row--head .v2-table__cell {
+  color: var(--text-tertiary);
+}
+.v2-table__cell.is-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+.v2-table__cell.is-right {
+  justify-content: flex-end;
+  text-align: right;
+}
+.v2-table__cell.is-center {
+  justify-content: center;
+  text-align: center;
+}
+.v2-table__cell--check {
+  justify-content: center;
+  padding: 0;
+}
+/* sortable header */
+.v2-table__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: inherit;
+  font: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: default;
+}
+.v2-table__sort:hover {
+  color: var(--text-secondary);
+}
+.v2-table__sort:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+.v2-table__chev {
+  width: 12px;
+  height: 12px;
+  opacity: 0;
+  flex: none;
+}
+.v2-table__chev.is-on {
+  opacity: 1;
+}
+.v2-table__chev.is-on.is-desc {
+  transform: rotate(180deg);
+}
+
+/* row states */
+.v2-table__body .v2-table__row {
+  cursor: default;
+}
+.v2-table__body .v2-table__row:hover {
+  background: var(--surface-hover);
+}
+.v2-table__body .v2-table__row[data-selected] {
+  background: var(--surface-selected);
+}
+.v2-table__body .v2-table__row[data-active] {
+  box-shadow: inset 2px 0 0 0 var(--accent);
+}
+.v2-table__body .v2-table__row:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* loading + empty */
+.v2-table__skel {
+  display: block;
+  width: 62%;
+  height: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-hover);
+}
+.v2-table__empty {
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  color: var(--text-tertiary);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .v2-table__body .v2-table__row {
+    transition: background-color var(--motion-fast);
+  }
+  .v2-table__chev {
+    transition: transform var(--motion-fast), opacity var(--motion-fast);
+  }
+  .v2-table__skel {
+    background: linear-gradient(
+      90deg,
+      var(--surface-hover) 25%,
+      color-mix(in srgb, var(--surface-hover) 60%, var(--bg-panel)) 37%,
+      var(--surface-hover) 63%
+    );
+    background-size: 400% 100%;
+    animation: v2-table-shimmer 1.4s ease infinite;
+  }
+  @keyframes v2-table-shimmer {
+    from {
+      background-position: 100% 0;
+    }
+    to {
+      background-position: 0 0;
+    }
+  }
+}

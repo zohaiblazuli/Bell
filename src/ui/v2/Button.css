@@ -1,0 +1,134 @@
+/* Button (v2) — §8.1. Element-qualified so index.css's global :focus-visible (which sets
+   border-radius) cannot tie on specificity and square off a focused button. */
+
+button.v2-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-sizing: border-box;
+  height: var(--control-h-default);
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  white-space: nowrap;
+  flex: none;
+  position: relative;
+  cursor: default;
+}
+
+button.v2-btn--dense {
+  height: var(--control-h-dense);
+  padding: 0 10px;
+}
+button.v2-btn--prominent {
+  height: var(--control-h-prominent);
+  padding: 0 16px;
+}
+
+.v2-btn__inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.v2-btn__icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+button.v2-btn--dense .v2-btn__icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* Icon-only: square the box to its height and drop horizontal padding. */
+button.v2-btn--icon {
+  width: var(--control-h-default);
+  padding: 0;
+}
+button.v2-btn--icon.v2-btn--dense {
+  width: var(--control-h-dense);
+}
+button.v2-btn--icon.v2-btn--prominent {
+  width: var(--control-h-prominent);
+}
+
+button.v2-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+button.v2-btn:disabled,
+button.v2-btn[aria-disabled='true'] {
+  opacity: 0.55;
+}
+/* ---- variants ---- */
+button.v2-btn--primary {
+  background: var(--accent);
+  color: var(--white);
+}
+button.v2-btn--secondary {
+  background: var(--bg-panel);
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+button.v2-btn--ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+button.v2-btn--danger {
+  background: var(--danger);
+  color: var(--white);
+}
+
+/* Hover — never while disabled or loading. */
+button.v2-btn:not(:disabled, [aria-disabled='true'], [data-loading]):hover.v2-btn--primary {
+  background: color-mix(in srgb, var(--accent) 88%, black);
+}
+button.v2-btn:not(:disabled, [aria-disabled='true'], [data-loading]):hover.v2-btn--secondary {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+button.v2-btn:not(:disabled, [aria-disabled='true'], [data-loading]):hover.v2-btn--ghost {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+button.v2-btn:not(:disabled, [aria-disabled='true'], [data-loading]):hover.v2-btn--danger {
+  background: color-mix(in srgb, var(--danger) 88%, black);
+}
+
+/* ---- loading ---- */
+button.v2-btn[data-loading] .v2-btn__inner {
+  opacity: 0;
+}
+.v2-btn__spinner {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-top-color: currentColor;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  button.v2-btn {
+    transition: background-color var(--motion-fast), border-color var(--motion-fast),
+      color var(--motion-fast), transform var(--motion-instant);
+  }
+  /* §7.2 press: 60-80ms scale(.98), no bounce. */
+  button.v2-btn:not(:disabled, [aria-disabled='true'], [data-loading]):active {
+    transform: scale(0.98);
+  }
+  .v2-btn__spinner {
+    animation: v2-btn-spin 0.6s linear infinite;
+  }
+  @keyframes v2-btn-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}
