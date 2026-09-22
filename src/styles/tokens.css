@@ -5,12 +5,12 @@
    prefers-color-scheme. A token declared once is deliberately identical in both tones. */
 
 :root {
-  /* Type — SF Pro for UI (split at Apple’s 20pt optical crossover) and Geist Mono for
-     exam and machine data. Two families, not three: `Ink/Annotation` and its Caveat face were
-     deleted from the design file, and the app never rendered ink as text anyway — annotations are
-     canvas strokes. Faces vendored: npm run fonts. */
-  --font-ui: 'SF Pro Text', 'SF Pro Display', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
-  --font-disp: 'SF Pro Display', 'SF Pro Text', 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+  /* Type (v2) — Geist for UI and titles, Geist Mono for exam and machine data. The Design
+     System v2 handoff (§6.2) replaces SF Pro with Geist as the single sans voice; --font-ui and
+     --font-disp both resolve to it, so titles differ by size/weight, not typeface. Geist Mono is
+     unchanged. Faces vendored: npm run fonts. */
+  --font-ui: 'Geist', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+  --font-disp: 'Geist', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
   --font-mono: 'Geist Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
 
   /* Ground — a picked cool periwinkle-grey in Day, never flat grey. Night is a BRIGHT
@@ -91,10 +91,12 @@
   --card: #f6f7fc;
   --card-brd: rgba(24, 26, 52, .09);
 
-  /* Accent — one blue, spent on live elements: focus ring, active nav, timer ring,
-     progress, selection. --accent-soft is the only sanctioned wash. */
-  --accent: #1436c8;
-  --accent-soft: rgba(20, 54, 200, .122);
+  /* Accent (v2) — the primary action / selection / focus blue. Design System v2 §6.1:
+     light #1769E0, dark #2F80FF. Keyed light/dark (data-theme) rather than day/night, so it
+     resolves the same for legacy screens (which still carry data-tone) and v2 screens alike.
+     --accent-soft is the only sanctioned wash, retuned to the v2 hue. */
+  --accent: #1769e0;
+  --accent-soft: rgba(23, 105, 224, .122);
 
   /* Brand ramp — mode-invariant. The `iris` name is inherited and now lies: every stop is
      blue. Kept because Figma still uses it, so the two files stay greppable against each other. */
@@ -185,8 +187,8 @@
      `Color/state/danger-soft` now exist (danger/day #B3261E, danger/night #FF6B6B; the soft wash is
      the same hue at 12% Day / 16% Night), so the values below are harvested, not seeded — they
      replace the #a5103a / #ff4d6a pair we guessed off --d5. Still never --d5 for state. */
-  --danger: #b3261e;
-  --danger-soft: rgba(179, 38, 30, .122);
+  --danger: #d64261;
+  --danger-soft: rgba(214, 66, 97, .122);
 
   /* Elevation — from the Figma effect styles. Window and Card are measured;
      TODO card-hover / paper / popover still to be read off Foundations — Elevation & Glass. */
@@ -195,6 +197,65 @@
   --shadow-card-h: 0 12px 28px -14px rgba(18, 20, 50, .28);
   --shadow-paper: 0 32px 60px -30px rgba(18, 20, 50, .34), 0 8px 20px -14px rgba(18, 20, 50, .22);
   --shadow-pop: 0 30px 70px -24px rgba(14, 16, 44, .5);
+
+  /* v2 surfaces, text and borders — Design System v2 §6.1. The flat, opaque productivity
+     palette that replaces the glass system. Light is :root; dark overrides on the
+     .app[data-theme=dark] block. Additive: the legacy tokens above still drive un-migrated
+     screens until each is ported, then they are deleted. */
+  --bg-canvas: #f7f8fa;
+  --bg-sidebar: #f3f5f7;
+  --bg-panel: #ffffff;
+  --bg-elevated: #ffffff;
+  --surface-hover: #f0f3f7;
+  --surface-selected: #e8f1ff;
+  --border-muted: #e7eaf0;
+  --border-default: #d9dee7;
+  --border-strong: #bfc7d4;
+  --text-primary: #172033;
+  --text-secondary: #526075;
+  --text-tertiary: #7e8999;
+  --text-disabled: #a8b0bc;
+
+  /* v2 status colours — success / warning / danger / info (§6.1). Difficulty keeps its own
+     warm axis (--d1..--d5) and the website Sky/Amber/Rose palette; these are app STATE only.
+     Never encode status by hue alone — always pair with text or icon. */
+  --success: #0f9f78;
+  --warning: #c88915;
+  --info: #2378d4;
+
+  /* v2 metrics — spacing scale, radii, control heights, icon sizes (§6.3) and motion (§7).
+     Mode-invariant. --focus-ring composes on --accent so it follows the theme. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 64px;
+  --radius-sm: 4px;
+  --radius-control: 6px;
+  --radius-panel: 8px;
+  --radius-modal: 12px;
+  --control-h-dense: 28px;
+  --control-h-default: 32px;
+  --control-h-comfortable: 36px;
+  --control-h-prominent: 40px;
+  --icon-dense: 14px;
+  --icon-default: 16px;
+  --icon-prominent: 20px;
+  --icon-feature: 24px;
+  --motion-instant: 80ms;
+  --motion-fast: 120ms;
+  --motion-standard: 160ms;
+  --motion-medium: 200ms;
+  --motion-slow: 280ms;
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --focus-ring: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
 
   /* Radius. */
   --r-win: 15px;
@@ -205,7 +266,7 @@
   --r-pill: 999px;
 }
 
-/* Night. Only the tokens that actually change tone appear here. */
+/* Night (legacy). Only the tokens that actually change tone appear here. */
 .app[data-tone='night'] {
   --ground: #111219;
   --ground-2: #0b0c12;
@@ -224,8 +285,6 @@
   --hair-2: rgba(255, 255, 255, .09);
   --card: rgba(36, 39, 58, .898);
   --card-brd: rgba(255, 255, 255, .161);
-  --accent: #6aa8ff;
-  --accent-soft: rgba(106, 168, 255, .161);
   --d1: #ffd24a;
   --d2: #ffae33;
   --d3: #ff8a38;
@@ -236,11 +295,33 @@
   --activity-2: #2d6bad;
   --activity-3: #2892f7;
   --activity-4: #a6c8f2;
-  --danger: #ff6b6b;
-  --danger-soft: rgba(255, 107, 107, .161);
   --shadow-win: 0 30px 70px -30px rgba(0, 0, 0, .7), 0 8px 20px -12px rgba(0, 0, 0, .5);
   --shadow-card: 0 1px 2px rgba(0, 0, 0, .35), 0 4px 12px -2px rgba(0, 0, 0, .45);
   --shadow-card-h: 0 16px 34px -16px rgba(0, 0, 0, .6);
   --shadow-paper: 0 34px 64px -30px rgba(0, 0, 0, .62), 0 10px 24px -14px rgba(0, 0, 0, .5);
   --shadow-pop: 0 40px 90px -28px rgba(0, 0, 0, .8);
+}
+
+/* Dark (v2). Tokens with a `dark` value flip here; driven by data-theme. */
+.app[data-theme='dark'] {
+  --accent: #2f80ff;
+  --accent-soft: rgba(47, 128, 255, .161);
+  --danger: #f15b78;
+  --danger-soft: rgba(241, 91, 120, .161);
+  --bg-canvas: #0b1220;
+  --bg-sidebar: #0a101b;
+  --bg-panel: #0f1726;
+  --bg-elevated: #131d2f;
+  --surface-hover: #17243a;
+  --surface-selected: #122c56;
+  --border-muted: #1d2a3d;
+  --border-default: #2b3a51;
+  --border-strong: #41516a;
+  --text-primary: #f3f7fd;
+  --text-secondary: #b6c2d4;
+  --text-tertiary: #7f8ea5;
+  --text-disabled: #536176;
+  --success: #23c99a;
+  --warning: #f2b84b;
+  --info: #55a7ff;
 }

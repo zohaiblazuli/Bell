@@ -34,10 +34,10 @@ function css(v) {
 
 const GROUPS = [
   {
-    title: 'Type — SF Pro for UI (split at Apple’s 20pt optical crossover) and Geist Mono for\n     exam and machine data. Two families, not three: `Ink/Annotation` and its Caveat face were\n     deleted from the design file, and the app never rendered ink as text anyway — annotations are\n     canvas strokes. Faces vendored: npm run fonts.',
+    title: 'Type (v2) — Geist for UI and titles, Geist Mono for exam and machine data. The Design\n     System v2 handoff (§6.2) replaces SF Pro with Geist as the single sans voice; --font-ui and\n     --font-disp both resolve to it, so titles differ by size/weight, not typeface. Geist Mono is\n     unchanged. Faces vendored: npm run fonts.',
     tokens: {
-      '--font-ui': { day: "'SF Pro Text', 'SF Pro Display', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif" },
-      '--font-disp': { day: "'SF Pro Display', 'SF Pro Text', 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif" },
+      '--font-ui': { day: "'Geist', ui-sans-serif, system-ui, 'Segoe UI', sans-serif" },
+      '--font-disp': { day: "'Geist', ui-sans-serif, system-ui, 'Segoe UI', sans-serif" },
       '--font-mono': { day: "'Geist Mono', ui-monospace, 'Cascadia Code', Consolas, monospace" },
     },
   },
@@ -132,10 +132,10 @@ const GROUPS = [
     },
   },
   {
-    title: 'Accent — one blue, spent on live elements: focus ring, active nav, timer ring,\n     progress, selection. --accent-soft is the only sanctioned wash.',
+    title: 'Accent (v2) — the primary action / selection / focus blue. Design System v2 §6.1:\n     light #1769E0, dark #2F80FF. Keyed light/dark (data-theme) rather than day/night, so it\n     resolves the same for legacy screens (which still carry data-tone) and v2 screens alike.\n     --accent-soft is the only sanctioned wash, retuned to the v2 hue.',
     tokens: {
-      '--accent': { day: '#1436c8', night: '#6aa8ff' },
-      '--accent-soft': { day: '#1436c81f', night: '#6aa8ff29' },
+      '--accent': { light: '#1769e0', dark: '#2f80ff' },
+      '--accent-soft': { light: '#1769e01f', dark: '#2f80ff29' },
     },
   },
   {
@@ -230,8 +230,8 @@ const GROUPS = [
   {
     title: 'Danger — began as an APP ADDITION, because the design system had no success/danger/warning\n     token and error styling was borrowing --d5 by hand, which mixes the difficulty axis into\n     something that is not difficulty. Figma has since adopted it: `Color/state/danger` and\n     `Color/state/danger-soft` now exist (danger/day #B3261E, danger/night #FF6B6B; the soft wash is\n     the same hue at 12% Day / 16% Night), so the values below are harvested, not seeded — they\n     replace the #a5103a / #ff4d6a pair we guessed off --d5. Still never --d5 for state.',
     tokens: {
-      '--danger': { day: '#b3261e', night: '#ff6b6b' },
-      '--danger-soft': { day: '#b3261e1f', night: '#ff6b6b29' },
+      '--danger': { light: '#d64261', dark: '#f15b78' },
+      '--danger-soft': { light: '#d642611f', dark: '#f15b7829' },
     },
   },
   {
@@ -260,6 +260,68 @@ const GROUPS = [
     },
   },
   {
+    title: 'v2 surfaces, text and borders — Design System v2 §6.1. The flat, opaque productivity\n     palette that replaces the glass system. Light is :root; dark overrides on the\n     .app[data-theme=dark] block. Additive: the legacy tokens above still drive un-migrated\n     screens until each is ported, then they are deleted.',
+    tokens: {
+      '--bg-canvas': { light: '#f7f8fa', dark: '#0b1220' },
+      '--bg-sidebar': { light: '#f3f5f7', dark: '#0a101b' },
+      '--bg-panel': { light: '#ffffff', dark: '#0f1726' },
+      '--bg-elevated': { light: '#ffffff', dark: '#131d2f' },
+      '--surface-hover': { light: '#f0f3f7', dark: '#17243a' },
+      '--surface-selected': { light: '#e8f1ff', dark: '#122c56' },
+      '--border-muted': { light: '#e7eaf0', dark: '#1d2a3d' },
+      '--border-default': { light: '#d9dee7', dark: '#2b3a51' },
+      '--border-strong': { light: '#bfc7d4', dark: '#41516a' },
+      '--text-primary': { light: '#172033', dark: '#f3f7fd' },
+      '--text-secondary': { light: '#526075', dark: '#b6c2d4' },
+      '--text-tertiary': { light: '#7e8999', dark: '#7f8ea5' },
+      '--text-disabled': { light: '#a8b0bc', dark: '#536176' },
+    },
+  },
+  {
+    title: 'v2 status colours — success / warning / danger / info (§6.1). Difficulty keeps its own\n     warm axis (--d1..--d5) and the website Sky/Amber/Rose palette; these are app STATE only.\n     Never encode status by hue alone — always pair with text or icon.',
+    tokens: {
+      '--success': { light: '#0f9f78', dark: '#23c99a' },
+      '--warning': { light: '#c88915', dark: '#f2b84b' },
+      '--info': { light: '#2378d4', dark: '#55a7ff' },
+    },
+  },
+  {
+    title: 'v2 metrics — spacing scale, radii, control heights, icon sizes (§6.3) and motion (§7).\n     Mode-invariant. --focus-ring composes on --accent so it follows the theme.',
+    tokens: {
+      '--space-1': { day: '4px' },
+      '--space-2': { day: '8px' },
+      '--space-3': { day: '12px' },
+      '--space-4': { day: '16px' },
+      '--space-5': { day: '20px' },
+      '--space-6': { day: '24px' },
+      '--space-7': { day: '32px' },
+      '--space-8': { day: '40px' },
+      '--space-9': { day: '48px' },
+      '--space-10': { day: '64px' },
+      '--radius-sm': { day: '4px' },
+      '--radius-control': { day: '6px' },
+      '--radius-panel': { day: '8px' },
+      '--radius-modal': { day: '12px' },
+      '--control-h-dense': { day: '28px' },
+      '--control-h-default': { day: '32px' },
+      '--control-h-comfortable': { day: '36px' },
+      '--control-h-prominent': { day: '40px' },
+      '--icon-dense': { day: '14px' },
+      '--icon-default': { day: '16px' },
+      '--icon-prominent': { day: '20px' },
+      '--icon-feature': { day: '24px' },
+      '--motion-instant': { day: '80ms' },
+      '--motion-fast': { day: '120ms' },
+      '--motion-standard': { day: '160ms' },
+      '--motion-medium': { day: '200ms' },
+      '--motion-slow': { day: '280ms' },
+      '--ease-enter': { day: 'cubic-bezier(0.16, 1, 0.3, 1)' },
+      '--ease-exit': { day: 'cubic-bezier(0.4, 0, 1, 1)' },
+      '--ease-standard': { day: 'cubic-bezier(0.2, 0, 0, 1)' },
+      '--focus-ring': { day: '0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent)' },
+    },
+  },
+  {
     title: 'Radius.',
     tokens: {
       '--r-win': { day: '15px' },
@@ -284,18 +346,31 @@ const HEAD = `/* GENERATED by scripts/tokens.mjs — do not edit by hand. Run \`
 const lines = [HEAD, ':root {'];
 for (const g of GROUPS) {
   lines.push(`  /* ${g.title} */`);
-  for (const [name, v] of Object.entries(g.tokens)) lines.push(`  ${name}: ${css(v.day)};`);
+  // Root carries the light value: legacy tokens author it as `day`, v2 tokens as `light`.
+  for (const [name, v] of Object.entries(g.tokens)) lines.push(`  ${name}: ${css(v.day ?? v.light)};`);
   lines.push('');
 }
 if (lines.at(-1) === '') lines.pop();
 lines.push('}', '');
 
-lines.push("/* Night. Only the tokens that actually change tone appear here. */");
+// Legacy Night — the product tone toggle (data-tone). Un-migrated screens still read it.
+lines.push("/* Night (legacy). Only the tokens that actually change tone appear here. */");
 lines.push(".app[data-tone='night'] {");
 for (const g of GROUPS) {
   const flips = Object.entries(g.tokens).filter(([, v]) => v.night);
   if (!flips.length) continue;
   for (const [name, v] of flips) lines.push(`  ${name}: ${css(v.night)};`);
+}
+lines.push('}', '');
+
+// Dark (v2) — driven by data-theme, set alongside data-tone on .app. Tokens that declare a
+// `dark` value flip here; everything else stays at its :root (light) value.
+lines.push("/* Dark (v2). Tokens with a `dark` value flip here; driven by data-theme. */");
+lines.push(".app[data-theme='dark'] {");
+for (const g of GROUPS) {
+  const flips = Object.entries(g.tokens).filter(([, v]) => v.dark);
+  if (!flips.length) continue;
+  for (const [name, v] of flips) lines.push(`  ${name}: ${css(v.dark)};`);
 }
 lines.push('}', '');
 
@@ -354,6 +429,15 @@ writeFileSync(join(root, 'src', 'styles', 'theme.css'), theme.join('\n'), 'utf8'
  */
 
 const TYPE = {
+  // v2 roles (Design System v2 §6.2) — Geist sans, explicit px line heights. Additive: the legacy
+  // classes below still serve un-migrated screens. New v2 screens use these seven.
+  display: { family: 'ui', weight: 600, size: 28, lineHeight: '34px', track: 0, note: 'v2 — rare hero moments only' },
+  'page-title': { family: 'ui', weight: 600, size: 20, lineHeight: '28px', track: 0, note: 'v2 — Library / Analytics / Settings headings' },
+  'section-title': { family: 'ui', weight: 600, size: 16, lineHeight: '24px', track: 0, note: 'v2 — panel / section headers' },
+  body: { family: 'ui', weight: 400, size: 14, lineHeight: '20px', track: 0, note: 'v2 — default readable content' },
+  ui: { family: 'ui', weight: 500, size: 13, lineHeight: '18px', track: 0, note: 'v2 — buttons, table rows, navigation' },
+  caption: { family: 'ui', weight: 400, size: 12, lineHeight: '16px', track: 0, note: 'v2 — metadata, helper text' },
+  micro: { family: 'ui', weight: 400, size: 11, lineHeight: '14px', track: 0, note: 'v2 — badges, shortcuts, compact detail' },
   // display — 20px and up, so SF Pro Display
   'display-setup-title': { family: 'disp', weight: 700, size: 26, track: -2.2, note: 'onboarding + setup headline' },
   greeting: { family: 'disp', weight: 600, size: 20, track: 0, note: 'dashboard greeting — off-ramp, not in the Figma ramp' },

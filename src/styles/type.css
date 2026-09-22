@@ -2,6 +2,62 @@
    The Figma text styles as classes. Line heights are `normal` because Figma reports AUTO,
    which means the font's own metrics — not 1. Tracking is converted from Figma percentages. */
 
+/* v2 — rare hero moments only */
+.t-display {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 28px;
+  line-height: 34px;
+}
+
+/* v2 — Library / Analytics / Settings headings */
+.t-page-title {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 28px;
+}
+
+/* v2 — panel / section headers */
+.t-section-title {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 24px;
+}
+
+/* v2 — default readable content */
+.t-body {
+  font-family: var(--font-ui);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+/* v2 — buttons, table rows, navigation */
+.t-ui {
+  font-family: var(--font-ui);
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* v2 — metadata, helper text */
+.t-caption {
+  font-family: var(--font-ui);
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+/* v2 — badges, shortcuts, compact detail */
+.t-micro {
+  font-family: var(--font-ui);
+  font-weight: 400;
+  font-size: 11px;
+  line-height: 14px;
+}
+
 /* onboarding + setup headline */
 .t-display-setup-title {
   font-family: var(--font-disp);
