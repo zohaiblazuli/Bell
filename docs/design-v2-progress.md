@@ -23,12 +23,21 @@ no persisted-settings migration needed.
   border/status + spacing/radius/control/icon/motion tokens; `.app[data-theme='dark']` block; Geist
   vendored + `--font-ui/-disp` repointed; accent/danger → v2; 7 v2 `.t-*` roles (legacy retained);
   `data-theme` on all shells; audit reads dark block + v2 contrast pass. `npm run build` green.
-- [ ] **Phase 2 — Primitives.** Build Checkbox, Popover, Table, Toast, Menu/context-menu; harden Field
-  (disabled/error), Select/Combobox, Tooltip (positioned), Skeleton. src/ui/*.
-- [ ] **Phase 3 — Shell.** AppShell extraction, resizable+collapsible sidebar, shell-level inspector,
-  responsive breakpoints (§5), config-driven nav, opaque surfaces + 1px separators.
-- [ ] **Phase 4 — Library reference impl.** DataTable (sticky header, selection, resize, virtualization),
-  filter popovers, contextual selection toolbar, paper inspector.
+- [x] **Phase 2 — Primitives.** DONE (`f139984`). src/ui/v2/: Button, Checkbox, Input, Table,
+  Popover, Menu, Tooltip, Toast (Provider+useToast), Badge, Skeleton, Spinner, SegmentedControl +
+  CONVENTIONS.md. Whole set typechecks; motion gated (no new audit failures). Select/Combobox and
+  table virtualization deferred to Phase 4 (Library-coupled).
+- [~] **Phase 3 — Shell.** Components DONE (`7cac532`): src/components/v2/ AppShell (grid: topbar +
+  resizable sidebar + docked/drawer inspector, ResizeObserver responsive per §5), NavSidebar +
+  navConfig (config-driven §3 IA, collapsible rail, accent-tint selection), Inspector (reusable
+  right-panel frame). Whole project typechecks + builds. **REMAINING: the live cutover** — mount
+  AppShell in App.tsx, move the tab/view dispatch + WindowLights + palette into it, retire the legacy
+  glass shell (chrome.css) for migrated routes. Large + risky (App.tsx is a big tab state machine);
+  do it as its own PR and keep the app runnable throughout.
+- [ ] **Phase 4 — Library reference impl.** Build a v2 Library screen wired to the real catalogue
+  (useLibraryIndex + PaperRow): the v2 Table (add virtualization + column resize here), filter
+  popovers (build Select/Combobox on Popover), contextual selection toolbar, and the paper Inspector.
+  Can be built as a new screen first, then swapped for LibraryView.
 - [ ] **Phase 5 — Command palette + context menus + keyboard system** (§11/§12).
 - [ ] **Phase 6 — Feature flows.** Practice/Review, Collections, Analytics, Notebooks refresh; fold in
   Community Resources + local Workspace.
@@ -46,5 +55,10 @@ no persisted-settings migration needed.
   mode passes throughout.
 
 ## Resume pointer
-Phase 1 committed. **Next: Phase 2 — primitives.** Start with the missing ones (Checkbox, Popover,
-Menu, Toast, Table) as v2 components in src/ui using v2 tokens; then harden Field/Select/Tooltip/Skeleton.
+Phases 1–2 complete and integrated (foundation + full primitive library, both building & committed).
+Phase 3 shell COMPONENTS built & committed but NOT yet cut into the live app — App.tsx still renders
+the legacy glass shell, so the app builds and runs unchanged. **Next: the Phase 3 live cutover**
+(mount `@/components/v2/AppShell` in App.tsx), then Phase 4 (v2 Library). Nothing is half-edited; each
+phase is its own commit on `design-system-v2`. Legacy tokens/glass/SF Pro are still present and are
+removed in Phase 8. `npm run build` is green; `npm run audit` has only the pre-existing motion-lint +
+report-only light-contrast items noted above.
