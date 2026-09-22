@@ -1,0 +1,114 @@
+/* AppShell (v2) — §4/§5. Grid frame: a top-bar row over sidebar | main | (inspector). Column
+   widths come from --v2-sidebar-w (set inline) and a fixed inspector width; 1px rules, no shadows. */
+
+.v2-shell {
+  display: grid;
+  grid-template-columns: var(--v2-sidebar-w, 232px) 1fr;
+  grid-template-rows: 44px 1fr;
+  grid-template-areas:
+    'topbar topbar'
+    'sidebar main';
+  height: 100vh;
+  min-height: 0;
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+/* Docked inspector as a third column (wide widths). */
+.v2-shell[data-inspector='column'] {
+  grid-template-columns: var(--v2-sidebar-w, 232px) minmax(640px, 1fr) 336px;
+  grid-template-areas:
+    'topbar topbar topbar'
+    'sidebar main inspector';
+}
+
+.v2-shell__topbar {
+  grid-area: topbar;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 44px;
+  padding: 0 var(--space-3);
+  background: var(--bg-sidebar);
+  border-bottom: 1px solid var(--border-muted);
+  position: relative;
+  z-index: 2;
+}
+.v2-shell__lights {
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+.v2-shell__topbar-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 0;
+}
+
+.v2-shell__sidebar {
+  grid-area: sidebar;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-muted);
+  overflow: hidden;
+}
+
+.v2-shell__main {
+  grid-area: main;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background: var(--bg-canvas);
+}
+
+.v2-shell__inspector {
+  grid-area: inspector;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border-muted);
+}
+/* Inspector as a right-side drawer (narrow widths). */
+.v2-shell__scrim {
+  position: fixed;
+  inset: 44px 0 0 0;
+  z-index: 40;
+  background: color-mix(in srgb, var(--text-primary) 24%, transparent);
+}
+.v2-shell__inspector--drawer {
+  position: fixed;
+  top: 44px;
+  right: 0;
+  bottom: 0;
+  width: min(360px, 90vw);
+  z-index: 41;
+  box-shadow: -12px 0 32px color-mix(in srgb, var(--text-primary) 18%, transparent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .v2-shell__scrim {
+    animation: v2-shell-fade var(--motion-standard) var(--ease-enter);
+  }
+  .v2-shell__inspector--drawer {
+    animation: v2-shell-slide var(--motion-standard) var(--ease-enter);
+  }
+  @keyframes v2-shell-fade {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes v2-shell-slide {
+    from {
+      transform: translateX(12px);
+      opacity: 0;
+    }
+  }
+}
