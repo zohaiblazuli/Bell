@@ -46,12 +46,22 @@ no persisted-settings migration needed.
   virtualization + a real Select/Combobox for filters still to add when wired to the live catalogue.
 - [ ] **Phase 4b / cutover — wire the v2 Library + shell into the live app** (behind a flag first),
   feeding real catalogue rows from useLibraryIndex; then retire LibraryView (legacy).
-- [ ] **Phase 5 — Command palette + context menus + keyboard system** (§11/§12).
-- [ ] **Phase 6 — Feature flows.** Practice/Review, Collections, Analytics, Notebooks refresh; fold in
-  Community Resources + local Workspace.
-- [ ] **Phase 7 — Hardening.** Offline/sync/errors/a11y (WCAG 2.2 AA)/perf (§19-21).
-- [ ] **Phase 8 — QA + enforcement.** Extend audit to forbid off-token hex; delete legacy tokens/SF Pro/
-  glass/background stack; motion + theme QA.
+- [x] **Phase 5 — Command palette + keyboard.** DONE (`722f464`, wired in `b91defb`). v2 CommandPalette
+  (⌘K, grouped go-to + actions, arrow/enter/esc, focus trap, portalled). Context menus exist as the
+  `Menu` primitive; per-screen right-click menus are a later nicety.
+- [x] **Phase 6 — Feature flows.** DONE (`b91defb`) + **assembled into a live `?v2` app**, screenshot-
+  verified light & dark. Analytics (§15 charts), Home, Practice (§14), Collections (§13), MyStuff
+  (bookmarks/downloads/history), Library — all on the v2 shell via `V2App` (nav routing + palette +
+  toasts + paper inspector). Sample data. Notebooks/Settings/Help are placeholders (keep legacy).
+- [~] **Phase 7 — Hardening.** PARTIAL. Screens carry loading/empty/selection states; reduced-motion
+  is honoured (all v2 CSS gated; a global sweep covers legacy). Remaining: real offline/sync/error
+  wiring (needs real data), fuller a11y/perf pass, and the 5 legacy motion-lint files (runtime-safe
+  via the global sweep — lint-only, deferred).
+- [~] **Phase 8 — QA + enforcement.** PARTIAL. Audit now fails on raw hex in the v2 layer (`9ee93f8`,
+  passing) + the v2 contrast pass. **NOT done — and gated:** flipping the default to v2 and deleting
+  the legacy tokens/glass/SF Pro/background stack. That cutover is only safe once v2 reaches real-data
+  parity (real catalogue + study state, the PDF reader, Notebooks, Settings, onboarding, star gate,
+  pets) — the `?v2` app is a verified reference on SAMPLE data, not yet a feature-complete replacement.
 
 ## Known pre-existing issues (NOT introduced by v2 work; resolve in owning phase / Phase 7)
 - `npm run audit` motion pass flags 5 files lacking a per-file reduced-motion gate: PdfThumbnail.css,
@@ -63,10 +73,15 @@ no persisted-settings migration needed.
   mode passes throughout.
 
 ## Resume pointer
-Phases 1–2 complete & integrated; Phase 3 shell components built & committed (cutover pending);
-**Phase 4 v2 Library screen + preview complete, committed, and visually verified** (view it: `npm run
-dev` → `http://localhost:1420/?v2lib`). All on `design-system-v2`, pushed, draft PR #8. `npm run
-build` green. **Next: the live cutover** — mount `@/components/v2/AppShell` + the v2 Library in
-App.tsx behind a flag, feeding real catalogue rows, then Phases 5–8 (command palette, feature flows,
-hardening, legacy removal). Legacy tokens/glass/SF Pro still present until Phase 8. Nothing is
-half-edited; each phase is its own commit.
+**Phases 1–6 + the command palette are built, committed, pushed, and the whole v2 app is assembled
+and screenshot-verified live behind `?v2`** (`npm run dev` → `http://localhost:1420/?v2`; also
+`?screen=<id>` and `?theme=dark`). Draft PR #8. `npm run build` green. The v2 layer is token-only
+(audit-enforced).
+
+**The remaining real work is the CUTOVER, and it is gated — not skipped.** The `?v2` app runs on
+SAMPLE data and covers the reference screens; it is NOT yet wired to the real catalogue/study state,
+the PDF reader, Notebooks, Settings, onboarding, star gate, or pets. To finish Phases 7–8 honestly:
+(1) wire V2App's screens to the live hooks (useLibraryIndex, store.ts, the reader) behind the flag;
+(2) build v2 Notebooks/Settings/onboarding to parity; (3) then flip the default and delete the legacy
+tokens/glass/SF Pro/background stack (Phase 8) — never before parity, or shipped features regress.
+Nothing is half-edited; the live app still runs on the legacy shell.
