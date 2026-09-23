@@ -113,6 +113,8 @@ export interface Props {
   /** Ids selected on THIS page. Selection is per page: a lasso cannot cross the binding. */
   selection: readonly string[];
   onSelection: (ids: string[]) => void;
+  /** Reports the pointer's fractional position on this page, for cursor-aware paste. */
+  onPointerHint?: (index: number, at: Pt) => void;
   /** Set during a page turn, so the sheet can animate without the view re-keying the canvases. */
   turn?: 'in' | 'out';
 }
@@ -132,6 +134,7 @@ export default function NotebookPage({
   onCommand,
   selection,
   onSelection,
+  onPointerHint,
   turn,
 }: Props) {
   const paperRef = useRef<HTMLCanvasElement>(null);
@@ -495,10 +498,36 @@ export default function NotebookPage({
         break;
       }
       case 'image':
-        // Nothing to draw: the image tool is the paste / drop / clip target, and the spread's own
-        // handlers own those. Said in the dock's tooltip rather than by a dead press here.
-        e.currentTarget.releasePointerCapture(e.pointerId);
-        owner.current = null;
+        // Tap an image to select it; tap+drag a selected image to move it; tap+drag a corner
+        // handle to resize it. The same three gestures the lasso offers, but without a lasso —
+        // so a student who just pasted an image can grab it immediately.
+        {
+          const frame = selection.length > 0 ? selectionFrame(page, selection) : null;
+          const grab = frame ? grabHandle(frame, at) : null;
+          if (grab) {
+            sizing.current = { ids: [...selection], ...grab, sx: 1, sy: 1 };
+            lift(selection);
+          } else {
+            const hit = hitTest(page, at, HIT_TOLERANCE);
+            if (hit && 'k' in hit) {
+              // Hit an object (image, sticky, shape, text) — select and start dragging.
+              if (selection.includes(hit.id)) {
+                drag.current = { ids: [...selection], from: at, last: at };
+                lift(selection);
+              } else {
+                onSelection([hit.id]);
+                drag.current = { ids: [hit.id], from: at, last: at };
+                lift([hit.id]);
+              }
+            } else {
+              onSelection([]);
+              // Release pointer — no lasso, no stroke.
+              e.currentTarget.releasePointerCapture(e.pointerId);
+              owner.current = null;
+            }
+          }
+          loop.mark();
+        }
         break;
     }
   }
@@ -703,10 +732,23 @@ export default function NotebookPage({
     [editing, index, ink.colour, onCommand],
   );
 
-  const armed = tool !== 'image';
+  const armed = true;
 
   return (
-    <div className="nbs-page" data-side={side} data-armed={armed} data-turn={turn}>
+    <div
+      className="nbs-page"
+      data-side={side}
+      data-page-index={index}
+      data-armed={armed}
+      data-turn={turn}
+      onPointerMove={onPointerHint ? (e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        onPointerHint(index, {
+          x: (e.clientX - rect.left) / rect.width,
+          y: (e.clientY - rect.top) / rect.height,
+        });
+      } : undefined}
+    >
       <canvas ref={paperRef} className="nbs-layer" data-layer="paper" aria-hidden="true" />
       <canvas ref={staticRef} className="nbs-layer" data-layer="static" aria-hidden="true" />
       <div className="nbs-fold" aria-hidden="true" />
