@@ -334,6 +334,7 @@ media/
 !docs/media/
 !docs/media/**
 demos/
+design-demo/
 bell-mascots/
 msbell/
 public/msbell/
