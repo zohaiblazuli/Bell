@@ -11,6 +11,7 @@ import Inspector from '@/components/v2/Inspector';
 import Input from '@ui/v2/Input';
 import Button from '@ui/v2/Button';
 import Icon from '@/components/Icon';
+import Sprite from '@/components/Sprite';
 import LibraryView, { PaperInspectorBody, type V2LibraryProps } from './LibraryView';
 import type { PaperRow } from '@/lib/types';
 import './LibraryPreview.css';
@@ -166,6 +167,8 @@ export default function LibraryPreview() {
 
   return (
     <div className="v2libp-root">
+      {/* The icon sprite is mounted by App in the real app; the preview needs it too so <Icon> resolves. */}
+      <Sprite />
       <AppShell
         className="v2libp-shell"
         topBar={topBar}
