@@ -34,10 +34,18 @@ no persisted-settings migration needed.
   AppShell in App.tsx, move the tab/view dispatch + WindowLights + palette into it, retire the legacy
   glass shell (chrome.css) for migrated routes. Large + risky (App.tsx is a big tab state machine);
   do it as its own PR and keep the app runnable throughout.
-- [ ] **Phase 4 — Library reference impl.** Build a v2 Library screen wired to the real catalogue
-  (useLibraryIndex + PaperRow): the v2 Table (add virtualization + column resize here), filter
-  popovers (build Select/Combobox on Popover), contextual selection toolbar, and the paper Inspector.
-  Can be built as a new screen first, then swapped for LibraryView.
+- [x] **Phase 4 — Library reference impl.** Screen + preview DONE (`cc803d0`, `1a5e935`) and
+  **visually verified** via headless screenshot. src/views/v2/LibraryView (props-driven §9: v2
+  Table<PaperRow>, search/sort/filter, multi-select + contextual toolbar §9.5, difficulty pills via
+  difficulty.ts, Status badges §17, overflow Menu, empty state) + PaperInspectorBody (§10) + a
+  LibraryPreview harness with real CAIE rows, mounted at `?v2lib` (code-split). Renders cleanly:
+  flat/dense, Geist, website Sky/Amber/Rose difficulty, docked inspector with grade thresholds +
+  files + Open action.
+  POLISH TODO (non-blocking): at narrow main width (inspector open) the first column header shows
+  "SCode" and the subject name drops — tidy the responsive column behaviour during cutover. Table
+  virtualization + a real Select/Combobox for filters still to add when wired to the live catalogue.
+- [ ] **Phase 4b / cutover — wire the v2 Library + shell into the live app** (behind a flag first),
+  feeding real catalogue rows from useLibraryIndex; then retire LibraryView (legacy).
 - [ ] **Phase 5 — Command palette + context menus + keyboard system** (§11/§12).
 - [ ] **Phase 6 — Feature flows.** Practice/Review, Collections, Analytics, Notebooks refresh; fold in
   Community Resources + local Workspace.
@@ -55,10 +63,10 @@ no persisted-settings migration needed.
   mode passes throughout.
 
 ## Resume pointer
-Phases 1–2 complete and integrated (foundation + full primitive library, both building & committed).
-Phase 3 shell COMPONENTS built & committed but NOT yet cut into the live app — App.tsx still renders
-the legacy glass shell, so the app builds and runs unchanged. **Next: the Phase 3 live cutover**
-(mount `@/components/v2/AppShell` in App.tsx), then Phase 4 (v2 Library). Nothing is half-edited; each
-phase is its own commit on `design-system-v2`. Legacy tokens/glass/SF Pro are still present and are
-removed in Phase 8. `npm run build` is green; `npm run audit` has only the pre-existing motion-lint +
-report-only light-contrast items noted above.
+Phases 1–2 complete & integrated; Phase 3 shell components built & committed (cutover pending);
+**Phase 4 v2 Library screen + preview complete, committed, and visually verified** (view it: `npm run
+dev` → `http://localhost:1420/?v2lib`). All on `design-system-v2`, pushed, draft PR #8. `npm run
+build` green. **Next: the live cutover** — mount `@/components/v2/AppShell` + the v2 Library in
+App.tsx behind a flag, feeding real catalogue rows, then Phases 5–8 (command palette, feature flows,
+hardening, legacy removal). Legacy tokens/glass/SF Pro still present until Phase 8. Nothing is
+half-edited; each phase is its own commit.
