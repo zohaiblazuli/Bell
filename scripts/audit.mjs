@@ -368,10 +368,36 @@ function auditMotion() {
   else fail(`MrBell.css: slump/sleep end-pose handling missing (found ${poses.length} of 2)`);
 }
 
+/**
+ * The v2 layer (src/ui|components|views/v2) must be token-only — no raw hex. Difficulty pills are
+ * the sanctioned exception and carry NO literal here (the hex lives in src/lib/difficulty.ts and is
+ * passed through inline custom properties), so a hex literal inside a v2 file is a real regression.
+ */
+function auditV2Hex() {
+  heading('4 · V2 TOKENS — the v2 layer must be hex-free (tokens only)');
+  const dirs = ['src/ui/v2', 'src/components/v2', 'src/views/v2'].map((d) => join(root, d));
+  const hits = [];
+  for (const dir of dirs) {
+    for (const f of walk(dir, (n) => n.endsWith('.css') || n.endsWith('.tsx'))) {
+      const text = readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+      for (const m of text.matchAll(/#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g)) {
+        hits.push({ file: relative(root, f), hex: m[0] });
+      }
+    }
+  }
+  if (hits.length === 0) {
+    pass('v2 layer is token-only — no raw hex in src/{ui,components,views}/v2');
+  } else {
+    for (const h of hits.slice(0, 20)) fail(`${h.file} → raw hex ${h.hex}`);
+    if (hits.length > 20) fail(`…and ${hits.length - 20} more`);
+  }
+}
+
 auditOffline();
 auditContrast();
 auditContrastV2();
 auditMotion();
+auditV2Hex();
 
 heading(failures === 0 ? 'All blocking audits passed.' : `${failures} blocking failure(s).`);
 process.exit(failures === 0 ? 0 : 1);
