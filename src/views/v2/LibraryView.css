@@ -1,0 +1,112 @@
+/* LibraryView (v2) — §9. Dense list screen: header, filter toolbar, full-height table.
+   Tokens only; the sole colour literals in play are the difficulty hexes arriving as --pill-* props. */
+
+.v2lib {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  background: var(--bg-canvas);
+}
+
+.v2lib__header { flex: none; padding: var(--space-5) var(--space-6) var(--space-3); }
+.v2lib__title { color: var(--text-primary); margin: 0; }
+.v2lib__caption { color: var(--text-secondary); margin: var(--space-1) 0 0; }
+
+.v2lib__toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: 0 var(--space-6) var(--space-3);
+}
+.v2lib__search { width: 280px; flex: none; }
+.v2lib__filters { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.v2lib__spacer { flex: 1 1 auto; }
+.v2lib__right { display: flex; align-items: center; gap: var(--space-2); min-height: var(--control-h-dense); }
+.v2lib__count { color: var(--text-secondary); white-space: nowrap; }
+
+.v2lib-filter__text { white-space: nowrap; }
+.v2lib-filter__chev,
+.v2lib__sort-dir,
+.v2lib__sort-icon { width: 14px; height: 14px; flex: none; opacity: 0.72; }
+.v2lib__sort { gap: var(--space-1); }
+.v2lib__sort-dir.is-asc { transform: rotate(180deg); }
+
+.v2lib__table-wrap { flex: 1 1 auto; min-height: 0; display: flex; padding: 0 var(--space-6) var(--space-6); }
+.v2lib__table-wrap > .v2-table { flex: 1 1 auto; min-height: 0; }
+
+/* Subject cell — name over a small mono code. */
+.v2lib-subject { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.v2lib-subject__name { color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2lib-subject__code { font-family: var(--font-mono); color: var(--text-tertiary); font-size: 0.75rem; }
+
+/* Difficulty pill — background/foreground come from the inline --pill-* custom properties. */
+.v2lib-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--pill-bg);
+  color: var(--pill-color);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.v2lib-pill--unrated { background: transparent; color: var(--text-tertiary); font-weight: 500; padding: 0; }
+.v2lib-pill-trigger { display: inline-flex; border-radius: var(--radius-sm); cursor: default; }
+.v2lib-pill-trigger:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* Status cell. */
+.v2lib-status { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.v2lib-status__sec { opacity: 0.9; }
+.v2lib-status__none { color: var(--text-tertiary); }
+.v2lib-actions { display: inline-flex; justify-content: flex-end; width: 100%; }
+
+/* Contextual selection toolbar. */
+.v2lib-selbar { display: inline-flex; align-items: center; gap: var(--space-2); }
+.v2lib-selbar__count { color: var(--text-primary); white-space: nowrap; }
+.v2lib-selbar__sep { width: 1px; height: 16px; background: var(--border-default); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .v2lib-selbar { animation: v2lib-selbar-in var(--motion-fast) var(--ease-enter); }
+}
+@keyframes v2lib-selbar-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Empty state (§19.2). */
+.v2lib-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-9) var(--space-4);
+  text-align: center;
+  color: var(--text-secondary);
+}
+.v2lib-empty__icon { width: 28px; height: 28px; color: var(--text-tertiary); }
+.v2lib-empty__title { color: var(--text-primary); }
+.v2lib-empty__hint { color: var(--text-tertiary); }
+
+/* Inspector body sections (§10). */
+.v2lib-insp { display: flex; flex-direction: column; gap: var(--space-5); }
+.v2lib-insp__section { display: flex; flex-direction: column; gap: var(--space-2); }
+.v2lib-insp__code { color: var(--text-secondary); font-family: var(--font-mono); }
+.v2lib-insp__subject { color: var(--text-primary); margin: 0; }
+.v2lib-insp__meta { color: var(--text-secondary); }
+.v2lib-insp__label { color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; }
+.v2lib-insp__state { display: flex; align-items: center; gap: var(--space-2); }
+.v2lib-insp__basis { color: var(--text-secondary); }
+.v2lib-insp__note { color: var(--text-secondary); margin: var(--space-1) 0 0; line-height: 1.5; }
+.v2lib-insp__row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.v2lib-insp__key { color: var(--text-tertiary); }
+.v2lib-insp__val { color: var(--text-primary); text-align: right; }
+.v2lib-insp__file { display: flex; align-items: center; gap: var(--space-2); }
+.v2lib-insp__file .t-body { color: var(--text-primary); flex: 1 1 auto; }
+.v2lib-insp__file-icon { width: 16px; height: 16px; color: var(--text-tertiary); flex: none; }
