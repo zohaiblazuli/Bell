@@ -363,10 +363,10 @@ for (const g of GROUPS) {
 }
 lines.push('}', '');
 
-// Dark (v2) — driven by data-theme, set alongside data-tone on .app. Tokens that declare a
-// `dark` value flip here; everything else stays at its :root (light) value.
+// Dark (v2) — driven by data-theme, which the v2 root (and .app, alongside data-tone) carries.
+// Tokens with a `dark` value flip here; everything else stays at its :root (light) value.
 lines.push("/* Dark (v2). Tokens with a `dark` value flip here; driven by data-theme. */");
-lines.push(".app[data-theme='dark'] {");
+lines.push("[data-theme='dark'] {");
 for (const g of GROUPS) {
   const flips = Object.entries(g.tokens).filter(([, v]) => v.dark);
   if (!flips.length) continue;

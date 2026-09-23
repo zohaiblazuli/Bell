@@ -137,7 +137,7 @@ function readTokens() {
     '',
   );
   const blocks = [
-    ...css.matchAll(/(:root|\.app\[data-tone='night'\]|\.app\[data-theme='dark'\])\s*{([^}]*)}/g),
+    ...css.matchAll(/(:root|\.app\[data-tone='night'\]|\[data-theme='dark'\])\s*{([^}]*)}/g),
   ];
   const day = {};
   const night = {};

@@ -1,0 +1,205 @@
+/* Analytics (v2) — §15. Opaque cards on the canvas; charts are token-only and flat (no
+   gradients/shadows). Neutral grays + one accent for the primary series; --warning/--danger
+   only flag a thresholded value and are always paired with the number in text. */
+
+.v2-analytics {
+  height: 100%;
+  overflow: auto;
+  background: var(--bg-canvas);
+  padding: var(--space-5) var(--space-6) var(--space-8);
+}
+
+.v2-analytics__header {
+  margin-bottom: var(--space-5);
+}
+.v2-analytics__title {
+  color: var(--text-primary);
+  margin: 0;
+}
+.v2-analytics__caption {
+  color: var(--text-secondary);
+  margin: var(--space-1) 0 0;
+}
+
+.v2-analytics__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.v2-analytics__panel {
+  min-width: 0;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-panel);
+  padding: var(--space-5);
+}
+.v2-analytics__panel--wide {
+  grid-column: 1 / -1;
+}
+.v2-analytics__panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.v2-analytics__panel-heading {
+  min-width: 0;
+}
+.v2-analytics__panel-title {
+  color: var(--text-primary);
+  margin: 0;
+}
+.v2-analytics__panel-sub {
+  color: var(--text-tertiary);
+  margin: var(--space-1) 0 0;
+}
+
+/* Score trend — inline SVG. Strokes use non-scaling-stroke so gridlines/line stay crisp
+   at any card width; the area is a flat accent wash (never a gradient). */
+.v2-analytics__chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.v2-analytics__gridline {
+  stroke: var(--border-muted);
+  stroke-width: 1;
+}
+.v2-analytics__area {
+  fill: var(--accent-soft);
+  stroke: none;
+}
+.v2-analytics__line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.v2-analytics__dot {
+  fill: var(--accent);
+}
+.v2-analytics__axis {
+  fill: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.v2-analytics__summary {
+  color: var(--text-secondary);
+  margin: var(--space-3) 0 0;
+  line-height: 1.5;
+}
+/* Bar rows (weak topics, accuracy, pace). Track is decorative; the value carries the number. */
+.v2-analytics__bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.v2-analytics__bar-row {
+  display: grid;
+  grid-template-columns: minmax(88px, 36%) 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+.v2-analytics__bar-label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+.v2-analytics__bar-topic {
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.v2-analytics__bar-code {
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+}
+.v2-analytics__bar-track {
+  position: relative;
+  height: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-hover);
+  overflow: hidden;
+}
+.v2-analytics__bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+}
+.v2-analytics__bar-fill.is-warning { background: var(--warning); }
+.v2-analytics__bar-fill.is-danger { background: var(--danger); }
+.v2-analytics__bar-value {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8125rem;
+  text-align: right;
+  min-width: 68px;
+}
+.v2-analytics__bar-value[data-flag='warning'] { color: var(--warning); }
+.v2-analytics__bar-value[data-flag='danger'] { color: var(--danger); }
+/* Completion & volume tiles. */
+.v2-analytics__tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.v2-analytics__tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-panel);
+}
+.v2-analytics__tile-value {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+  line-height: 1.1;
+}
+.v2-analytics__tile-label {
+  color: var(--text-secondary);
+}
+
+/* Narrow window: single column; the wide panel stops spanning. */
+@media (max-width: 720px) {
+  .v2-analytics__grid { grid-template-columns: 1fr; }
+  .v2-analytics__panel--wide { grid-column: auto; }
+}
+
+/* Motion — gated per §7 so reduced-motion is honoured and the audit's motion gate passes. */
+@media (prefers-reduced-motion: no-preference) {
+  .v2-analytics__area,
+  .v2-analytics__line,
+  .v2-analytics__dot {
+    animation: v2an-fade var(--motion-slow) var(--ease-enter) both;
+  }
+  .v2-analytics__bar-fill {
+    animation: v2an-grow var(--motion-medium) var(--ease-standard) both;
+    transform-origin: left center;
+  }
+}
+@keyframes v2an-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes v2an-grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}

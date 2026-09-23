@@ -20,7 +20,7 @@ import './LibraryPreview.css';
 const mk = (p: PaperRow) => `${p.subjectCode}/${p.scode}/${p.component}`;
 
 /** ~14 real Cambridge (CAIE) papers across A Level and IGCSE, with realistic thresholds and ratings. */
-const SAMPLE_PAPERS: PaperRow[] = [
+export const SAMPLE_PAPERS: PaperRow[] = [
   { id: 1, subjectId: 101, subjectCode: '9709', subjectName: 'Mathematics', qualification: 'a_level', level: 'A Level',
     year: 2023, scode: 's23', season: 'may_june', component: '12', paperNumber: 1, variant: 2, totalMarks: 75,
     aThreshold: 57, bThreshold: 50, cThreshold: 43, dThreshold: 36, eThreshold: 29, aPct: 18, curveMeanPct: 52, spanPct: 61,

@@ -1,0 +1,55 @@
+/* MyStuff (v2) — §11/§19.2. Dense list screen shared by bookmarks / downloads / history.
+   Tokens only; difficulty hexes arrive as --pill-* custom props. Layout mirrors LibraryView. */
+
+.v2mine {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  background: var(--bg-canvas);
+}
+
+.v2mine__header { flex: none; padding: var(--space-5) var(--space-6) var(--space-3); }
+.v2mine__title { color: var(--text-primary); margin: 0; }
+.v2mine__caption { color: var(--text-secondary); margin: var(--space-1) 0 0; }
+
+.v2mine__table-wrap { flex: 1 1 auto; min-height: 0; display: flex; padding: 0 var(--space-6) var(--space-6); }
+.v2mine__table-wrap > .v2-table { flex: 1 1 auto; min-height: 0; }
+
+/* Subject cell — name over a small mono code. */
+.v2mine-subject { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.v2mine-subject__name { color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2mine-subject__code { font-family: var(--font-mono); color: var(--text-tertiary); font-size: 0.75rem; }
+
+.v2mine-rowactions { display: inline-flex; justify-content: flex-end; width: 100%; }
+
+/* Difficulty pill — background/foreground from inline --pill-* custom properties. */
+.v2mine-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--pill-bg);
+  color: var(--pill-color);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.v2mine-pill--unrated { background: transparent; color: var(--text-tertiary); font-weight: 500; padding: 0; }
+
+/* Empty state (§19.2). */
+.v2mine-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-9) var(--space-4);
+  text-align: center;
+  color: var(--text-secondary);
+}
+.v2mine-empty__icon { width: 28px; height: 28px; color: var(--text-tertiary); }
+.v2mine-empty__title { color: var(--text-primary); }
+.v2mine-empty__hint { color: var(--text-tertiary); max-width: 360px; line-height: 1.5; margin-bottom: var(--space-1); }

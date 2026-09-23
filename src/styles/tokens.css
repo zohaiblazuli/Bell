@@ -303,7 +303,7 @@
 }
 
 /* Dark (v2). Tokens with a `dark` value flip here; driven by data-theme. */
-.app[data-theme='dark'] {
+[data-theme='dark'] {
   --accent: #2f80ff;
   --accent-soft: rgba(47, 128, 255, .161);
   --danger: #f15b78;
