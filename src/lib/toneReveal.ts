@@ -1,16 +1,20 @@
 import { flushSync } from 'react-dom';
 
 /**
- * The theme switch's motion (Bell App v2): Night grows out of the pressed moon as a circle; Day is
- * revealed by the dark screen shrinking back into the sun. Built on the View Transitions API — the
- * browser snapshots the old frame, `apply` commits the new tone synchronously, and one clip-path
- * animation on the right pseudo-element does the rest.
+ * The theme switch's motion (Bell App v2): the old tone shrinks away into the button you pressed —
+ * into the sun on the way to Day, into the moon on the way to Night — revealing the new tone already
+ * in place beneath it. Both directions are the same gesture. Night used to GROW out of the moon
+ * instead, and a circle flooding the window read as the app re-opening, since Startup v2's full
+ * stop floods it the same way.
+ *
+ * Built on the View Transitions API — the browser snapshots the old frame, `apply` commits the new
+ * tone synchronously, and one clip-path animation on the old snapshot does the rest.
  *
  * The flash on dark → light was the old frame reappearing for one frame after its shrink finished;
  * `fill: 'forwards'` holds the clip at zero until the transition tears down. Without the API, or with
  * motion reduced, the tone simply switches.
  */
-export function revealTone(toNight: boolean, origin: { x: number; y: number } | null, apply: () => void, reduced: boolean) {
+export function revealTone(origin: { x: number; y: number } | null, apply: () => void, reduced: boolean) {
   const doc = document as Document & {
     startViewTransition?: (cb: () => void) => { ready: Promise<void>; finished: Promise<void> };
   };
@@ -21,27 +25,18 @@ export function revealTone(toNight: boolean, origin: { x: number; y: number } | 
   const x = origin?.x ?? window.innerWidth - 60;
   const y = origin?.y ?? 40;
   const r = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
-  const root = document.documentElement;
-  root.classList.toggle('sk-to-day', !toNight);
   const vt = doc.startViewTransition(() => flushSync(apply));
-  void vt.finished.finally(() => root.classList.remove('sk-to-day'));
   void vt.ready.then(() => {
-    root.animate(
-      {
-        clipPath: toNight
-          ? [`circle(0px at ${x}px ${y}px)`, `circle(${r}px at ${x}px ${y}px)`]
-          : [`circle(${r}px at ${x}px ${y}px)`, `circle(0px at ${x}px ${y}px)`],
-      },
+    document.documentElement.animate(
+      { clipPath: [`circle(${r}px at ${x}px ${y}px)`, `circle(0px at ${x}px ${y}px)`] },
       {
         duration: 750,
-        // Grow and shrink want different curves. Night's reveal (grow) uses an ease-in-out, where the
-        // slow start is invisible — a tiny circle is meant to start small. Reusing that on the shrink
-        // made the full dark screen hang for a beat after the click before collapsing (ease-in), which
-        // read as lag. Day's reveal (shrink) instead starts fast so it responds the instant you press
-        // the sun, then settles into it — the design system's "rise" curve.
-        easing: toNight ? 'cubic-bezier(.65,0,.25,1)' : 'cubic-bezier(.2,.8,.2,1)',
+        // Starts fast so it answers the press at once, then settles into the button — the design
+        // system's "rise" curve. (An ease-in here made the full screen hang for a beat before
+        // collapsing, which read as lag.)
+        easing: 'cubic-bezier(.2,.8,.2,1)',
         fill: 'forwards',
-        pseudoElement: toNight ? '::view-transition-new(root)' : '::view-transition-old(root)',
+        pseudoElement: '::view-transition-old(root)',
       },
     );
   });

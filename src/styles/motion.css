@@ -207,17 +207,15 @@
   55% { transform: translateY(0) scale(1.08, .92); }
 }
 
-/* Theme switch — a circle reveal from the pressed sun/moon, run through the View Transitions API
- * (see state/themeTransition.ts). Default cross-fade off; the growing/shrinking layer is on top. */
+/* Theme switch — the old tone shrinks into the pressed sun or moon, run through the View Transitions
+ * API (see lib/toneReveal.ts). Default cross-fade off; the shrinking old layer is on top. */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
 }
-::view-transition-old(root) { z-index: 1; }
-::view-transition-new(root) { z-index: 2; }
-html.sk-to-day::view-transition-old(root) { z-index: 2; }
-html.sk-to-day::view-transition-new(root) { z-index: 1; }
+::view-transition-old(root) { z-index: 2; }
+::view-transition-new(root) { z-index: 1; }
 
 /* Motion off: every Shape Kit animation and transition collapses to its end frame. */
 @media (prefers-reduced-motion: reduce) {
