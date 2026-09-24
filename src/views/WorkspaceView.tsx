@@ -31,12 +31,14 @@ import Icon, { type IconName } from '../components/Icon';
 import IconButton from '@ui/IconButton';
 import Notice from '@ui/Notice';
 import Slider from '@ui/Slider';
-import type { Tone } from '@ui/TonePill';
 import FocusTimer from '../components/FocusTimer';
 import MarkSchemeSheet from '../components/MarkSchemeSheet';
 import PaperCanvas from '../components/PaperCanvas';
 import ClipPicker from '../components/ClipPicker';
-import TopBar from '../components/TopBar';
+import WindowLights from '../components/WindowLights';
+import PageJumper from '../components/PageJumper';
+import SubjectIcon from '@ui/icons/SubjectIcon';
+import Faces from '@ui/shapekit/Faces';
 import { readDocument } from '../lib/api';
 import { placeImage } from '../lib/clip';
 import { pageLabel, type NbEntry } from '../lib/notebooks';
@@ -55,17 +57,16 @@ import {
 import { sessionLabel } from '../lib/difficulty';
 import type { DocKind } from '../lib/types';
 import { openPdf, renderPage } from '../lib/pdf';
-import { loadInk, loadPref, paperKey, saveInk, savePref } from '../lib/store';
+import { loadInk, loadPref, paperKey, saveInk, savePref, saveReaderPos } from '../lib/store';
 import type { PaperRow } from '../lib/types';
 
 /**
- * Hidden at Zohaib's instruction, both of them working features rather than dead ends: focus mode
- * recedes the rail and the chrome, and "clip to notebook" lifts a region of a paper into a notebook
- * page. The machinery stays wired — flip either constant back to `true` and the control returns to
- * the bar exactly as it was — because the ask was to get them out of the way, not to delete them.
+ * Focus mode stays hidden at Zohaib's instruction — a working feature, kept wired so flipping the
+ * constant brings the control back. Clip to notebook was hidden the same way and is back on: the Bell
+ * App v2 handoff (2026-09-24) puts a Clip button and its notebook picker in the reader bar.
  */
 const SHOW_FOCUS_TOGGLE = false;
-const SHOW_CLIP_TOOL = false;
+const SHOW_CLIP_TOOL = true;
 
 /** The demo's page is 720 logical pixels wide; zoom multiplies that. */
 const BASE_WIDTH = 720;
@@ -83,19 +84,44 @@ const TOOLS: { tool: Tool; icon: IconName; label: string }[] = [
 /** Which of the two pages a mark was made on. Each keeps its own ink file and its own undo stack. */
 type Surface = 'qp' | 'ms';
 
+/** The reader's tool glyphs, drawn the Bell App v2 way: a slanted capped pen with a blue ink stroke,
+ *  a tilted block eraser with a red end, and a highlighter as a chisel nib over a yellow bar. */
+function ToolGlyph({ tool }: { tool: Tool }) {
+  if (tool === 'er')
+    return (
+      <span className="rd-glyph rd-glyph--er" aria-hidden="true">
+        <i>
+          <i />
+        </i>
+        <b />
+      </span>
+    );
+  return (
+    <span className={`rd-glyph rd-glyph--${tool}`} aria-hidden="true">
+      <i>
+        <i />
+        <i />
+        <i />
+      </i>
+      <b />
+    </span>
+  );
+}
+
+/** "How did this one feel?" — the four faces under the mark scheme, and what Hush says back. */
+const FEELINGS = [
+  { id: 'easy', label: 'Easy', kind: 'sun' as const, line: 'Easy? Try a Hard one next.' },
+  { id: 'okay', label: 'Okay', kind: 'box' as const, line: 'Okay counts. Keep going.' },
+  { id: 'tough', label: 'Tough', kind: 'blob' as const, line: 'Tough is where marks hide.' },
+  { id: 'lost', label: 'Lost', kind: 'tri' as const, line: 'Mark scheme. Line by line.' },
+];
+
 export interface Props {
   paper: PaperRow;
   onBack: () => void;
   /** Focus mode lives on `.app`, because it also recedes the sidebar. */
   focus: boolean;
   onToggleFocus: () => void;
-  /* The shared top bar's own props, passed straight through — see the header note. */
-  tone: Tone;
-  onTone: () => void;
-  /** The catalogue is syncing: the bar's sync button spins and is disabled. */
-  busy: boolean;
-  onReindex: () => void;
-  onSearch: () => void;
   /**
    * Fetch a document to this machine and resolve to where it landed, or null if it
    * failed. The reader calls this itself rather than refusing to open an undownloaded
@@ -114,6 +140,8 @@ export interface Props {
   onOpenNotebook?: (id: string, page: number) => void;
   /** Reload the notebooks list after a creation */
   onRefreshNotebooks?: () => Promise<void> | void;
+  /** Hush answers the feelings row: the line for this paper, or null when it is cleared. */
+  onFeel?: (line: string | null) => void;
 }
 
 /** One entry in §5's rail: a `--paper` sheet, the real page drawn into it, and its number. */
@@ -268,15 +296,11 @@ export default function WorkspaceView({
   onBack,
   focus,
   onToggleFocus,
-  tone,
-  onTone,
-  busy,
-  onReindex,
-  onSearch,
   onDownload,
   notebooks,
   onNewNotebook,
   onOpenNotebook,
+  onFeel,
 }: Props) {
   const id = paperKey(paper.subjectCode, paper.scode, paper.component);
   /** The mark scheme's ink is its own state key — `inkKey` folds the slash into a dash. */
@@ -294,6 +318,14 @@ export default function WorkspaceView({
    */
   const [zoom, setZoom] = useState(2);
   const [msOpen, setMsOpen] = useState(false);
+  /** How this paper felt, kept per paper so reopening it remembers. */
+  const [feel, setFeel] = useState<string | null>(() => loadPref<string | null>(`feel.${id}`, null));
+  const pickFeel = (next: string) => {
+    const value = feel === next ? null : next;
+    setFeel(value);
+    savePref(`feel.${id}`, value);
+    onFeel?.(FEELINGS.find((f) => f.id === value)?.line ?? null);
+  };
   /** Set while this reader is fetching its own question paper. */
   const [fetching, setFetching] = useState(false);
   /** Resolved mark-scheme path: the row's, or wherever a download just put it. */
@@ -497,6 +529,11 @@ export default function WorkspaceView({
   }, [msOpen]);
 
   const pageCount = doc?.numPages ?? 1;
+
+  // Home's "pick up where you left off" strip reads this.
+  useEffect(() => {
+    if (doc) saveReaderPos(id, { page, pages: doc.numPages });
+  }, [doc, id, page]);
   const nib = useMemo<InkSettings>(
     () => ({ token: swatch, strokePx: stroke, opacity: opacity[tool] }),
     [swatch, stroke, opacity, tool],
@@ -686,85 +723,80 @@ export default function WorkspaceView({
 
   return (
     <>
-      <TopBar
-        /* §4's title is three type styles in one row: the subject in Body/Strong, the code in
-           Mono/Meta, the session in Body/Small. TopBar takes a node for exactly this. */
-        title={
-          <span className="rd-ident">
-            <span className="rd-ident-name">{paper.subjectName}</span>
-            <span className="t-mono-meta rd-ident-code">{code}</span>
-            <span className="rd-ident-sep" aria-hidden="true">
-              ·
-            </span>
-            <span className="t-body-small rd-ident-session">{session}</span>
+      {/* Bell App v2's reader bar: back, the subject and its code on the left; the focus clock in
+          the middle; Clip, the mark scheme and the window controls on the right. */}
+      <div className="rd-top" data-tauri-drag-region>
+        <div className="rd-top-l">
+          <button type="button" className="rd-back" title="Back to Past Papers" aria-label="Back to Past Papers" onClick={onBack}>
+            ←
+          </button>
+          <SubjectIcon code={paper.subjectCode} size={21} />
+          <span className="rd-top-name">{paper.subjectName}</span>
+          <span className="rd-top-code">
+            {paper.subjectCode}/{paper.component} · {session}
           </span>
-        }
-        tone={tone}
-        onTone={onTone}
-        busy={busy}
-        onReindex={onReindex}
-        onSearch={onSearch}
-        /* §4 puts back at x 77, before the title. */
-        left={<IconButton icon="left" label="Back to the library" onClick={onBack} />}
-        /* The Reader's composition has no search field, and its own controls need the room. */
-        showSearch={false}
-        /* Centred on the window, which is where Zohaib asked for the clock. */
-        center={<FocusTimer paper={id} />}
-        right={
-          SHOW_FOCUS_TOGGLE || SHOW_CLIP_TOOL ? (
-            <div className="rd-tbr">
-              {SHOW_FOCUS_TOGGLE && (
-                <IconButton
-                  icon="focus"
-                  label="Focus mode"
-                  active={focus}
-                  title="Focus mode — everything but the paper recedes"
-                  onClick={onToggleFocus}
-                />
-              )}
-
-              {/* §5d's `clipping` frame is drawn on the notebook page; this is the end of the app that
-                  produces it. The button both opens the picker and, once a destination is armed,
-                  disarms it — so the same control that turns the mode on turns it off. */}
-              {SHOW_CLIP_TOOL && (
-                <span className="rd-clipwrap">
-                  <IconButton
-                    icon="clip"
-                    label={clipTo ? `Stop clipping to ${clipTo.name}` : 'Clip a region to a notebook'}
-                    active={clipTo != null}
-                    title={
-                      clipTo
-                        ? `Drag a box on the page to keep it in ${clipTo.name}`
-                        : 'Clip part of this paper into a notebook'
-                    }
-                    onClick={() => {
-                      if (clipTo) {
-                        setClipTo(null);
-                        setClipped(null);
-                      } else setPicking((p) => !p);
-                    }}
-                  />
-                  <ClipPicker
-                    open={picking}
-                    notebooks={notebooks ?? []}
-                    loading={notebooks == null}
-                    onClose={() => setPicking(false)}
-                    onNew={() => {
-                      setPicking(false);
-                      onNewNotebook?.();
-                    }}
-                    onPick={(entry) => {
-                      setPicking(false);
-                      setClipped(null);
-                      setClipTo(entry);
-                    }}
-                  />
-                </span>
-              )}
-            </div>
-          ) : undefined
-        }
-      />
+        </div>
+        <FocusTimer paper={id} />
+        <div className="rd-top-r">
+          {SHOW_FOCUS_TOGGLE && (
+            <IconButton icon="focus" label="Focus mode" active={focus} title="Focus mode — everything but the paper recedes" onClick={onToggleFocus} />
+          )}
+          {SHOW_CLIP_TOOL && (
+            <span className="rd-clipwrap">
+              <button
+                type="button"
+                className="rd-topbtn"
+                aria-pressed={clipTo != null || picking}
+                title={clipTo ? `Stop clipping to ${clipTo.name}` : 'Clip part of this page into a notebook'}
+                onClick={() => {
+                  if (clipTo) {
+                    setClipTo(null);
+                    setClipped(null);
+                  } else setPicking((p) => !p);
+                }}
+              >
+                <i className="rd-clip-glyph" aria-hidden="true" />
+                Clip
+              </button>
+              <ClipPicker
+                open={picking}
+                notebooks={notebooks ?? []}
+                loading={notebooks == null}
+                onClose={() => setPicking(false)}
+                onNew={() => {
+                  setPicking(false);
+                  onNewNotebook?.();
+                }}
+                onPick={(entry) => {
+                  setPicking(false);
+                  setClipped(null);
+                  setClipTo(entry);
+                }}
+              />
+            </span>
+          )}
+          <button
+            type="button"
+            className="rd-topbtn"
+            aria-pressed={msOpen}
+            disabled={!msPath && !paper.hasMs}
+            title={
+              msPath
+                ? msOpen
+                  ? 'Close the mark scheme'
+                  : 'Open the mark scheme beside the paper'
+                : paper.hasMs
+                  ? 'Download the mark scheme'
+                  : 'No mark scheme for this sitting'
+            }
+            onClick={() => void openMarkScheme()}
+          >
+            <i className="rd-ms-glyph" aria-hidden="true" />
+            Mark scheme
+          </button>
+          <WindowLights />
+        </div>
+      </div>
 
       <section className="view rd" data-ms={msOpen ? 'open' : undefined}>
         {/* §5 page rail `194:732`. The eyebrow is pinned and the thumbs scroll: the file draws five
@@ -950,111 +982,108 @@ export default function WorkspaceView({
           <div className="rd-bar">
             <div className="rd-bar-grp" role="group" aria-label="Annotation tools">
               {TOOLS.map((t) => (
-                <IconButton
+                <button
                   key={t.tool}
-                  icon={t.icon}
-                  label={t.label}
-                  active={armed && tool === t.tool}
+                  type="button"
+                  className="rd-tool"
+                  aria-pressed={armed && tool === t.tool}
+                  aria-label={t.label}
                   title={`${t.label} — writes on the paper and on the mark scheme; press again to just read`}
                   onClick={() => takeTool(t.tool)}
-                />
+                >
+                  <ToolGlyph tool={t.tool} />
+                </button>
               ))}
-              {/* Always rendered, disabled when nothing is in your hand: showing it only while a tool
-                  is armed would shuffle a centred bar sideways by half a button every time. */}
-              <IconButton
-                icon="chev"
-                className={settingsOpen ? 'rd-caret rd-caret--open' : 'rd-caret'}
-                label={settingsOpen ? `Hide the ${toolName.toLowerCase()} settings` : `${toolName} settings`}
-                active={armed && settingsOpen}
+              <button
+                type="button"
+                className={settingsOpen ? 'rd-tool rd-caret rd-caret--open' : 'rd-tool rd-caret'}
+                aria-pressed={armed && settingsOpen}
+                aria-label={settingsOpen ? `Hide the ${toolName.toLowerCase()} settings` : `${toolName} settings`}
                 disabled={!armed}
                 onClick={() => setSettingsOpen((open) => !open)}
-              />
+              >
+                <i aria-hidden="true" />
+              </button>
+            </div>
+
+            <span className="rd-bar-sep" aria-hidden="true" />
+
+            <div className="rd-inks" role="group" aria-label="Ink colour">
+              {INK_SWATCHES.slice(0, 3).map((sw) => (
+                <button
+                  key={sw.token}
+                  type="button"
+                  className="rd-ink"
+                  style={{ background: `var(${sw.token})` }}
+                  aria-label={sw.label}
+                  aria-pressed={sw.token === swatch}
+                  title={sw.label}
+                  onClick={() => pickSwatch(sw.token)}
+                />
+              ))}
             </div>
 
             <span className="rd-bar-sep" aria-hidden="true" />
 
             <div className="rd-bar-grp" role="group" aria-label="History">
-              <IconButton
-                icon="ret"
-                label={surface === 'ms' ? 'Undo the last mark on the mark scheme' : 'Undo the last mark'}
+              <button
+                type="button"
+                className="rd-glyphbtn"
+                aria-label={surface === 'ms' ? 'Undo the last mark on the mark scheme' : 'Undo the last mark'}
+                title="Undo"
                 disabled={(inks[surface][activePage] ?? []).length === 0}
                 onClick={undo}
-              />
-              {/* Mirrored, the way §8 makes `next page` out of the `left` glyph rotated 180°. */}
-              <IconButton
-                icon="ret"
-                className="rd-flip"
-                label="Redo"
+              >
+                ↶
+              </button>
+              <button
+                type="button"
+                className="rd-glyphbtn"
+                aria-label="Redo"
+                title="Redo"
                 disabled={(undone[surface][activePage] ?? []).length === 0}
                 onClick={redo}
-              />
+              >
+                ↷
+              </button>
             </div>
 
             <span className="rd-bar-sep" aria-hidden="true" />
 
             <div className="rd-bar-grp" role="group" aria-label="Page">
-              <IconButton
-                icon="left"
-                label="Previous page"
-                disabled={page === 1}
-                onClick={() => go(-1)}
-              />
-              <span className="rd-bar-count t-mono-small">
-                {page} / {pageCount}
-              </span>
-              <IconButton
-                icon="left"
-                className="rd-flip"
-                label="Next page"
+              <button type="button" className="rd-glyphbtn rd-pagebtn" aria-label="Previous page" title="Previous page" disabled={page === 1} onClick={() => go(-1)}>
+                ←
+              </button>
+              <PageJumper page={page} pageCount={pageCount} onJump={goTo} />
+              <button
+                type="button"
+                className="rd-glyphbtn rd-pagebtn"
+                aria-label="Next page"
+                title="Next page"
                 disabled={page === pageCount}
                 onClick={() => go(1)}
-              />
+              >
+                →
+              </button>
             </div>
 
             <span className="rd-bar-sep" aria-hidden="true" />
 
-            {/* Zoom has no counterpart in the file — the mock's paper is a fixed 500 x 707 box — so it
-                keeps the app's control, with a readout so the level is stated rather than guessed at.
-                It acts on the well; the mark scheme's own zoom sits in the sheet's head. */}
             <div className="rd-bar-grp rd-zoom" role="group" aria-label="Zoom">
-              <IconButton
-                icon="zout"
-                label="Zoom out"
-                disabled={zoom === 0}
-                onClick={() => setZoom((z) => Math.max(0, z - 1))}
-              />
-              <span className="rd-zoom-read t-mono-small">{Math.round(ZOOMS[zoom] * 100)}%</span>
-              <IconButton
-                icon="zin"
-                label="Zoom in"
+              <button type="button" className="rd-glyphbtn" aria-label="Zoom out" disabled={zoom === 0} onClick={() => setZoom((z) => Math.max(0, z - 1))}>
+                −
+              </button>
+              <span className="rd-zoom-read">{Math.round(ZOOMS[zoom] * 100)}%</span>
+              <button
+                type="button"
+                className="rd-glyphbtn"
+                aria-label="Zoom in"
                 disabled={zoom === ZOOMS.length - 1}
                 onClick={() => setZoom((z) => Math.min(ZOOMS.length - 1, z + 1))}
-              />
+              >
+                +
+              </button>
             </div>
-
-            <span className="rd-bar-sep" aria-hidden="true" />
-
-            {/* §4's `docs` word chip `195:20`, promoted: it opens half the screen, so it reads as a
-                labelled button in the toolbar rather than 11px lower-case text in the corner. */}
-            <button
-              type="button"
-              className="rd-msbtn t-body-strong"
-              aria-pressed={msOpen}
-              disabled={!msPath && !paper.hasMs}
-              title={
-                msPath
-                  ? msOpen
-                    ? 'Close the mark scheme'
-                    : 'Open the mark scheme beside the paper'
-                  : paper.hasMs
-                    ? 'Download the mark scheme'
-                    : 'No mark scheme for this sitting'
-              }
-              onClick={() => void openMarkScheme()}
-            >
-              <Icon name="book" />
-              <span>Mark scheme</span>
-            </button>
           </div>
         </div>
 
@@ -1069,6 +1098,20 @@ export default function WorkspaceView({
           marks={inks.ms}
           onCommit={(n, mark) => commit('ms', n, mark)}
           onPage={setMsPage}
+          footer={
+            <div className="rd-feel">
+              <div className="rd-feel-head">
+                <span>HOW DID THIS ONE FEEL?</span>
+                <i />
+              </div>
+              <Faces
+                label="How did this paper feel?"
+                options={FEELINGS}
+                picked={new Set(feel ? [feel] : [])}
+                onPick={pickFeel}
+              />
+            </div>
+          }
         />
       </section>
     </>

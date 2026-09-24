@@ -163,6 +163,10 @@ export default function App() {
    * The download toast (Bell App v2): Hush carries the paper home while the bar fills, then celebrates
    * "On your disk." A failure clears it and leaves the library's own error notice to explain.
    */
+  /** Hush's answer to the reader's feelings row — shown while that paper is the open tab. */
+  const [feelLine, setFeelLine] = useState<string | null>(null);
+  useEffect(() => setFeelLine(null), [tabsMgr.activeId]);
+
   const [toast, setToast] = useState<{ phase: 'dl' | 'done'; label: string } | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
   const fetchPaper = useCallback(
@@ -598,7 +602,7 @@ export default function App() {
             notebookCount={notebooks.list?.length ?? null}
             todayMinutes={todayFocusMinutes()}
             goalMinutes={settings.goalMinutes}
-            line={hushLine(currentView, {
+            line={feelLine && inReader ? feelLine : hushLine(currentView, {
               papers: lib.stats?.papers ?? null,
               recentCount: loadRecent().length,
               bookmarks: study.marks.bookmarks.size,
@@ -732,11 +736,6 @@ export default function App() {
                   setFocusMode(false);
                   tabsMgr.openShelf('library');
                 }}
-                tone={tone}
-                onTone={toggleTone}
-                busy={lib.busy}
-                onReindex={() => void lib.runSync()}
-                onSearch={() => setPalette(true)}
                 onDownload={lib.download}
                 notebooks={notebooks.list}
                 onNewNotebook={() => {
@@ -745,6 +744,7 @@ export default function App() {
                 }}
                 onOpenNotebook={(id, page) => openNotebookAt(id, page)}
                 onRefreshNotebooks={notebooks.refresh}
+                onFeel={setFeelLine}
               />
             </div>
           </div>

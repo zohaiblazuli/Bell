@@ -245,6 +245,8 @@
   --sk-red: #d9432f;
   --sk-black: #1a1a1a;
   --sk-cream: #efe9dc;
+  --sk-green: #3e8a5a;
+  --sk-gold: #c98f0e;
 }
 
 /* Night. Only the tokens that actually change tone appear here. */

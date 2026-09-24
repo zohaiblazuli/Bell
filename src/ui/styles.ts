@@ -31,6 +31,7 @@ import './SectionLabel.css';
 import './SegmentedControl.css';
 import './SessionCode.css';
 import './shapekit/brand.css';
+import './shapekit/Faces.css';
 import './shapekit/Flame.css';
 import './shapekit/Heatmap.css';
 import './shapekit/Hush.css';

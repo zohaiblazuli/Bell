@@ -61,12 +61,14 @@ export interface InkSwatch {
  * retone; the two heat tokens do, which is exactly why the drawn literal is frozen per stroke.
  */
 export const INK_SWATCHES: readonly InkSwatch[] = [
-  { token: '--iris-3', label: 'Brand blue' },
-  { token: '--iris-1', label: 'Light blue' },
-  { token: '--iris-2', label: 'Bright blue' },
-  { token: '--d2', label: 'Orange' },
-  { token: '--d5', label: 'Red' },
+  // Shape Kit (Bell App v2): blue, red and graphite first — the three the reader bar shows — then the
+  // rest of the kit in the settings popover. All mode-invariant: ink sits on the always-white paper.
+  { token: '--sk-blue', label: 'Blue' },
+  { token: '--sk-red', label: 'Red' },
   { token: '--page-ink', label: 'Graphite' },
+  { token: '--sk-navy', label: 'Navy' },
+  { token: '--sk-green', label: 'Green' },
+  { token: '--sk-gold', label: 'Gold' },
 ] as const;
 
 /** §7b's original three nibs, in reference-page px. Kept for reference; the Reader's pen now scales

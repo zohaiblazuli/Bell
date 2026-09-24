@@ -1,53 +1,30 @@
-/* ─── Page Jumper Input & Indicator ────────────────────────────────────────── */
-
+/* Page jumper — Bell App v2: the current page as a small framed field, then "/ total". Type a number
+   and press Enter, or use the arrow keys. */
 .rd-page-jumper {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 3px;
-  min-width: 54px;
-  color: var(--ink-2);
-  user-select: none;
-}
-
-.rd-page-input {
-  min-width: 26px;
-  height: 22px;
-  padding: 0 4px;
-  margin: 0;
-  border: 1px solid transparent;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--ink-1);
-  font: inherit;
+  gap: 4px;
+  padding: 0 2px;
+  font-family: var(--font-mono);
   font-size: 12px;
-  line-height: 22px;
-  text-align: center;
-  outline: none;
+}
+.rd-page-input {
+  height: 26px;
   box-sizing: border-box;
-  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
-  cursor: text;
+  text-align: center;
+  border: 0;
+  outline: 0;
+  border-radius: 0;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1.5px var(--line);
+  font: inherit;
+  color: inherit;
+  transition: box-shadow .16s;
 }
-
-.rd-page-input:hover {
-  background: var(--surface-hover);
-  border-color: var(--hair);
-}
-
 .rd-page-input:focus {
-  background: var(--surface);
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
-  color: var(--ink-1);
+  box-shadow: inset 0 0 0 1.5px var(--blue);
 }
-
-.rd-page-slash {
-  color: var(--ink-3);
-  font-weight: 400;
-  opacity: 0.7;
-}
-
+.rd-page-slash,
 .rd-page-total {
-  color: var(--ink-2);
-  font-weight: 500;
+  color: var(--ink);
 }

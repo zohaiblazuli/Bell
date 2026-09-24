@@ -296,6 +296,8 @@ const GROUPS = [
       '--sk-red': { day: '#d9432f' },
       '--sk-black': { day: '#1a1a1a' },
       '--sk-cream': { day: '#efe9dc' },
+      '--sk-green': { day: '#3e8a5a' },
+      '--sk-gold': { day: '#c98f0e' },
     },
   },
 ];
