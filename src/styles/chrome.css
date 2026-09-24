@@ -160,14 +160,16 @@
 }
 
 /* ---------- views ---------- */
-/* Each new page is revealed by a quarter-circle sweeping out from the top-left corner. */
+/* Each new page is revealed by a quarter-circle sweeping out from the top-left corner. The fill is
+   `backwards`, not `both`: a clip-path left on the view after the sweep would also clip every
+   position:fixed dialog scrim raised from inside it, leaving the sidebar undimmed. */
 .view {
   flex: 1;
   min-height: 0;
   overflow: auto;
   overflow-x: hidden;
   position: relative;
-  animation: sk-iris .7s cubic-bezier(.6, 0, .2, 1) both;
+  animation: sk-iris .7s cubic-bezier(.6, 0, .2, 1) backwards;
 }
 
 /* ---------- focus mode: chrome recedes (transform + opacity only) ---------- */

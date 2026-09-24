@@ -38,6 +38,8 @@ export interface HeatmapProps {
 export default function Heatmap({ days, since, now }: HeatmapProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const [tip, setTip] = useState<{ label: string; x: number; y: number } | null>(null);
+  // Where the window is scrolled to, so a season band cut by its left edge can slide its label in.
+  const [left, setLeft] = useState(0);
 
   const model = useMemo(() => {
     const today = noon(now);
@@ -82,7 +84,10 @@ export default function Heatmap({ days, since, now }: HeatmapProps) {
   // Open on today: the newest weeks are the ones that matter, day one is a scroll away.
   useLayoutEffect(() => {
     const el = scroller.current;
-    if (el) el.scrollLeft = el.scrollWidth;
+    if (el) {
+      el.scrollLeft = el.scrollWidth;
+      setLeft(el.scrollLeft);
+    }
   }, [model.weeks]);
 
   return (
@@ -93,7 +98,10 @@ export default function Heatmap({ days, since, now }: HeatmapProps) {
           <i />
         </div>
       )}
-      <div className="sk-heat__scroll" ref={scroller} onScroll={() => setTip(null)}>
+      <div className="sk-heat__scroll" ref={scroller} onScroll={(e) => {
+          setTip(null);
+          setLeft(e.currentTarget.scrollLeft);
+        }}>
         <div className="sk-heat__inner">
           <div className="sk-heat__months">
             {model.months.map((m) => (
@@ -129,12 +137,18 @@ export default function Heatmap({ days, since, now }: HeatmapProps) {
             })}
           </div>
           <div className="sk-heat__bands">
-            {model.bands.map((b) => (
-              <div key={b.key} style={{ left: b.left, width: b.width }}>
-                <i style={{ background: b.colour }} />
-                <span>{b.label}</span>
-              </div>
-            ))}
+            {model.bands.map((b) => {
+              // A band that starts off the left edge keeps its label inside the window; one with
+              // too little left in view to hold a label shows just its bar.
+              const cut = Math.max(0, left - b.left);
+              const room = b.width - cut;
+              return (
+                <div key={b.key} style={{ left: b.left, width: b.width }}>
+                  <i style={{ background: b.colour }} />
+                  {room >= 56 || cut === 0 ? <span style={cut ? { marginLeft: cut } : undefined}>{b.label}</span> : null}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

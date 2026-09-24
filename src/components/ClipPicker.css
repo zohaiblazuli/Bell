@@ -1,121 +1,104 @@
-/* "Clip to notebook" destination picker.
-
-   Chrome glass, because it is a popover over content — rule 1. The recipe is the ⌘K palette's and
-   the mark-scheme sheet's: `--glass-strong`, a hairline, a real backdrop blur, and `--shadow-pop`.
-   Its own class prefix, `clipp-`, so nothing here can collide with the Reader's `rd-` block. */
+/* Clip to notebook — Bell App v2: a 280px framed menu hanging under the Reader's Clip button. */
 
 .clipp {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  z-index: 40;
-  width: 268px; /* the inspector's width — the same object, seen from the Reader */
-  max-height: 380px;
-  overflow: hidden auto;
-  padding: 10px;
-  border: 1px solid var(--hair);
-  border-radius: var(--r-panel);
-  background: var(--glass-strong);
-  box-shadow: var(--shadow-pop);
-}
-
-.clipp-head {
-  padding: 2px 6px 8px;
-  color: var(--ink-3);
-}
-
-.clipp-empty {
-  margin: 0;
-  padding: 0 6px 10px;
-  color: var(--ink-2);
-}
-
-.clipp-list {
+  z-index: 9;
+  width: 280px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  padding: 10px 8px 8px;
+  background: var(--ground);
+  color: var(--ink);
+  box-shadow: 0 0 0 2px var(--line), 6px 6px 0 var(--line);
+  animation: sk-rise .22s cubic-bezier(.2, .8, .2, 1) both;
+}
+.clipp-head {
+  padding: 2px 8px 8px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: .14em;
+}
+.clipp-empty {
+  margin: 0;
+  padding: 4px 8px 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--mute);
+}
+.clipp-list {
+  max-height: 320px;
   margin: 0;
   padding: 0;
+  overflow-y: auto;
   list-style: none;
 }
-
+.clipp-list li {
+  animation: sk-slide-in .25s cubic-bezier(.2, .8, .2, 1) both;
+}
 .clipp-row {
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 100%;
-  padding: 7px 6px;
-  border: 0;
-  border-radius: var(--r-btn);
-  background: none;
-  color: inherit;
+  padding: 7px 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
   text-align: left;
+  cursor: pointer;
 }
 .clipp-row:hover {
-  background: var(--hair-2);
+  background: var(--pale2);
 }
-/* Rule 2: the accent as a line on a live element. `--accent-soft` is the permitted wash and it is
-   already spent on the row fill, so the ring carries the focus. */
 .clipp-row:focus-visible {
-  outline: 1px solid var(--accent);
-  outline-offset: -1px;
-  background: var(--accent-soft);
+  outline: 2px solid var(--blue);
+  outline-offset: -2px;
 }
-
-/* §4e's cover, at the smallest size that still reads as a book rather than a colour chip: the spine
-   is the whole tell, so it stays even at 22px. */
+/* The notebook's cover as a small framed book. */
 .clipp-swatch {
-  position: relative;
-  flex: 0 0 auto;
-  width: 22px;
-  height: 28px;
-  border-radius: 4px;
-  overflow: hidden;
+  flex: none;
+  width: 16px;
+  height: 22px;
+  box-shadow: inset 0 0 0 1.5px var(--line);
 }
-.clipp-swatch::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: var(--cover-shade);
-}
-
 .clipp-text {
   display: flex;
-  min-width: 0;
   flex-direction: column;
-  gap: 1px;
+  min-width: 0;
 }
-
 .clipp-name {
-  color: var(--ink);
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  font-weight: 600;
 }
-
 .clipp-meta {
-  color: var(--ink-3);
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: var(--mute);
 }
-
-.clipp-plus {
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
-  width: 22px;
-  height: 28px;
-  border: 1px dashed var(--hair);
-  border-radius: 4px;
-  color: var(--ink-3);
+.clipp-new {
+  margin-top: 4px;
+  padding: 8px;
+  border-top: 1px solid rgba(var(--ink-rgb), .18);
 }
-.clipp-plus svg {
-  width: 14px;
-  height: 14px;
-}
-
 .clipp-new .clipp-name {
-  color: var(--ink-2);
+  font-weight: 400;
+}
+.clipp-plus {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 0 2px var(--line);
+  font-size: 13px;
+  line-height: 1;
 }

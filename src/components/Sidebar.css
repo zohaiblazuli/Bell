@@ -1,7 +1,8 @@
 /* The Shape Kit sidebar — geometry straight from Bell App v2 (228px, 2px ink rule, 38px rows). */
 .sk-side {
+  /* No z-index: the sidebar never overlaps the stage, and lifting it would put it above every
+     dialog scrim raised from inside a view (the active tab pane is its own z-index 2 context). */
   position: relative;
-  z-index: 3;
   grid-column: 1;
   grid-row: 1 / -1;
   display: flex;
