@@ -143,6 +143,8 @@
 @keyframes sk-ear-flap-l { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-24deg); } }
 @keyframes sk-ear-flap-r { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(24deg); } }
 
+@keyframes sk-pal-in { from { opacity: 0; transform: translateY(-18px) scale(.98); } to { opacity: 1; transform: none; } }
+
 /* star gate */
 @keyframes sk-twinkle {
   0%, 100% { transform: scale(.6) rotate(0); opacity: .4; }
