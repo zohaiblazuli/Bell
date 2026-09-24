@@ -163,8 +163,6 @@ function etaLabel(ms: number): string {
   return `about ${plural(hours, 'hour', 'hours')} ${minutes % 60}m left`;
 }
 
-const TILES_PER_PAGE = 12;
-
 /** 28 blocks at 24x10, gap 4 → the 780 bar of §5.5. */
 const PROGRESS_BLOCKS = 28;
 
@@ -254,7 +252,6 @@ export default function OnboardingView({
   const [step, setStep] = useState(1);
   /** 03 only: the filter box, and whether the grid has been opened past its first twelve. */
   const [query, setQuery] = useState('');
-  const [showAll, setShowAll] = useState(false);
 
   const bodyRef = useRef<HTMLDivElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
@@ -282,7 +279,6 @@ export default function OnboardingView({
         : boardSubjects,
     [boardSubjects, needle],
   );
-  const tiles = showAll ? matches : matches.slice(0, TILES_PER_PAGE);
   /** Nothing to offer on 03, so it must say why and not block the flow. */
   const noSubjects = boardSubjects.length === 0;
   /** §5.3's `Search 34 A Level subjects`, with the index's own count and the chosen board. */
@@ -647,7 +643,7 @@ export default function OnboardingView({
                 ) : (
                   <>
                     <div className="onb-search">
-                      <Icon name="search" className="onb-search__glyph" />
+                      <i className="onb-search__ring" aria-hidden="true" />
                       <input
                         className="onb-search__input t-body-default"
                         type="text"
@@ -664,7 +660,7 @@ export default function OnboardingView({
                       <p className="onb-empty t-body-default">Nothing matches “{query.trim()}”.</p>
                     ) : (
                       <div className="onb-grid" role="group" aria-label="Subjects">
-                        {tiles.map((s) => {
+                        {matches.map((s, i) => {
                           const on = answers.subjects.includes(s.code);
                           return (
                             <button
@@ -674,32 +670,22 @@ export default function OnboardingView({
                               aria-pressed={on}
                               onClick={() => toggleSubject(s.code)}
                             >
-                              <SubjectIcon code={s.code} size={22} className="onb-tile__glyph" />
+                              <SubjectIcon
+                                code={s.code}
+                                size={26}
+                                className="onb-tile__glyph"
+                                style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
+                              />
                               <span className="onb-tile__label">
                                 <span className="t-body-chip">{s.name}</span>
                                 <span className="onb-tile__code t-mono-small">{s.code}</span>
                               </span>
-                              {on && <Icon name="check" className="onb-tile__check" />}
+                              <i className="onb-tile__box" aria-hidden="true" />
                             </button>
                           );
                         })}
                       </div>
                     )}
-
-                    <p className="onb-showing t-body-meta">
-                      <span>
-                        Showing {tiles.length.toLocaleString()} of {matches.length.toLocaleString()}
-                      </span>
-                      {matches.length > TILES_PER_PAGE && (
-                        <button
-                          type="button"
-                          className="onb-link t-body-meta"
-                          onClick={() => setShowAll(!showAll)}
-                        >
-                          {showAll ? 'Show fewer subjects' : 'Show all subjects'}
-                        </button>
-                      )}
-                    </p>
                   </>
                 )}
               </>

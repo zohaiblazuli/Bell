@@ -8,6 +8,7 @@ import './Chip.css';
 import './Dialog.css';
 import './Field.css';
 import './IconButton.css';
+import './icons/SubjectIcon.css';
 import './Kbd.css';
 import './Meter.css';
 import './NotebookCover.css';

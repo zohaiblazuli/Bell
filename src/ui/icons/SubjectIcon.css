@@ -1,0 +1,19 @@
+/* Shape Kit subject marks: a 26 × 26 grid of absolutely placed boxes, scaled to the requested size. */
+.sk-subject {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  vertical-align: middle;
+}
+.sk-subject__grid {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  transform-origin: 0 0;
+}
+.sk-subject__grid > i {
+  position: absolute;
+  display: block;
+}
