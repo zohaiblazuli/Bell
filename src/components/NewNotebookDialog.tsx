@@ -239,7 +239,7 @@ export default function NewNotebookDialog({ open, subjects, onClose, onCreate }:
 
   const stickerTiles: { id: StickerId; name: string }[] = [
     ...stickers,
-    { id: 'bell', name: 'Mr. Bell' },
+    { id: 'bell', name: 'Bell owl' },
   ];
 
   return (

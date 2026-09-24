@@ -34,11 +34,11 @@ function css(v) {
 
 const GROUPS = [
   {
-    title: 'Type — SF Pro for UI (split at Apple’s 20pt optical crossover) and Geist Mono for\n     exam and machine data. Two families, not three: `Ink/Annotation` and its Caveat face were\n     deleted from the design file, and the app never rendered ink as text anyway — annotations are\n     canvas strokes. Faces vendored: npm run fonts.',
+    title: 'Type — the Shape Kit pair: Jost for the interface and Azeret Mono for codes, counts and\n     dates (Nanum Pen Script, for handwriting, is set where it is used). All vendored in\n     src/assets/fonts and declared in styles/shapekit-fonts.css.',
     tokens: {
       '--font-ui': { day: "'Jost', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif" },
       '--font-disp': { day: "'Jost', 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif" },
-      '--font-mono': { day: "'Azeret Mono', 'Geist Mono', ui-monospace, 'Cascadia Code', Consolas, monospace" },
+      '--font-mono': { day: "'Azeret Mono', ui-monospace, 'Cascadia Code', Consolas, monospace" },
     },
   },
   {

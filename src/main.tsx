@@ -8,7 +8,6 @@ import { hydrate } from './lib/store';
 // component layer — which must come last so a primitive's rules win over the app.css block it
 // supersedes while the port is in flight.
 import './styles/index.css';
-import './styles/fonts.css';
 import './styles/shapekit-fonts.css';
 import './styles/tokens.css';
 import './styles/type.css';

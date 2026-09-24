@@ -5,13 +5,12 @@
    prefers-color-scheme. A token declared once is deliberately identical in both tones. */
 
 :root {
-  /* Type — SF Pro for UI (split at Apple’s 20pt optical crossover) and Geist Mono for
-     exam and machine data. Two families, not three: `Ink/Annotation` and its Caveat face were
-     deleted from the design file, and the app never rendered ink as text anyway — annotations are
-     canvas strokes. Faces vendored: npm run fonts. */
+  /* Type — the Shape Kit pair: Jost for the interface and Azeret Mono for codes, counts and
+     dates (Nanum Pen Script, for handwriting, is set where it is used). All vendored in
+     src/assets/fonts and declared in styles/shapekit-fonts.css. */
   --font-ui: 'Jost', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
   --font-disp: 'Jost', 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
-  --font-mono: 'Azeret Mono', 'Geist Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+  --font-mono: 'Azeret Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
 
   /* Ground — a picked cool periwinkle-grey in Day, never flat grey. Night is a BRIGHT
      stack knocked down by translucent scrims, not a dark base: the Night sidebar composites to
