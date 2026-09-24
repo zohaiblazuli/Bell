@@ -22,7 +22,7 @@ import ToolDock from '../components/ToolDock';
 import NotebookPage from '../components/NotebookPage';
 import Inspector from '../components/Inspector';
 import { imageFrom, planImage, toPng } from '../lib/clip';
-import { addObjectCmd, deleteCmd, type Ruler } from '../lib/ink';
+import { addObjectCmd, deleteCmd, type Pt, type Ruler } from '../lib/ink';
 import {
   nbExport,
   nbStat,
@@ -267,8 +267,8 @@ export default function NotebookView({
     [nb],
   );
 
-  /** A selection belongs to the Select tool. Leaving the tool with one still live left the frame painted
-   *  and Delete still destructive over ink the student was no longer thinking about. */
+  /** A selection belongs to the Select tool. Leaving it live under any other tool left the frame
+   *  painted and Delete still destructive over ink the student was no longer thinking about. */
   useEffect(() => {
     if (nb.ink.tool !== 'lasso') setSelection({ page: -1, ids: [] });
   }, [nb.ink.tool]);
@@ -318,6 +318,13 @@ export default function NotebookView({
 
   /* --- images: paste and drop --------------------------------------------- */
 
+  /** The last pointer position on the spread, used to place a paste where the student is looking. */
+  const lastPointer = useRef<{ page: number; x: number; y: number } | null>(null);
+
+  const onPointerHint = useCallback((index: number, at: Pt) => {
+    lastPointer.current = { page: index, x: at.x, y: at.y };
+  }, []);
+
   /**
    * Both routes end in `planImage`, so a pasted screenshot, a dropped file and a clipped exam question
    * land identically: under whatever is already on the page, spilling to the next one if there is no
@@ -331,15 +338,23 @@ export default function NotebookView({
    */
   const takeImage = useCallback(
     async (file: Blob) => {
-      const target = spreadPages(nb.spread)[1];
+      // Cursor-aware placement: if pointer is over an open page, target that page and position.
+      const hint = lastPointer.current;
+      const target = hint && nb.open.includes(hint.page) ? hint.page : spreadPages(nb.spread)[1];
+      const at = hint && hint.page === target ? { x: hint.x, y: hint.y } : undefined;
+
       setNotice(null);
       try {
         const png = await toPng(file);
-        const { page, object } = await planImage(notebook.id, target, png, nb.ensure);
+        const { page, object } = await planImage(notebook.id, target, png, nb.ensure, { at });
         // A command must never land on a page that is merely unread, or the flush writes a blank over
         // it. `planImage` has already read both candidates; this states the invariant at the commit.
         await nb.ensure(page);
         nb.commit(addObjectCmd(page, object));
+        // Land on Select with the new image already selected, so it can be moved, resized or deleted
+        // straight away. There is no separate image tool — Select owns object manipulation.
+        nb.patchInk({ tool: 'lasso' });
+        setSelection({ page, ids: [object.id] });
         // And go there when it spilled: an image you cannot see has not arrived.
         if (page !== target) goSpread(spreadOf(page));
       } catch (e) {
@@ -388,6 +403,7 @@ export default function NotebookView({
     ruler,
     onRuler: setRuler,
     onCommand: nb.commit,
+    onPointerHint,
   };
 
   /* --- leaving, and the one irreversible thing here ------------------------ */
@@ -498,6 +514,16 @@ export default function NotebookView({
         onDrop={(e) => {
           e.preventDefault();
           setDropping(false);
+          const dropTarget = document.elementFromPoint(e.clientX, e.clientY)?.closest('.nbs-page') as HTMLElement | null;
+          if (dropTarget && dropTarget.dataset.pageIndex) {
+            const pageIndex = Number(dropTarget.dataset.pageIndex);
+            const rect = dropTarget.getBoundingClientRect();
+            lastPointer.current = {
+              page: pageIndex,
+              x: (e.clientX - rect.left) / rect.width,
+              y: (e.clientY - rect.top) / rect.height,
+            };
+          }
           const file = imageFrom(e.dataTransfer);
           if (file) void takeImage(file);
         }}

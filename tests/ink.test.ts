@@ -586,9 +586,9 @@ describe('hit-testing', () => {
     assert.equal(hitTest(stacked, { x: 0.5, y: 0.5 }, 0.01), over);
   });
 
-  test('an object outranks the ink under it', () => {
+  test('ink outranks the object under it', () => {
     const note: NbObject = { id: 'note', k: 'note', s: 'learn this', x: 0.4, y: 0.45, w: 0.2, h: 0.1, c: GOLD };
-    assert.equal(hitTest({ v: 1, strokes: [line], objects: [note] }, { x: 0.5, y: 0.5 }, 0.01), note);
+    assert.equal(hitTest({ v: 1, strokes: [line], objects: [note] }, { x: 0.5, y: 0.5 }, 0.01), line);
   });
 
   test('a line object is hit near the segment, not anywhere in its box', () => {
@@ -660,13 +660,13 @@ describe('the lasso', () => {
     );
   });
 
-  test('records come back in paint order, strokes then objects', () => {
+  test('records come back in paint order, objects then strokes', () => {
     const second = strokeOf([[0.22, 0.22, 0.5]], { id: 'second' });
     const obj: NbObject = { id: 'obj', k: 'note', s: 'x', x: 0.2, y: 0.2, w: 0.1, h: 0.1, c: GOLD };
     const page: NbPage = { v: 1, strokes: [armed, second], objects: [obj] };
     assert.deepEqual(
       hitTestLasso(page, lasso).map((rec) => rec.id),
-      ['armed', 'second', 'obj'],
+      ['obj', 'armed', 'second'],
     );
   });
 

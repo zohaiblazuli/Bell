@@ -1,0 +1,26 @@
+{
+  "name": "bell-community-worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cloudflare Worker + D1 backend for Bell's community subsystem (migrated off Supabase).",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "migrate:local": "wrangler d1 migrations apply bell-community --local",
+    "migrate:remote": "wrangler d1 migrations apply bell-community --remote",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "hono": "^4.6.14",
+    "qrcode-svg": "^1.1.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.5.40",
+    "@cloudflare/workers-types": "^4.20241218.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "wrangler": "^3.99.0"
+  }
+}

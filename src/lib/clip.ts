@@ -135,7 +135,7 @@ export async function planImage(
   page: number,
   blob: Blob,
   read: (index: number) => Promise<NbPage>,
-  opts: { widthFraction?: number } = {},
+  opts: { widthFraction?: number; at?: { x: number; y: number } } = {},
 ): Promise<{ page: number; object: NbObject; sha: string }> {
   const bytes = new Uint8Array(await blob.arrayBuffer());
   const [sha, size] = await Promise.all([nbAssetPut(notebook, bytes), measure(blob)]);
@@ -147,12 +147,28 @@ export async function planImage(
   const h = (w * (size.h / size.w) * PAGE_W) / PAGE_H;
 
   let target = page;
-  let doc = await read(target);
-  let top = Math.max(PAGE_PAD_Y, pageBottom(doc) + 0.02);
-  if (top + h > 1 - PAGE_PAD_Y) {
-    target = page + 1;
-    doc = await read(target);
+  let left: number;
+  let top: number;
+
+  if (opts.at) {
+    // Cursor-aware placement: the image lands where the pointer was, clamped to the page box.
+    left = Math.max(PAGE_PAD_X, Math.min(opts.at.x, 1 - PAGE_PAD_X - w));
+    top = Math.max(PAGE_PAD_Y, Math.min(opts.at.y, 1 - PAGE_PAD_Y - h));
+    // If the image still overflows the bottom at the clamped position, spill to the next page.
+    if (top + h > 1 - PAGE_PAD_Y) {
+      target = page + 1;
+      top = PAGE_PAD_Y;
+    }
+  } else {
+    // Algorithmic placement: below whatever is already on the page.
+    const doc = await read(target);
+    left = PAGE_PAD_X;
     top = Math.max(PAGE_PAD_Y, pageBottom(doc) + 0.02);
+    if (top + h > 1 - PAGE_PAD_Y) {
+      target = page + 1;
+      const nextDoc = await read(target);
+      top = Math.max(PAGE_PAD_Y, pageBottom(nextDoc) + 0.02);
+    }
   }
 
   return {
@@ -162,7 +178,7 @@ export async function planImage(
       id: `img-${sha.slice(0, 8)}-${Date.now().toString(36)}`,
       k: 'img',
       sha,
-      x: q4(PAGE_PAD_X),
+      x: q4(left),
       y: q4(top),
       w: q4(Math.min(w, 1 - 2 * PAGE_PAD_X)),
       h: q4(Math.min(h, 1 - PAGE_PAD_Y - top)),

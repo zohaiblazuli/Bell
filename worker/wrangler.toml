@@ -1,0 +1,32 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "bell-community-worker"
+main = "src/index.ts"
+compatibility_date = "2024-12-18"
+compatibility_flags = ["nodejs_compat"]
+
+# The community metadata database. Create once with:
+#   wrangler d1 create bell-community
+# then paste the returned database_id below.
+[[d1_databases]]
+binding = "DB"
+database_name = "bell-community"
+database_id = "c2e92cea-57fc-4d8e-b8b2-31d8b3fcadf8"
+migrations_dir = "migrations"
+
+# Purge expired rate-limit buckets and admin-IP audit rows (replaces the Postgres
+# community_purge_expired_security_data RPC + would-be cron).
+[triggers]
+crons = ["17 3 * * *"]
+
+# Secrets (set with `wrangler secret put <NAME>` — never commit these):
+#   AUTH_JWT_SECRET              HS256 signing key for admin session tokens
+#   VOTER_HMAC_SECRET            HMAC key for voter_hash / ip hashing
+#   IP_ENCRYPTION_KEY            AES-GCM seed for admin-IP ciphertext
+#   GOOGLE_DRIVE_CLIENT_ID
+#   GOOGLE_DRIVE_CLIENT_SECRET
+#   GOOGLE_DRIVE_REFRESH_TOKEN
+#   GOOGLE_DRIVE_QUARANTINE_FOLDER_ID
+#   GOOGLE_DRIVE_PUBLISHED_FOLDER_ID
+#   GOOGLE_DRIVE_THUMBNAILS_FOLDER_ID
+[vars]
+# Non-secret config can go here if needed later.

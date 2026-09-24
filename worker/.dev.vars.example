@@ -1,0 +1,15 @@
+# Local secrets for `wrangler dev`. Copy to `.dev.vars` (git-ignored) and fill in.
+# In production these are set with `wrangler secret put <NAME>` instead.
+
+# Freshly generated — do NOT reuse the old Supabase service-role key.
+AUTH_JWT_SECRET="dev-only-change-me"
+VOTER_HMAC_SECRET="dev-only-change-me"
+IP_ENCRYPTION_KEY="dev-only-change-me"
+
+# Google Drive OAuth (carried over verbatim from the Supabase function secrets).
+GOOGLE_DRIVE_CLIENT_ID=""
+GOOGLE_DRIVE_CLIENT_SECRET=""
+GOOGLE_DRIVE_REFRESH_TOKEN=""
+GOOGLE_DRIVE_QUARANTINE_FOLDER_ID=""
+GOOGLE_DRIVE_PUBLISHED_FOLDER_ID=""
+GOOGLE_DRIVE_THUMBNAILS_FOLDER_ID=""

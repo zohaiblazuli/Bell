@@ -818,17 +818,17 @@ function hitsObject(obj: NbObject, point: Pt, tolerance: number): boolean {
 /**
  * The topmost record under `point`, or null. `tolerance` is a width-fraction.
  *
- * PAINT ORDER IS THE Z ORDER, and objects paint over strokes: an image, a sticky or a clipped
- * question is a thing placed ON the page, so ink underneath it is occluded and must not be picked in
- * preference to it. Within each list, array order is paint order, so the search runs backwards.
+ * PAINT ORDER IS THE Z ORDER, and strokes paint over objects: ink is drawn ON TOP OF images,
+ * stickies and clipped questions, so a stroke must be picked in preference to an object beneath it.
+ * Within each list, array order is paint order, so the search runs backwards.
  * Eraser strokes are searchable too — in paint mode they are real ink in the file, and being unable
  * to select one would make a mis-aimed rub permanent.
  */
 export function hitTest(page: NbPage, point: Pt, tolerance: number): NbRecord | null {
-  for (let i = page.objects.length - 1; i >= 0; i--)
-    if (hitsObject(page.objects[i], point, tolerance)) return page.objects[i];
   for (let i = page.strokes.length - 1; i >= 0; i--)
     if (hitsStroke(page.strokes[i], point, tolerance)) return page.strokes[i];
+  for (let i = page.objects.length - 1; i >= 0; i--)
+    if (hitsObject(page.objects[i], point, tolerance)) return page.objects[i];
   return null;
 }
 
@@ -864,14 +864,14 @@ export function hitTestLasso(page: NbPage, polygon: readonly Pt[]): NbRecord[] {
   if (polygon.length < 3) return [];
   const bounds = unionBBox(polygon.map((p) => ({ x: p.x, y: p.y, w: 0, h: 0 })));
   const caught: NbRecord[] = [];
-  for (const stroke of page.strokes) {
-    if (!rectsOverlap(strokeBBox(stroke), bounds)) continue;
-    if (strokePoints(stroke).some((p) => pointInPolygon(p, polygon))) caught.push(stroke);
-  }
   for (const obj of page.objects) {
     const box = objectBBox(obj);
     if (!rectsOverlap(box, bounds)) continue;
     if (pointInPolygon({ x: box.x + box.w / 2, y: box.y + box.h / 2 }, polygon)) caught.push(obj);
+  }
+  for (const stroke of page.strokes) {
+    if (!rectsOverlap(strokeBBox(stroke), bounds)) continue;
+    if (strokePoints(stroke).some((p) => pointInPolygon(p, polygon))) caught.push(stroke);
   }
   return caught;
 }
@@ -1790,9 +1790,9 @@ function paintObject(
 /**
  * Everything committed on the page. Repainted on commit, undo, redo or a page change — not on a move.
  *
- * ARRAY ORDER IS PAINT ORDER, and objects go last: an image, a sticky or a clipped question sits on
- * the page and occludes the ink under it. Which is also why a paint-mode eraser cannot rub out an
- * object — it composites `destination-out` during the strokes pass, before any object exists to cut.
+ * ARRAY ORDER IS PAINT ORDER, and objects go FIRST: an image, a sticky or a clipped question is a
+ * surface on the page that ink is drawn ON TOP OF, so strokes always occlude objects beneath them.
+ * A paint-mode eraser composites `destination-out` against strokes only, revealing the objects below.
  */
 export function paintStatic(
   canvas: HTMLCanvasElement,
@@ -1820,10 +1820,9 @@ export function paintRecords(
   box: PageBox,
   assets?: ReadonlyMap<string, CanvasImageSource>,
 ): void {
-  for (const stroke of page.strokes) paintStroke(ctx, stroke, box, false);
-  if (page.objects.length === 0) return;
   const ink = paintTokens(canvas);
   for (const obj of page.objects) paintObject(ctx, obj, box, ink, assets);
+  for (const stroke of page.strokes) paintStroke(ctx, stroke, box, false);
 }
 
 /** The in-progress stroke, and nothing else. One stroke's worth of work per frame. */
