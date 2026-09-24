@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import OwlMark from './shapekit/OwlMark';
 import SubjectIcon, { SUBJECT_GLYPH_BY_CODE } from './icons/SubjectIcon';
 import type { CoverId, StickerId } from '@/lib/notebooks';
@@ -45,6 +45,38 @@ export function CoverArt({ cover, className, style }: { cover: CoverId; classNam
         <i key={i} style={{ left, top, width, height, borderRadius, clipPath, background }} />
       ))}
       <b className="nbc-spine" />
+    </span>
+  );
+}
+
+/** The shelf's art box is this wide; the compositions are drawn in its pixels. */
+const ART_W = 240;
+
+/**
+ * `CoverArt` for a box of any size: the composition is laid out at shelf width and scaled down to
+ * fit, so a small cover shows the same picture rather than a crop of the big one's shapes.
+ */
+export function ScaledCoverArt({ cover, className }: { cover: CoverId; className?: string }) {
+  const box = useRef<HTMLSpanElement>(null);
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const measure = () => setSize({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const k = size && size.w > 0 ? size.w / ART_W : 0;
+  return (
+    <span ref={box} className={className ? `nbc-scaled ${className}` : 'nbc-scaled'} aria-hidden="true">
+      {k > 0 && size && (
+        <CoverArt
+          cover={cover}
+          style={{ inset: 'auto', width: ART_W, height: size.h / k, transform: `scale(${k})`, transformOrigin: '0 0' }}
+        />
+      )}
     </span>
   );
 }

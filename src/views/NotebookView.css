@@ -475,7 +475,7 @@
   min-height: 44px;
   padding: 6px 8px;
   border: 1px solid var(--accent);
-  border-radius: 4px;
+  border-radius: 0;
   background: var(--paper);
   color: var(--page-ink);
   font-family: var(--font-ui);

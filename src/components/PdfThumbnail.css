@@ -63,7 +63,7 @@
   height: 100%;
   object-fit: cover;
   object-position: top;
-  border-radius: 4px;
+  border-radius: 0;
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.12);
   box-shadow: 0 2px 6px -1px rgba(0, 0, 0, 0.28);
@@ -79,7 +79,7 @@
 .pdf-thumb-fallback-icon {
   width: 44px;
   height: 52px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--accent-soft);
   color: var(--accent);
   display: grid;
@@ -94,7 +94,7 @@
 .pdf-thumb-mini .pdf-thumb-fallback-icon {
   width: 32px;
   height: 40px;
-  border-radius: 4px;
+  border-radius: 0;
 }
 
 .pdf-thumb-mini .pdf-thumb-fallback-icon svg {

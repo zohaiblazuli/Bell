@@ -117,7 +117,7 @@
   box-shadow:
     0 16px 36px -6px rgba(0, 0, 0, 0.4),
     0 4px 10px rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
+  border-radius: 0;
 }
 
 .cr-spec-row:last-child {
@@ -139,23 +139,23 @@
 }
 
 /* Retain utility elements for Admin and Modals */
-.cr-resource-mark { width: 36px; height: 46px; display: grid; place-items: center; border-radius: 3px; background: var(--paper); color: var(--page-ink-2); box-shadow: 0 4px 10px -7px rgba(18, 20, 50, .45); overflow: hidden; }
+.cr-resource-mark { width: 36px; height: 46px; display: grid; place-items: center; border-radius: 0; background: var(--paper); color: var(--page-ink-2); box-shadow: 0 4px 10px -7px rgba(18, 20, 50, .45); overflow: hidden; }
 .cr-resource-mark[data-has-thumb] { background: transparent; }
 .cr-resource-mark svg { width: 17px; height: 17px; }
 .cr-resource-mark img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
 
-.cr-preview-sheet { max-width: 100%; max-height: calc(100vh - 190px); overflow: hidden; border-radius: 4px; background: transparent; box-shadow: var(--shadow-paper); display: flex; align-items: center; justify-content: center; }
+.cr-preview-sheet { max-width: 100%; max-height: calc(100vh - 190px); overflow: hidden; border-radius: 0; background: transparent; box-shadow: var(--shadow-paper); display: flex; align-items: center; justify-content: center; }
 .cr-preview-sheet[data-empty] { width: 460px; aspect-ratio: 1 / 1.414; height: 640px; background: var(--paper); }
-.cr-preview-sheet img { display: block; max-width: min(500px, 100%); max-height: min(640px, calc(100vh - 190px)); width: auto; height: auto; object-fit: contain; border-radius: 4px; }
+.cr-preview-sheet img { display: block; max-width: min(500px, 100%); max-height: min(640px, calc(100vh - 190px)); width: auto; height: auto; object-fit: contain; border-radius: 0; }
 .cr-preview-placeholder { height: 100%; display: grid; place-content: center; justify-items: center; gap: 12px; color: var(--page-ink-2); }
 .cr-preview-placeholder svg { width: 30px; height: 30px; }
 .cr-preview-placeholder span { font-size: 12px; }
 
 .cr-inline-error { padding: 9px 11px; border-radius: var(--r-btn); background: var(--danger-soft); color: var(--danger); font-size: 12px; line-height: 1.4; }
 
-.cr-auth-scrim { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; padding: 24px; background: var(--scrim); }
-.cr-auth { width: min(390px, 100%); display: flex; flex-direction: column; gap: 12px; padding: 24px; border: 1px solid var(--glass-brd); border-radius: var(--r-panel); background: var(--glass-strong); box-shadow: var(--shadow-pop); }
-.cr-auth-mark { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; background: var(--accent-soft); color: var(--accent); }
+.cr-auth-scrim { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 24px; background: rgba(20, 19, 18, .35); animation: sk-fade .18s ease both; }
+.cr-auth { width: min(390px, 100%); display: flex; flex-direction: column; gap: 12px; padding: 24px; background: var(--ground); box-shadow: 0 0 0 2px var(--line), 6px 6px 0 var(--line); animation: sk-stamp .26s cubic-bezier(.2, .8, .2, 1) both; }
+.cr-auth-mark { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 0; background: var(--accent-soft); color: var(--accent); }
 .cr-auth-mark svg { width: 22px; height: 22px; }
 .cr-auth h2 { margin: 4px 0 0; font: 700 20px/1.2 var(--font-disp); }
   .cr-auth p { margin: 0 0 5px; color: var(--ink-2); font-size: 13px; line-height: 1.5; }
@@ -241,7 +241,7 @@
   flex-shrink: 0;
   width: 86px;
   height: 114px;
-  border-radius: 5px;
+  border-radius: 0;
   background: var(--paper);
   border: 1px solid var(--hair);
   box-shadow: 0 4px 14px -6px rgba(18, 20, 50, 0.25);
@@ -334,7 +334,7 @@
   flex-shrink: 0;
   width: 38px;
   height: 50px;
-  border-radius: 4px;
+  border-radius: 0;
 }
 .cr-admin-title-text {
   min-width: 0;
@@ -419,7 +419,8 @@
    first-page preview on the rule tone, and a 300px details column.
    ====================================================================================== */
 .crd {
-  animation: sk-fade .3s ease both;
+  /* `backwards`, so the finished fade leaves no stacking context to trap the admin sign-in scrim. */
+  animation: sk-fade .3s ease backwards;
 }
 .crd-bar {
   flex: none;

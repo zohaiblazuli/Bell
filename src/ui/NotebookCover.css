@@ -39,6 +39,12 @@
   overflow: hidden;
   box-shadow: inset 0 0 0 2px var(--line);
 }
+.nbc-scaled {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+}
 .nbc-art > i {
   position: absolute;
   display: block;

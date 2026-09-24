@@ -202,7 +202,7 @@
   --r-card: 0px;
   --r-btn: 0px;
   --r-chip: 0px;
-  --r-pill: 999px;
+  --r-pill: 0px;
 
   /* Shape Kit — the Bauhaus layer from the Bell App v2 design (Claude Design handoff). Flat
      primaries on cream, 2px ink rules as the only borders, no radius, no blur. Day values are the

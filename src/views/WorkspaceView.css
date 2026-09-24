@@ -131,6 +131,7 @@
   white-space: nowrap;
 }
 .rd-ident-code,
+.rd-ident-sep,
 .rd-ident-session {
   font-family: var(--font-mono);
   font-size: 12px;
@@ -182,7 +183,9 @@ section.rd {
   grid-template-rows: minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
-  animation: sk-fade .3s ease both;
+  /* `backwards`: a filled opacity animation would keep this a stacking context and trap every
+     modal scrim raised inside it under the top bar. */
+  animation: sk-fade .3s ease backwards;
   transition: grid-template-columns .32s cubic-bezier(.2, .8, .2, 1);
 }
 section.rd[data-ms='open'] {
@@ -807,4 +810,9 @@ section.rd[data-resizing='true'] .rd-nb {
   outline: 2px solid var(--blue);
   outline-offset: 2px;
   border-radius: 0;
+}
+
+/* A single left-arrow glyph serves both page buttons; the next-page one is mirrored. */
+.rd-flip svg {
+  transform: scaleX(-1);
 }

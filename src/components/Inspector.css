@@ -10,7 +10,7 @@
    would silently lose.
 
    Element-qualifying every rule that sets a radius is the second reason: index.css's global
-   `:focus-visible` sets `border-radius: 6px` and loads after this sheet, so a bare class ties on
+   `:focus-visible` sets a `border-radius` and loads after this sheet, so a bare class ties on
    specificity and a disc would square off while focused. Switch.css and Button.css do the same. */
 
 /* ---------- §6 the panel box — the Reader's tool panel, to the pixel ---------- */
@@ -337,7 +337,7 @@ button.nbi-spread {
   align-items: center; /* the tile is V gap 6, counter CENTER */
   gap: 6px;
   padding: 0;
-  border-radius: 5px; /* shapes the focus ring around a 3px-radius sheet */
+  border-radius: 0; /* shapes the focus ring around a 3px-radius sheet */
 }
 
 /* `sheet` 109 x 76 — two page minis, H gap 2, so the 2px of card showing between them IS the
@@ -349,7 +349,7 @@ button.nbi-spread {
   gap: 2px;
   width: 100%;
   aspect-ratio: 109 / 76;
-  border-radius: 3px;
+  border-radius: 0;
 }
 /* Current spread: 1.5px `--accent`, INSIDE like every stroke in the file, so selecting a tile moves
    nothing. It has to be a pseudo-element rather than the sheet's own inset shadow: the two page minis
@@ -382,7 +382,7 @@ button.nbi-spread[aria-pressed='true'] .nbi-spread-label {
   height: calc(100% - 2px);
   display: grid;
   place-items: center;
-  border-radius: 3px;
+  border-radius: 0;
   box-shadow: inset 0 0 0 1.5px var(--hair);
   color: var(--ink-3);
 }
@@ -414,7 +414,7 @@ button.nbi-spread:hover .nbi-ghost {
   --nbi-rule-h: none;
   flex: 1 1 0;
   min-width: 0;
-  border-radius: 2px;
+  border-radius: 0;
   background-color: var(--paper);
   background-image: var(--nbi-margin), var(--nbi-rule-v), var(--nbi-rule-h);
 }
@@ -576,7 +576,7 @@ button.nbi-style {
   align-items: center;
   gap: 5px; /* 40 + 5 + 14 = 59, the measured column */
   padding: 0;
-  border-radius: 4px;
+  border-radius: 0;
 }
 .nbi-style-page {
   /* 6px ruling on a 32 x 40 page, against 8 on the 53-wide spread minis: the pitch is the one number

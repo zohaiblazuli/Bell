@@ -12,6 +12,7 @@ import Dialog from '@ui/Dialog';
 import Notice from '@ui/Notice';
 import SegmentedControl from '@ui/SegmentedControl';
 import PdfThumbnail from '@/components/PdfThumbnail';
+import Mascot from '@/components/Mascot';
 import type { WorkspaceDocument } from '@/lib/workspace';
 import { useWorkspace } from '@/state/useWorkspace';
 import './LocalWorkspaceView.css';
@@ -345,11 +346,7 @@ export default function LocalWorkspaceView({ workspace, onOpen }: Props) {
         </div>
       ) : workspace.documents.length === 0 ? (
         <div className="lw-empty-desk">
-          <div className="lw-empty-art">
-            <span className="lw-empty-art-icon">
-              <Icon name="doc" />
-            </span>
-          </div>
+          <Mascot size={110} mood="empty" />
           <h2>Your private study shelf is empty</h2>
           <p>
             Add textbooks, lecture notes, syllabus handbooks, or revision guides.

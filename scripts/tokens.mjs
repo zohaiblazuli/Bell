@@ -252,7 +252,7 @@ const GROUPS = [
       '--r-card': { day: '0px' },
       '--r-btn': { day: '0px' },
       '--r-chip': { day: '0px' },
-      '--r-pill': { day: '999px' },
+      '--r-pill': { day: '0px' },
     },
   },
   {
