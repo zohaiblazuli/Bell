@@ -22,8 +22,6 @@
   z-index: 50;
   border-radius: var(--r-card);
   background: color-mix(in srgb, var(--card) 88%, transparent);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
   border: 2px dashed var(--accent);
   display: flex;
   align-items: center;
@@ -44,7 +42,7 @@
 .lw-drop-icon {
   width: 56px;
   height: 56px;
-  border-radius: 16px;
+  border-radius: 0;
   background: var(--accent-soft);
   color: var(--accent);
   display: grid;
@@ -162,7 +160,7 @@
   width: 38px;
   height: 38px;
   flex: none;
-  border-radius: 10px;
+  border-radius: 0;
   display: grid;
   place-items: center;
   color: var(--accent);
@@ -300,7 +298,7 @@
 .lw-sort-select {
   height: 32px;
   padding: 0 28px 0 10px;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid var(--hair);
   background: var(--card);
   color: var(--ink);
@@ -357,7 +355,7 @@
 .lw-text-btn {
   margin-top: 6px;
   padding: 6px 12px;
-  border-radius: 6px;
+  border-radius: 0;
   border: 1px solid var(--hair);
   background: transparent;
   color: var(--accent);
@@ -386,28 +384,12 @@
   padding: 48px 32px;
   border-radius: var(--r-card);
   background: var(--card);
-  border: 1px dashed var(--card-brd);
+  border: 2px dashed var(--line);
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   gap: 12px;
-}
-
-.lw-empty-art {
-  width: 68px;
-  height: 68px;
-  border-radius: 20px;
-  background: var(--accent-soft);
-  display: grid;
-  place-items: center;
-  color: var(--accent);
-  margin-bottom: 4px;
-}
-
-.lw-empty-art svg {
-  width: 34px;
-  height: 34px;
 }
 
 .lw-empty-desk h2 {
@@ -513,10 +495,8 @@
   align-items: center;
   gap: 5px;
   padding: 3px 8px;
-  border-radius: 6px;
+  border-radius: 0;
   background: rgba(12, 16, 26, 0.72);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
   color: #ffffff;
   font: 700 10.5px var(--font-mono);
   letter-spacing: 0.04em;
@@ -536,8 +516,6 @@
   padding: 3px 9px;
   border-radius: var(--r-pill);
   background: rgba(12, 16, 26, 0.72);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
   color: rgba(255, 255, 255, 0.95);
   font: 600 10.5px var(--font-mono);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.14);
@@ -635,7 +613,7 @@
 .lw-btn-primary {
   flex: 1 1 0;
   height: 32px;
-  border-radius: 8px;
+  border-radius: 0;
   border: 0;
   background: var(--grad-btn);
   color: #ffffff;
@@ -663,7 +641,7 @@
   width: 32px;
   height: 32px;
   flex: none;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid var(--hair);
   background: transparent;
   color: var(--ink-2);
@@ -750,22 +728,6 @@
   gap: 12px;
 }
 
-.lw-list-icon {
-  width: 32px;
-  height: 36px;
-  flex: none;
-  border-radius: 6px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  display: grid;
-  place-items: center;
-}
-
-.lw-list-icon svg {
-  width: 16px;
-  height: 16px;
-}
-
 .lw-list-info {
   min-width: 0;
   display: flex;
@@ -816,7 +778,7 @@
 .lw-list-btn-open {
   height: 30px;
   padding: 0 12px;
-  border-radius: 6px;
+  border-radius: 0;
   border: 0;
   background: var(--grad-btn);
   color: #ffffff;
@@ -840,7 +802,7 @@
 .lw-list-btn-icon {
   width: 30px;
   height: 30px;
-  border-radius: 6px;
+  border-radius: 0;
   border: 1px solid var(--hair);
   background: transparent;
   color: var(--ink-2);
@@ -872,7 +834,7 @@
 .lw-dialog-badge {
   width: 64px;
   height: 64px;
-  border-radius: 18px;
+  border-radius: 0;
   background: var(--danger-soft);
   color: var(--danger);
   display: grid;

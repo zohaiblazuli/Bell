@@ -27,12 +27,17 @@ export interface DifficultyBand {
   rated: boolean;
 }
 
-/** Sky → Amber → Rose, the website's data palette. Deliberately not the brand iris. */
+/** Shape Kit (Bell App v2): Easy blue, Medium yellow, Hard red — drawn as a 1/2/3-step meter in
+ *  that colour, with the word in ink, so the rating reads without colour too. */
 const BANDS: Record<Difficulty, DifficultyBand> = {
-  easy: { label: 'Easy', color: '#0ea5e9', deep: '#0369a1', tint: '#e0f2fe', rated: true },
-  medium: { label: 'Medium', color: '#f59e0b', deep: '#b45309', tint: '#fef3c7', rated: true },
-  hard: { label: 'Hard', color: '#f43f5e', deep: '#be123c', tint: '#ffe4e6', rated: true },
+  easy: { label: 'Easy', color: 'var(--blue)', deep: 'var(--ink)', tint: 'transparent', rated: true },
+  medium: { label: 'Medium', color: 'var(--sk-yellow)', deep: 'var(--ink)', tint: 'transparent', rated: true },
+  hard: { label: 'Hard', color: 'var(--red)', deep: 'var(--ink)', tint: 'transparent', rated: true },
 };
+
+/** How many of the meter's three steps a band lights. */
+export const bandSteps = (difficulty: Difficulty | null | undefined) =>
+  difficulty === 'hard' ? 3 : difficulty === 'medium' ? 2 : difficulty === 'easy' ? 1 : 0;
 
 /** An em-dash, matching the website. Not the word "Unrated", not an empty space. */
 export const UNRATED: DifficultyBand = {

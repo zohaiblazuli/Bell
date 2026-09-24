@@ -145,7 +145,7 @@ A catalogue resync only ever replaces the catalogue tables — the record of wha
 
 ## Design
 
-Bell's interface is authored as a measured design system in the spirit of the OS-glass lineage (Aqua → visionOS → Liquid Glass), used as a material and an accent rather than wallpaper. Glass is chrome, never content; a single blue accent is spent as a line, not a wash; and difficulty carries its own separate warm heat scale. The hero of every screen is the bright white exam PDF.
+Bell's interface is the **Shape Kit** (Bell App v2): a cream desk ruled in 2px ink, flat Bauhaus shapes in ink, blue, red and yellow, Jost and Azeret Mono type, and Hush the owl as its only mascot. There is no glass and no blur; selection inverts to ink; motion is a small pack of shape animations that switch off with reduced motion. The hero of every screen is the bright white exam PDF. See `DESIGN.md`.
 
 ## License
 

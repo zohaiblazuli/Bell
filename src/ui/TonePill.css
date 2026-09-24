@@ -1,39 +1,74 @@
-/* Tone Pill — `45:53` / `46:499`. Supersedes the `.tone` block in `src/styles/app.css` (the
-   `.tone .sw` rules under it belong to Switch.css). Numbers are
-   `design/specs/screen-library-settings.md` §4. */
-
+/* Tone Pill — the Bell App v2 sun/moon segmented control: 36px cells in a 2px ink frame. */
 .tonepill {
-  /* Figma's stroke is INSIDE, so the hairline must not grow the 34: border-box, not content-box.
-     Tailwind's preflight already sets this globally; stated here because the height depends on it. */
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex: none;
-  height: 34px;
-  padding: 0 6px 0 12px; /* l12 r6 — asymmetric, because the switch needs less air than the icon */
-  border: 1px solid var(--hair);
-  border-radius: var(--r-pill);
-  background: var(--glass-strong);
-  color: var(--ink-2); /* the icon (currentColor) and the label share one paint */
-  /* clipsContent: true. Nothing overflows, and the Switch's focus ring still clears: the 24px
-     switch leaves 5px above and below and 6px to its right, against a 2px ring at 2px offset. */
-  overflow: hidden;
-}
-
-.tp-icon {
-  flex: none;
-  width: 16px;
-  height: 16px;
-}
-
-.tp-label {
-  /* Spec reads "SF Pro Regular 12", which is `Body/Small` on the ramp — same family, weight, size
-     and zero tracking. No colour of its own: it inherits `--ink-2` from the pill. */
-  white-space: nowrap;
-}
-
-.tp-sw {
   display: flex;
+  height: 36px;
   flex: none;
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+.tonepill__btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color .16s, color .16s;
+}
+.tonepill__btn--night {
+  box-shadow: inset 2px 0 0 var(--line);
+}
+.tonepill__btn[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--ground);
+  cursor: default;
+}
+.tonepill__btn--day[aria-pressed='true'] {
+  color: var(--sk-yellow);
+}
+.tonepill__btn:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: -4px;
+  border-radius: 0;
+}
+.tonepill__sun {
+  position: relative;
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+.tonepill__sun > i {
+  position: absolute;
+  display: block;
+  background: currentColor;
+}
+.tonepill__sun > i:nth-child(1) {
+  left: 3.5px;
+  top: 3.5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.tonepill__sun > i:nth-child(2) {
+  left: 6.25px;
+  top: 0;
+  width: 1.5px;
+  height: 14px;
+  clip-path: polygon(0 0, 100% 0, 100% 18%, 0 18%, 0 82%, 100% 82%, 100% 100%, 0 100%);
+}
+.tonepill__sun > i:nth-child(3) {
+  left: 0;
+  top: 6.25px;
+  width: 14px;
+  height: 1.5px;
+  clip-path: polygon(0 0, 18% 0, 18% 100%, 0 100%, 0 0, 82% 0, 100% 0, 100% 100%, 82% 100%);
+}
+.tonepill__moon {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: inset -4px -1px 0 0 currentColor;
+  transform: rotate(-20deg);
 }

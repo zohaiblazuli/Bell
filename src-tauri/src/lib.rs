@@ -6,7 +6,6 @@ pub mod library;
 pub mod migrate;
 pub mod notebooks;
 pub mod paths;
-pub mod pets;
 pub mod stargate;
 pub mod state;
 pub mod workspace;
@@ -100,13 +99,6 @@ pub fn run_with_context(context: tauri::Context<tauri::Wry>) {
             std::fs::create_dir_all(&workspace_dir)?;
             app.manage(workspace::WorkspaceDir(workspace_dir));
 
-            // Pets are their own directory for the same reason, and a stronger one: a spritesheet is
-            // several MB of image, and `state_save` is text-only. Azure ships with Bell and is copied
-            // here from compiled resources; the same directory can still support the dormant picker.
-            let pet_dir = dir.join("pets");
-            std::fs::create_dir_all(&pet_dir)?;
-            pets::ensure_bundled_azure(&pet_dir)?;
-            app.manage(pets::PetDir(pet_dir));
             app.manage(community::CommunitySession::default());
             app.manage(community::ThumbnailCache::default());
 
@@ -148,14 +140,6 @@ pub fn run_with_context(context: tauri::Context<tauri::Wry>) {
             notebooks::nb_asset_load,
             notebooks::nb_stat,
             notebooks::nb_export,
-            pets::pet_list,
-            pets::pet_install,
-            pets::pet_delete,
-            pets::pet_sheet,
-            pets::pet_motion,
-            pets::pet_asset,
-            pets::pet_registry,
-            pets::pet_preview,
             community::community_status,
             community::community_list,
             community::community_get,

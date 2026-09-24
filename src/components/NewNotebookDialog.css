@@ -15,9 +15,7 @@
   z-index: 60;
   display: grid;
   place-items: center;
-  background: var(--scrim);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  background: rgba(20, 19, 18, .35);
 }
 
 /* `dialog` 520 x 422 @(400,219) — exactly centred, HORIZONTAL gap 24, pad 24, radius `--r-panel`
@@ -39,11 +37,8 @@
   width: 520px;
   max-width: calc(100vw - 48px);
   padding: 24px;
-  border-radius: var(--r-panel);
-  background: var(--card);
-  -webkit-backdrop-filter: blur(26px) saturate(165%);
-  backdrop-filter: blur(26px) saturate(165%);
-  box-shadow: inset 0 0 0 1px var(--card-brd), var(--shadow-pop);
+  background: var(--ground);
+  box-shadow: 0 0 0 2px var(--line), 8px 8px 0 var(--line);
   color: var(--ink);
 }
 
@@ -113,8 +108,8 @@
 .nnd-name .bell-field__input {
   height: 34px;
   padding: 0 12px;
-  border-radius: var(--r-pill);
-  background: var(--glass-strong);
+  border-radius: 0;
+  background: var(--card);
 }
 /* §9's Text Field swaps the hairline to `--accent` at the same 1px, where Field — onboarding's
    420 x 48 input — thickens it to 2px and then shaves a pixel off its padding to stop the value
@@ -122,12 +117,12 @@
 .nnd-name .bell-field__input:focus {
   border-width: 1px;
   padding: 0 12px;
-  border-radius: var(--r-pill);
+  border-radius: 0;
 }
 /* Field squares its own focus ring back to `--r-btn` here, at the same specificity as the rule
    above; this states the pill so neither the tie nor the sheet order decides it. */
 .nnd-name .bell-field__input:focus-visible {
-  border-radius: var(--r-pill);
+  border-radius: 0;
 }
 
 /* ---------- COVER ---------- */
@@ -158,7 +153,7 @@
   border-radius: calc(var(--r-chip) - 2px);
 }
 .nnd-swatch[aria-pressed='true'] {
-  box-shadow: inset 0 0 0 1.5px var(--ink);
+  box-shadow: inset 0 0 0 2px var(--line);
 }
 
 /* ---------- STICKER ---------- */
@@ -183,38 +178,31 @@
   box-sizing: border-box;
   width: 34px;
   height: 34px;
-  border: 1px solid var(--hair);
-  border-radius: var(--r-btn);
-  color: var(--ink-2);
+  border: 0;
+  border-radius: 0;
+  box-shadow: inset 0 0 0 2px var(--line);
+  color: var(--ink);
   transition: background-color 0.16s, color 0.16s;
 }
 .nnd-sticker:hover {
-  background-color: var(--hair-2);
+  background-color: var(--pale2);
   color: var(--ink);
 }
 .nnd-sticker[aria-pressed='true'] {
-  border-color: transparent;
-  box-shadow: inset 0 0 0 1.5px var(--ink);
-  color: var(--ink);
+  background-color: var(--inkbg);
+  color: var(--onink);
 }
 .nnd-sticker > svg {
   width: 22px;
   height: 22px;
 }
 
-/* The Mr. Bell tile. index.css strokes every `svg` in `currentColor`, which inherits into the mark's
-   15 rects and outlines each one — the failure mr-bell TRAPS 12 records, and the reason `.bell rect`
-   and `.splash-mark rect` both carry this reset. `rect` only: the five subject tiles beside it are
-   stroked line art. */
-.nnd-sticker rect {
-  stroke: none;
-}
-
 /* The seventh slot — "No sticker" where the file draws `browse`. A ghost tile, the same vocabulary
    §6b's trailing `new spread` uses: a 1.5px `--hair` outline over nothing. */
 .nnd-sticker--none {
-  border: 1.5px dashed var(--hair);
-  color: var(--ink-3);
+  box-shadow: none;
+  border: 2px dashed var(--line);
+  color: var(--mute);
 }
 .nnd-sticker--none > svg {
   width: 14px;
@@ -248,7 +236,7 @@
   width: 32px;
   height: 40px;
   border: 1px solid var(--hair-2);
-  border-radius: 3px;
+  border-radius: 0;
   background: var(--paper);
   overflow: hidden;
 }
@@ -299,18 +287,20 @@
   max-width: 100%;
   height: 32px;
   padding: 0 12px;
-  border: 1px solid var(--hair);
-  border-radius: var(--r-pill);
-  background-color: var(--glass-strong);
-  color: var(--ink-2);
+  border: 2px dashed var(--line);
+  border-radius: 0;
+  background-color: transparent;
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 500;
   transition: background-color 0.16s, color 0.16s;
 }
 
 /* Chip's `State=Filled` on Neutral is the flat one: `--accent-soft`, no stroke — the single wash rule
    2 permits, and this sheet spends it exactly once. */
 .nnd-link[data-filled] {
-  border-color: transparent;
-  background-color: var(--accent-soft);
+  border-style: solid;
+  background-color: var(--t-blue);
   color: var(--ink);
 }
 
@@ -342,7 +332,7 @@
 .nnd-link-select:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
-  border-radius: var(--r-pill);
+  border-radius: 0;
 }
 
 /* ---------- actions ---------- */
@@ -357,34 +347,10 @@
   gap: 10px;
 }
 
-/* Timings and curve from Dialog.css, which took them from `Motion — Update` `448:102`: the scrim
-   leads the panel by 20ms, which is what stops the sheet appearing to punch a hole in nothing. The
-   0.94 start is the file's own — at 520 x 422 a 1.5% scale reads as a straight fade. Both are gated,
-   which is also what keeps `npm run audit`'s motion pass green. */
-@media (prefers-reduced-motion: no-preference) {
-  .nnd-scrim {
-    animation: nnd-fade 0.22s ease-out 0.08s both;
-  }
-  .nnd-sheet {
-    animation: nnd-pop 0.22s ease-out 0.1s both;
-  }
+/* Same entrance as ui/Dialog. */
+.nnd-scrim {
+  animation: sk-fade .18s ease both;
 }
-
-@keyframes nnd-fade {
-  from {
-    opacity: 0;
-  }
+.nnd-sheet {
+  animation: sk-stamp .26s cubic-bezier(.2, .8, .2, 1) both;
 }
-
-/* No translate: the file scales from the centre and does not lift, and on a sheet this size the two
-   together read as a wobble. */
-@keyframes nnd-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.94);
-  }
-}
-
-
-
-

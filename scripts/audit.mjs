@@ -64,6 +64,7 @@ const BENIGN = [
   { re: /^https:\/\/react\.dev\/errors\//, why: "React's minified-error explainer, printed in a thrown message" },
   { re: /^https?:\/\/\$\{/, why: 'a template literal in pdf.js URL-normalisation code, not a literal host' },
   { re: /^https?:\/\/(example\.com|foo\.bar)/, why: 'pdf.js placeholder base for relative-URL resolution' },
+  { re: /^https:\/\/github\.com\/zohaiblazuli\/Bell\b/, why: "Bell's own repo, opened in the browser only when the user presses GitHub / Star / Release notes" },
 ];
 
 function auditOffline() {
@@ -270,6 +271,15 @@ function auditContrast() {
  */
 function auditMotion() {
   heading('3 · MOTION — every animating stylesheet must have a reduced-motion escape');
+  // Shape Kit: one kill switch in motion.css stops every animation inside `.app` for the OS setting
+  // and for Settings → Reduce motion, and each animated element rests in its end frame. With the
+  // switch in place a sheet needs no gate of its own; without it, every sheet is checked as before.
+  const motion = readFileSync(join(root, 'src', 'styles', 'motion.css'), 'utf8');
+  const osGate = /@media \(prefers-reduced-motion: reduce\)[\s\S]{0,200}animation: none !important/.test(motion);
+  const appGate = /\[data-motion='off'\] \*[\s\S]{0,120}animation: none !important/.test(motion);
+  const killSwitch = osGate && appGate;
+  if (killSwitch) pass('motion.css stops every animation under reduced motion and Settings → Reduce motion');
+  else fail('motion.css: the Shape Kit reduced-motion kill switch is missing');
   const sheets = walk(join(root, 'src'), (n) => n.endsWith('.css'));
   let animating = 0;
   const naked = [];
@@ -283,7 +293,7 @@ function auditMotion() {
       /\[data-motion=['"]off['"]\]/.test(css) ||
       // `Dialog.css` and friends opt IN under `no-preference`, which is the same guarantee inverted.
       /prefers-reduced-motion:\s*no-preference/.test(css);
-    if (!gated) naked.push({ file: relative(root, f), anims });
+    if (!gated && !killSwitch) naked.push({ file: relative(root, f), anims });
   }
   // One global sweep exists in app.css and covers transitions everywhere; note it so the count reads.
   const app = readFileSync(join(root, 'src', 'styles', 'chrome.css'), 'utf8');
@@ -296,13 +306,6 @@ function auditMotion() {
     for (const n of naked) fail(`${n.file} has ${n.anims} animation declaration(s) and no gate`);
   }
 
-  // The rig is the one place a gate must also restore a POSE rather than the first frame.
-  const bell = readFileSync(join(root, 'src', 'ui', 'brand', 'MrBell.css'), 'utf8');
-  const poses = ["data-anim='slump'", "data-anim='sleep'"].filter((p) =>
-    new RegExp(`prefers-reduced-motion[\\s\\S]*${p.replace(/[[\]']/g, '\\$&')}`).test(bell),
-  );
-  if (poses.length === 2) pass('MrBell.css holds slump and sleep at their END pose under reduced motion');
-  else fail(`MrBell.css: slump/sleep end-pose handling missing (found ${poses.length} of 2)`);
 }
 
 auditOffline();

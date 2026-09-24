@@ -38,7 +38,8 @@ import Field from '@ui/Field';
 import Notice from '@ui/Notice';
 import SectionLabel from '@ui/SectionLabel';
 import Switch from '@ui/Switch';
-import GitHubMark from '@ui/icons/GitHubMark';
+import { openUrl } from '@tauri-apps/plugin-opener';
+import Mascot from '@/components/Mascot';
 import SeasonIcon from '@ui/icons/SeasonIcon';
 import Icon, { type IconName } from '@/components/Icon';
 import type { UpdateState } from '@/components/UpdateFlow';
@@ -57,6 +58,8 @@ import type { LibraryStats, RepairReport, Subject, SyncReport } from '@/lib/type
  * selected chip while its own topbar pill reads "Day"; the selection is bound to the live value
  * here, which is what that trap asks for.)
  */
+const REPO_URL = 'https://github.com/zohaiblazuli/Bell';
+
 const TONES: { value: ToneChoice; label: string; glyph: IconName | null }[] = [
   { value: 'day', label: 'Day', glyph: 'sun' },
   { value: 'night', label: 'Night', glyph: 'moon' },
@@ -196,15 +199,13 @@ function updateLine(state: UpdateState | undefined): string | null {
     case 'idle':
       return null;
     case 'checking':
-      return 'Asking the update server…';
+      return 'Checking…';
     case 'current':
-      return `Up to date — v${state.version} is the newest build.`;
+      return "You're on the latest version.";
     case 'available':
-      return `v${state.version} is available. Open it from the sidebar to download.`;
     case 'downloading':
-      return `Downloading v${state.version}…`;
     case 'ready':
-      return `v${state.version} is downloaded and installs on the next restart.`;
+      return `Version ${state.version} is waiting. See the corner.`;
     case 'installing':
       return `Restarting into v${state.version}…`;
     case 'error':
@@ -272,6 +273,8 @@ export interface Props {
   onRevealData: () => void;
   /** Fires only after the confirm step this view renders. */
   onClearData: () => void;
+  /** About → Run setup again: back through onboarding. */
+  onRunSetup?: () => void;
 
   /* ---- About ---- */
   /**
@@ -308,6 +311,7 @@ export default function SettingsView({
   onExportData,
   onRevealData,
   onClearData,
+  onRunSetup,
   licence,
 }: Props) {
   /** Transient, and the only state on the screen: a destructive action asks first. */
@@ -358,12 +362,10 @@ export default function SettingsView({
             a size the published ramp does not carry (TRAP 10); `.t-greeting` is the documented
             off-ramp class for that exact 20, shared with the Dashboard greeting. */}
         <header className="set-head">
-          <h1 className="set-title t-greeting">Settings</h1>
-          <p className="set-sub t-body-small">
-            {`Bell ${version} · `}
-            {synced
-              ? `${(stats?.papers ?? 0).toLocaleString()} papers in the catalogue`
-              : 'catalogue not synced yet'}
+          <h1 className="set-title">Settings</h1>
+          <p className="set-sub">
+            Everything here is stored on this machine.
+            {synced ? ` ${(stats?.papers ?? 0).toLocaleString()} papers in the catalogue.` : ' The catalogue has not synced yet.'}
           </p>
         </header>
 
@@ -396,28 +398,6 @@ export default function SettingsView({
                   />
                 </CardRow>
 
-                {/* Mascot switcher hidden: Ms. Bell is the default shipped and cannot be changed. Code preserved. */}
-                {/*
-                <CardRow label="Mascot" helper="Choose who keeps you company throughout Bell">
-                  <span className="set-choice" role="group" aria-label="Mascot">
-                    <Chip
-                      label="Ms. Bell"
-                      filled={settings.pet === 'msbell'}
-                      onClick={() => onChange({ pet: 'msbell' })}
-                    />
-                    <Chip
-                      label="Azure"
-                      filled={settings.pet === 'azure'}
-                      onClick={() => onChange({ pet: 'azure' })}
-                    />
-                    <Chip
-                      label="Mr. Bell"
-                      filled={settings.pet === null}
-                      onClick={() => onChange({ pet: null })}
-                    />
-                  </span>
-                </CardRow>
-                */}
               </Card>
             </section>
 
@@ -650,6 +630,17 @@ export default function SettingsView({
                   />
                   <span className="set-unit t-body-meta">min</span>
                 </CardRow>
+
+                <CardRow label="Daily goal" helper="What the sidebar's TODAY bar fills towards">
+                  <MinutesField
+                    value={settings.goalMinutes}
+                    min={5}
+                    max={600}
+                    label="Daily goal in minutes"
+                    onCommit={(goalMinutes) => onChange({ goalMinutes })}
+                  />
+                  <span className="set-unit t-body-meta">min</span>
+                </CardRow>
               </Card>
             </section>
 
@@ -672,28 +663,24 @@ export default function SettingsView({
                   />
                 </CardRow>
 
-                {/* One of the file's three label-less rows (TRAP 13): a Body/Meta string sits in the
-                    label slot and the action sits opposite it. The helper is the answer to the button
-                    beside it once it has been pressed, and the version line until then — an app that
-                    has not looked must not claim to be up to date. */}
+                {/* Bell App v2: the version is the row's name and the answer to Check now is its line.
+                    An app that has not looked must not claim to be up to date, so until a check has
+                    run the line is the build. */}
                 <CardRow
-                  helper={
-                    updateStatus ? (
-                      <span className="set-now">{updateStatus}</span>
-                    ) : buildLine ? (
-                      `Bell ${version} · ${buildLine}`
-                    ) : (
-                      `Bell ${version}`
-                    )
-                  }
+                  label={`Bell ${version}`}
+                  helper={updateStatus ? <span className="set-now">{updateStatus}</span> : buildLine || 'Not checked yet this session.'}
                 >
-                  <Button
-                    icon="sync"
-                    className={checkingUpdates ? 'set-spin' : undefined}
-                    disabled={checkingUpdates}
-                    onClick={onCheckUpdates}
-                    label={checkingUpdates ? 'Checking…' : 'Check now'}
-                  />
+                  <Button disabled={checkingUpdates} onClick={onCheckUpdates} label={checkingUpdates ? 'Checking…' : 'Check now'} />
+                </CardRow>
+
+                <CardRow label="Release notes" helper={`What changed in ${version}.`}>
+                  <button
+                    type="button"
+                    className="set-link"
+                    onClick={() => void openUrl(`${REPO_URL}/releases/tag/v${version}`)}
+                  >
+                    Read on GitHub
+                  </button>
                 </CardRow>
               </Card>
             </section>
@@ -759,31 +746,34 @@ export default function SettingsView({
 
             <section className="set-group" aria-label="About">
               <SectionLabel label="About" />
-              <Card rows>
-                {/* §6.4's About row verbatim: a `Body/Strong` label over a `Mono/Small` helper
-                    (`538:455`), which is the pairing CardRow's own header documents — the label
-                    slot's ramp class is `Body/Default`, so Semibold is wrapped at the call site.
-                    The spec's helper is `build 1284 · September 2026`; the date is a measurement
-                    nothing takes, so only the build stamp ships, and only when App passes one. */}
-                <CardRow
-                  label={<span className="t-body-strong">Bell {version}</span>}
-                  helper={buildLine ? <span className="t-mono-small">{buildLine}</span> : undefined}
-                />
-
-                {/* §6.4: "a second copy of the sidebar credit row". Literally the same classes, so
-                    the heart's documented `--d5` borrow is stated once, in app.css, not twice. */}
-                <CardRow
-                  label={
-                    <span className="credit t-body-meta">
-                      Built with <span className="credit-heart">♥</span> by{' '}
-                      <GitHubMark size={11} className="credit-mark" />
-                      <span className="credit-name">zohaiblazuli</span>
-                    </span>
-                  }
-                />
-
-                {licence ? <CardRow helper={licence} /> : null}
-              </Card>
+              {/* Bell App v2's About: Hush, puffed up with his two stars, beside the name, the build and
+                  one line on what Bell is for. */}
+              <div className="set-about">
+                <div className="set-about-art">
+                  <i aria-hidden="true" />
+                  <Mascot size={171} mood="proud" />
+                </div>
+                <div className="set-about-text">
+                  <span className="set-about-name">Bell</span>
+                  <span className="set-about-build">
+                    v{version}
+                    {buildLine ? ` · ${buildLine}` : ''}
+                  </span>
+                  <p>A calm, offline-first desk for Cambridge past papers. Pull what you need onto your machine, then unplug.</p>
+                  <div className="set-about-links">
+                    <span>Built by zohaiblazuli</span>
+                    <button type="button" onClick={() => void openUrl(REPO_URL)}>
+                      GitHub
+                    </button>
+                    {licence && <span className="set-about-licence">{licence}</span>}
+                    {onRunSetup && (
+                      <button type="button" onClick={onRunSetup}>
+                        Run setup again
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
             </section>
           </div>
         </div>

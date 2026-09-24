@@ -1,180 +1,281 @@
-/* The Reader — `design/specs/screen-reader.md`.
- *
- * §2's layout map is the frame: page rail 140, the paper well, and a third column that is 0 wide
- * until the mark scheme opens — §7's 268 tool panel is gone, and so are its cards. §8's tool bar
- * floats over the well and now carries zoom and the mark-scheme button as well as the file's three
- * groups. §4's topbar is `components/TopBar`; almost nothing here is for it any more.
- *
- * This sheet also carries `PaperCanvas` and `MarkSchemeSheet`, because both are the Reader's own
- * pieces and are mounted nowhere else.
- *
- * TWO THINGS TO KNOW BEFORE EDITING.
- *
- * 1. **This sheet loads AFTER `app.css` and `ui/styles`, not before.** The header used to claim the
- *    reverse; measured off the built bundle in Phase 6, the byte offsets in `dist/assets/*.css` run
- *    chrome.css → app.css → ui/styles → view CSS, in both the dev server (ES module evaluation order,
- *    with `App` imported last) and the production build. So a view sheet WINS a tie. The `rd-*` prefix
- *    stays anyway — a bare `.paper` / `.pagepill` / `.ms` here would be a collision waiting for
- *    someone to rename something — and the couple of rules written extra-specific to "beat a later
- *    sheet" (`section.rd` over `.view`) are harmless but were not necessary.
- * 2. The columns are FIXED tracks and focus mode recedes the rail with a transform, so the well never
- *    widens. That is deliberate: growing it would mean animating `grid-template`.
- */
+/* The Reader — Bell App v2. A 56px bar (back, subject, code · session | focus clock | Clip, Mark
+   scheme, window controls), then a three-column section: a 104px PAGES rail, the well on the rule
+   tone with the paper on it, and the mark scheme, which opens as a third column. A floating tool bar
+   sits over the well's foot. The community reader shares every `.rd-*` rule here. */
 
-section.rd {
-  position: relative;
+/* ---------- the bar ---------- */
+.rd-top {
+  height: 56px;
+  flex: none;
   display: grid;
-  /* Two live columns — rail + well — and a third that is 0 until the mark scheme opens, when it
-     grows to `--ms-w` and the well shrinks to make room. Transitioned, so the split animates open.
-     The Questions panel that used to sit on the right has been removed. */
-  --ms-w: clamp(340px, 40%, 640px);
-  --nb-w: clamp(420px, 50%, 800px);
-  grid-template-columns: 140px minmax(0, 1fr) 0px;
-  grid-template-rows: minmax(0, 1fr);
-  min-height: 0;
-  overflow: hidden;
-  transition: grid-template-columns 0.4s cubic-bezier(0.4, 0, 0.1, 1);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+  background: var(--ground);
+  border-bottom: 2px solid var(--line);
 }
-
-/* ---------- §4 topbar: the right slot's contents ---------- */
-
-/* Empty in the shipped build: the timer moved to the bar's centre slot, zoom and the mark scheme
-   moved down to §8's pill, and focus mode and clip are hidden (`SHOW_FOCUS_TOGGLE` /
-   `SHOW_CLIP_TOOL` in WorkspaceView.tsx). Kept because those two flags are one edit from returning. */
-.rd-tbr {
+.rd-top-l {
   display: flex;
   align-items: center;
-  gap: 12px; /* the bar's own itemSpacing */
+  gap: 12px;
   min-width: 0;
+  overflow: hidden;
+}
+.rd-top-r {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.rd-back {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--ink);
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--line);
+  cursor: pointer;
+  transition: background-color .16s, color .16s;
+}
+.rd-back:hover {
+  background: var(--inkbg);
+  color: var(--onink);
+}
+.rd-top-name {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  white-space: nowrap;
+}
+.rd-top-code {
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rd-topbtn {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  color: var(--ink);
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--line);
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color .16s, color .16s, box-shadow .16s;
+}
+.rd-topbtn:hover:not(:disabled) {
+  box-shadow: inset 0 0 0 2px var(--line), 3px 3px 0 var(--line);
+}
+.rd-topbtn[aria-pressed='true'] {
+  background: var(--inkbg);
+  color: var(--onink);
+}
+.rd-topbtn:disabled {
+  opacity: .45;
+  cursor: default;
+}
+.rd-clip-glyph {
+  position: relative;
+  display: block;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border: 2px dashed currentColor;
+}
+.rd-clip-glyph::after {
+  content: '';
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  width: 7px;
+  height: 7px;
+  background: currentColor;
+}
+.rd-ms-glyph {
+  display: block;
+  width: 12px;
+  height: 14px;
+  box-shadow: inset 0 0 0 2px currentColor;
+  background:
+    linear-gradient(currentColor, currentColor) 3px 4px / 6px 2px no-repeat,
+    linear-gradient(currentColor, currentColor) 3px 8px / 6px 2px no-repeat;
+}
+.rd-clipwrap {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
-/* §4 `title` `195:15` — H gap 9, three type styles in one row: the subject name inherits TopBar's
-   Title/Toolbar, then the code in Mono/Meta and the session in Body/Small. It sits in TopBar's
-   `title` slot as a node, which is what stopped it colliding with the Reader's own controls. */
+/* The community reader keeps the shared TopBar; these are its title and right-hand buttons. */
 .rd-ident {
   display: flex;
   align-items: baseline;
   gap: 9px;
   min-width: 0;
-  transition: opacity 0.25s ease, visibility 0s;
 }
-/* Whitespace is not a separator here: the name must not wrap or be elided before the code is. */
 .rd-ident-name {
+  font-size: 20px;
+  font-weight: 700;
   white-space: nowrap;
 }
-.rd-ident-code {
-  color: var(--ink-2);
-  white-space: nowrap;
-}
-.rd-ident-sep {
-  color: var(--ink-3);
-}
+.rd-ident-code,
+.rd-ident-sep,
 .rd-ident-session {
-  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
   white-space: nowrap;
 }
-
-/* §4 `docs` `195:20` used to sit here as a pair of word chips. The mark-scheme trigger is a labelled
-   button in §8's tool bar now (`.rd-msbtn`), and the examiner-report chip went with it — nothing in
-   the app opens a report, so a chip that only said "the library has one" was furniture. */
-
-/* Zoom has no counterpart in the file — the mock's paper is a fixed 500 x 707 box. Two instances
-   now, and the shared part is only the readout: one in §8's pill for the well, one in the
-   mark-scheme sheet's head for the sheet. Each sits against the pane it acts on. */
-.rd-zoom-read {
-  min-width: 40px;
-  text-align: center;
-  color: var(--ink-3);
+.rd-tbr {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.rd-msbtn {
+  flex: none;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  color: var(--ink);
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--line);
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.rd-msbtn svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
+}
+.rd-msbtn[aria-pressed='true'] {
+  background: var(--inkbg);
+  color: var(--onink);
+}
+.rd-msbtn:disabled {
+  opacity: .45;
 }
 
-/* ---------- §5 page rail `194:732` ---------- */
+/* ---------- the section ---------- */
+section.rd {
+  position: relative;
+  display: grid;
+  --rail-w: 104px;
+  --ms-w: clamp(340px, 36%, 520px);
+  --nb-w: clamp(420px, 50%, 800px);
+  grid-template-columns: var(--rail-w) minmax(0, 1fr) 0px;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+  /* `backwards`: a filled opacity animation would keep this a stacking context and trap every
+     modal scrim raised inside it under the top bar. */
+  animation: sk-fade .3s ease backwards;
+  transition: grid-template-columns .32s cubic-bezier(.2, .8, .2, 1);
+}
+section.rd[data-ms='open'] {
+  grid-template-columns: var(--rail-w) minmax(0, 1fr) var(--ms-w);
+}
+section.rd[data-nb='open'] {
+  grid-template-columns: var(--rail-w) minmax(0, 1fr) var(--nb-w);
+}
 
+/* ---------- PAGES rail ---------- */
 .rd-rail {
   grid-column: 1;
   display: flex;
   flex-direction: column;
+  align-items: center;
   min-height: 0;
-  padding-top: 17px;
+  padding-top: 14px;
   overflow: hidden;
-  background: var(--glass);
-  -webkit-backdrop-filter: blur(26px) saturate(165%);
-  backdrop-filter: blur(26px) saturate(165%);
-  /* §5 and TRAP 8: a hairline on ALL FOUR sides. The Library sidebar's `border-right` would drop
-     three of them, which is the trap the spec calls out by name. */
-  border: 1px solid var(--hair);
-  box-shadow: inset 0 1px 0 var(--glass-hi);
-  visibility: visible;
-  transition: opacity 0.34s ease, transform 0.4s cubic-bezier(0.4, 0, 0.1, 1), visibility 0s;
+  background: var(--ground);
+  border-right: 2px solid var(--line);
+  transition: opacity .34s ease, transform .4s cubic-bezier(.4, 0, .1, 1), visibility 0s;
 }
-
-/* "PAGES" at 21,17. The eyebrow is pinned and the thumbs scroll under it: the file draws five
-   pages, the index hands us however many the paper has. */
 .rd-rail-head {
   flex: none;
-  padding: 0 21px 15px;
-  color: var(--ink-2);
+  padding: 0 0 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
 }
 .rd-rail-empty {
   margin: 0;
-  padding: 0 21px;
-  color: var(--ink-3);
+  padding: 0 10px;
+  font-size: 12px;
+  color: var(--mute);
+  text-align: center;
 }
-
 .rd-thumbs {
   flex: 1 1 0;
   min-height: 0;
+  width: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px; /* §5 `thumbs` — VERTICAL, gap 14, align CENTER */
+  gap: 12px;
   margin: 0;
-  padding: 0 0 24px;
+  padding: 2px 0 24px;
   list-style: none;
 }
-
-/* Each `thumb N` — VERTICAL, gap 6, align CENTER. The file fills its 96 x 136 `page` with an
-   abstracted `mini` (a title bar and ten line rects); we draw the real page into it instead, and
-   leave the sheet plain `--paper` until it has rasterised. Mock furniture standing in for a page we
-   can actually render would be placeholder content. */
 .rd-thumb {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   padding: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
 }
 .rd-thumb-sheet {
   position: relative;
-  width: 96px;
-  height: 136px;
-  border-radius: 2px; /* §5: literal 2, not a radius token */
+  width: 62px;
+  height: 86px;
   overflow: hidden;
-  background: var(--paper);
-  opacity: 0.72; /* §5: an inactive thumb is node opacity 0.72 with no stroke */
-  transition: opacity 0.16s, box-shadow 0.16s;
+  background: var(--sheet);
+  box-shadow: 0 0 0 1px rgba(var(--ink-rgb), .25);
+  transition: box-shadow .16s;
 }
 .rd-thumb:hover .rd-thumb-sheet {
-  opacity: 0.88;
+  box-shadow: 0 0 0 2px var(--line);
 }
-/* Active (page 4, `195:44`): opacity 1 plus a 1.5px `--accent` stroke. */
 .rd-thumb[aria-current='page'] .rd-thumb-sheet {
-  opacity: 1;
-  box-shadow: 0 0 0 1.5px var(--accent);
+  box-shadow: 0 0 0 2px var(--ground), 0 0 0 4px var(--ink);
 }
 .rd-thumb-canvas {
   display: block;
+  width: 62px !important;
+  height: auto !important;
 }
 .rd-thumb-num {
-  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
 }
 .rd-thumb[aria-current='page'] .rd-thumb-num {
-  color: var(--accent);
+  font-weight: 600;
 }
 
-/* ---------- §6 paper `194:741`, and the well it sits in ---------- */
-
+/* ---------- the well and the paper ---------- */
 .rd-well {
   grid-column: 2;
   min-width: 0;
@@ -182,28 +283,18 @@ section.rd {
   overflow: auto;
   display: flex;
   align-items: flex-start;
-  /* 20 at the head is §2's own gap: `paper` starts at y 72 under a topbar that ends at 52.
-     70 at the foot clears §8's tool bar — 50 tall (pad 8 + a 34 button) with its own 14 off the
-     bottom edge, since the file puts it at y 796 in an 860 frame — plus 6 of air. */
-  padding: 20px 26px 70px;
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.1, 1);
+  padding: 22px 26px 80px;
+  background: var(--rule);
+  transition: transform .4s cubic-bezier(.4, 0, .1, 1);
 }
-/* `margin-inline: auto` rather than `justify-content: center` on the well: a centred flex item that
-   outgrows its scroller has its left overflow made unreachable, which is exactly what a zoomed page
-   does. Auto margins collapse to 0 once there is no free space, so the pan still works. */
 .rd-stage {
   position: relative;
   margin-inline: auto;
-  /* The continuous-scroll stack: pages in a centred column with a gap between them. The well is the
-     scroller; a page still pans left/right when zoomed past the well because the well overflows. */
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 24px;
-  transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
-
-/* One page's slot in the stack — the lazy `.rd-paper` (real or placeholder) sits inside it. */
 .rd-page {
   flex: none;
   position: relative;
@@ -211,28 +302,23 @@ section.rd {
 .rd-error {
   max-width: 460px;
 }
-
 .rd-paper {
   position: relative;
-  background: var(--paper);
+  background: #fffefb;
   color: var(--page-ink);
-  border-radius: 3px; /* §6: a literal 3 — the paper is not a card */
-  /* §6's effects are a raw two-layer black shadow, identical in both modes. `--shadow-paper` is the
-     app's mode-paired token for exactly this surface, and a raw rgba() here would be a bug by the
-     design system's own rule; the token is the shipped call and stays. */
-  box-shadow: var(--shadow-paper);
-  overflow: hidden; /* §6 clipsContent: true */
+  /* The exam PDF stays bright in both tones — the one thing on screen that never inverts. */
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .08), 0 18px 40px -20px rgba(40, 30, 10, .5);
+  overflow: hidden;
 }
-/* The box is already reserved, so a decoding page fades in rather than flashing. */
 .rd-paper[data-rendering='true'] .rd-paper-page {
-  opacity: 0.4;
+  opacity: .4;
 }
 .rd-paper-page {
   position: absolute;
   top: 0;
   left: 0;
   display: block;
-  transition: opacity 0.2s;
+  transition: opacity .2s;
 }
 .rd-paper-ink {
   position: absolute;
@@ -244,53 +330,35 @@ section.rd {
   pointer-events: none;
   touch-action: none;
 }
-/* The one cursor in the app that is not `default`. The design system's rule is about buttons not
-   feeling like web links; an armed drawing surface genuinely has to say so. */
 .rd-paper-ink[data-live='true'] {
   pointer-events: auto;
   cursor: crosshair;
 }
 
-/* ---------- clip a region into a notebook ---------- */
-
-/* Sits above the ink layer and takes the pointer while clip mode is armed, so one drag can only ever
-   mean one thing. Crosshair for the same reason the armed ink layer gets one: this is a surface you
-   are being asked to drag on, and the app's global `cursor: default` would hide that. */
+/* ---------- clip to notebook ---------- */
+@keyframes rd-clip-rect { 0% { transform: scale(.94); opacity: .4; } 60% { transform: none; opacity: 1; } 100% { opacity: .4; } }
 .rd-clip {
   position: absolute;
   inset: 0;
   z-index: 3;
   cursor: crosshair;
   touch-action: none;
+  background: rgba(42, 92, 170, .06);
 }
-/* The accent as a LINE on a live element — rule 2 — with `--accent-soft` as the one permitted wash,
-   behind one element. Dashed at the same 5/4 rhythm as the lasso the notebook spread draws. */
 .rd-clip-box {
   position: absolute;
-  border: 1px dashed var(--accent);
-  background: var(--accent-soft);
-  border-radius: 3px;
+  border: 2.5px dashed var(--sk-blue);
+  background: rgba(42, 92, 170, .08);
   pointer-events: none;
 }
-
-/* The topbar button's anchor. `position: relative` and nothing else — the popover positions itself
-   against this, and giving the wrapper any box of its own would push the bar's 12px gaps out. */
-.rd-clipwrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-/* The hint rides over the well on the same offset idiom as the tool bar: the wrapper spans the frame
-   and the transform shifts it onto the well's own midline, 64px left of the frame's. */
 .rd-cliphint {
   position: absolute;
   inset-inline: 0;
-  top: 12px;
+  top: 14px;
   z-index: 6;
   display: flex;
   justify-content: center;
-  transform: translateX(-64px);
+  transform: translateX(calc(var(--rail-w) / 2));
   pointer-events: none;
 }
 .rd-cliphint-pill {
@@ -298,197 +366,216 @@ section.rd {
   align-items: center;
   gap: 10px;
   max-width: 70%;
-  padding: 7px 8px 7px 14px;
-  border: 1px solid var(--hair);
-  border-radius: var(--r-pill);
-  background: var(--glass-strong);
-  backdrop-filter: blur(26px) saturate(165%);
-  box-shadow: var(--shadow-card);
-  color: var(--ink-2);
+  padding: 7px 12px;
+  background: var(--inkbg);
+  color: var(--onink);
+  font-size: 13px;
+  white-space: nowrap;
   pointer-events: auto;
-}
-/* No trailing control, so the pill is symmetric again. */
-.rd-cliphint-pill:not(:has(button)) {
-  padding-right: 14px;
+  animation: sk-rise .3s cubic-bezier(.2, .8, .2, 1) both;
 }
 .rd-cliphint-pill strong {
-  color: var(--ink);
-  font-weight: 600;
+  font-weight: 700;
 }
 .rd-cliphint-esc {
   margin-left: 10px;
-  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  opacity: .8;
 }
 .rd-cliphint-bad {
-  color: var(--danger);
+  color: var(--maroon);
 }
 button.rd-cliphint-go {
   padding: 3px 10px;
-  border: 1px solid var(--accent);
-  border-radius: var(--r-pill);
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--onink);
+  color: var(--inkbg);
+  font-weight: 600;
+  cursor: pointer;
 }
 
-/* ---------- §8 floating tool bar `201:30` ---------- */
-
-/* The wrapper spans the frame, so the pill centres on the FRAME — but the well runs from the rail's
-   right edge to the frame's, so its midline is 70px to the RIGHT of that (140 / 2). Carrying the
-   correction as a transform is what lets the mark-scheme split recentre the pill without animating a
-   layout property.
-   THE OLD VALUE WAS -64px AND IT WAS STALE: that is ((140 − 268) / 2), the correction from when a 268
-   tool panel balanced the rail on the right. With the panel gone it put the pill 134px left of the
-   page it belongs to, which is what Zohaib's screenshot shows.
-   z-index 8 puts it over the mark-scheme sheet (7): the bar's tools write on both panes now, so it is
-   the screen's toolbar, and on a narrow window it has to be allowed to overhang the split. 14 off the
-   bottom is §8's own y — the bar sits at 796 in an 860 frame and is 50 tall (pad 8 + a 34 button). */
+/* ---------- the floating tool bar ---------- */
 .rd-barwrap {
   position: absolute;
   inset-inline: 0;
-  bottom: 14px;
+  bottom: 16px;
   z-index: 8;
   display: flex;
   justify-content: center;
   pointer-events: none;
-  transform: translateX(70px);
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.1, 1);
+  transform: translateX(calc(var(--rail-w) / 2));
+  transition: transform .32s cubic-bezier(.2, .8, .2, 1);
+}
+section.rd[data-ms='open'] .rd-barwrap {
+  transform: translateX(calc(var(--rail-w) / 2 - var(--ms-w) / 2));
+}
+section.rd[data-nb='open'] .rd-barwrap {
+  transform: translateX(calc(var(--rail-w) / 2 - var(--nb-w) / 2));
 }
 .rd-bar {
+  position: relative;
   pointer-events: auto;
   display: flex;
   align-items: center;
-  gap: 12px; /* §8: pad 8, align CENTER. 12 rather than 14 — five groups, not three. */
-  padding: 8px;
-  border-radius: var(--r-pill);
-  background: var(--glass-strong);
-  /* The app's chrome blur, the same as the rail above. §8 measures 12 and TRAP 9 already calls that
-     drift; Figma blur units are not CSS px, and this pill floats over the same ground as the rest of
-     the frame, so it reads at the same depth. */
-  -webkit-backdrop-filter: blur(26px) saturate(165%);
-  backdrop-filter: blur(26px) saturate(165%);
-  border: 1px solid var(--hair);
-  /* §8's raw `0 8 24 -4 rgba(0,0,0,.42)`, taken from the mode-paired token instead. */
-  box-shadow: var(--shadow-card-h), inset 0 1px 0 var(--glass-hi);
+  background: var(--ground);
+  box-shadow: 0 0 0 2px var(--line), 4px 4px 0 var(--line);
+  animation: sk-rise .45s cubic-bezier(.2, .8, .2, 1) .25s both;
 }
 .rd-bar-grp {
   display: flex;
   align-items: center;
-  gap: 4px; /* §8 `group` `201:31` / `201:66` */
 }
 .rd-bar-sep {
   flex: none;
-  width: 1px;
-  height: 20px;
-  background: var(--hair);
+  width: 2px;
+  height: 24px;
+  margin: 0 6px;
+  background: var(--line);
 }
-.rd-bar-count {
-  min-width: 52px;
-  text-align: center;
-  color: var(--ink-2);
-}
-/* §8's active tool used to be hand-filled here, because `Icon Button` shipped only `Default | Hover`
-   and `.icobtn--on` therefore painted the Hover grey. It now has a real `State=Active` — the
-   Notebooks pass added it (`components-controls.md` §5) — so the hand-fill is retired and the Reader
-   inherits `--accent-soft` plus the 1px inset `--accent` ring from the component.
-
-   The ring is the point: at 34px a bare wash is very faint, and a line on a live element is the design
-   system's own rule doing the work. The glyph deliberately stays `--ink-2` rather than the `--accent`
-   this rule used to force — an accent fill AND an accent glyph AND an accent line is three signals for
-   one state, and §5 says so explicitly. */
-/* §8 builds `next page` from the `left` glyph rotated 180°; redo is the same trick on `ret`. Both
-   glyphs are symmetric about the horizontal axis, so one mirror serves for both. */
-.rd-bar button.rd-flip svg {
-  transform: scaleX(-1);
-}
-
-/* The caret that shows and hides the armed tool's settings. `chev` points down, so it is flipped to
-   point UP at the panel it opens, and turns back over when the panel is showing. A transform, so it
-   is inside the design system's motion rule. */
-.rd-bar button.rd-caret svg {
-  transform: rotate(180deg);
-  transition: transform 0.22s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-.rd-bar button.rd-caret--open svg {
-  transform: rotate(0deg);
-}
-
-/* The mark-scheme button. It opens half the screen, so it is a labelled button in the toolbar rather
-   than the 11px lower-case word chip it used to be in the corner of the top bar — the label is
-   `Body/Strong`, the height matches the 34 of every button beside it, and `--accent-soft` behind an
-   `--accent` line marks it open (the same Active recipe `IconButton` uses, which is the one wash the
-   design system permits). */
-.rd-msbtn {
-  flex: none;
-  display: inline-flex;
+.rd-tool,
+.rd-glyphbtn {
+  height: 40px;
+  display: flex;
   align-items: center;
-  gap: 8px;
-  height: 34px;
-  padding: 0 13px 0 11px;
-  border: 1px solid var(--hair);
-  border-radius: var(--r-btn);
-  background: var(--hair-2);
-  color: var(--ink-2);
-  white-space: nowrap;
-  transition: color 0.16s, border-color 0.16s, background-color 0.16s;
-}
-.rd-msbtn svg {
-  flex: none;
-  width: 17px;
-  height: 17px;
-}
-.rd-msbtn:not(:disabled):hover {
+  justify-content: center;
   color: var(--ink);
-  border-color: var(--accent);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color .16s, color .16s;
 }
-.rd-msbtn[aria-pressed='true'] {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  color: var(--accent);
+.rd-tool {
+  width: 40px;
 }
-.rd-msbtn:disabled {
-  opacity: 0.55;
+.rd-tool[aria-pressed='true'] {
+  background: var(--inkbg);
+  color: var(--onink);
 }
+.rd-tool:hover:not([aria-pressed='true']):not(:disabled) {
+  background: var(--pale2);
+}
+.rd-glyphbtn {
+  width: 34px;
+  font-size: 15px;
+}
+.rd-pagebtn {
+  width: 30px;
+}
+.rd-glyphbtn:hover:not(:disabled) {
+  color: var(--red);
+}
+.rd-glyphbtn:disabled,
+.rd-tool:disabled {
+  color: var(--mute3);
+  cursor: default;
+}
+.rd-caret {
+  width: 22px !important;
+}
+.rd-caret > i {
+  display: block;
+  width: 7px;
+  height: 7px;
+  margin-top: 4px;
+  border-left: 2px solid currentColor;
+  border-top: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform .22s cubic-bezier(.2, .7, .2, 1);
+}
+.rd-caret--open > i {
+  margin-top: -4px;
+  transform: rotate(225deg);
+}
+.rd-zoom-read {
+  min-width: 40px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.rd-inks {
+  display: flex;
+  gap: 6px;
+  padding: 0 6px;
+}
+.rd-ink {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform .16s;
+}
+.rd-ink:hover {
+  transform: scale(1.12);
+}
+.rd-ink[aria-pressed='true'] {
+  box-shadow: 0 0 0 2px var(--ground), 0 0 0 4px var(--ink);
+}
+/* the tool glyphs */
+.rd-glyph {
+  position: relative;
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+.rd-glyph > i,
+.rd-glyph > i > i,
+.rd-glyph > b {
+  position: absolute;
+  display: block;
+}
+.rd-glyph--pen > i,
+.rd-glyph--hl > i {
+  left: 7.5px;
+  top: -1px;
+  width: 5px;
+  height: 22px;
+  transform: rotate(45deg);
+}
+.rd-glyph--pen > i > i:nth-child(1),
+.rd-glyph--hl > i > i:nth-child(1) { left: 0; top: 0; width: 5px; height: 4px; background: currentColor; }
+.rd-glyph--pen > i > i:nth-child(2),
+.rd-glyph--hl > i > i:nth-child(2) { left: 0; top: 5px; width: 5px; height: 10px; box-shadow: inset 0 0 0 1.8px currentColor; }
+.rd-glyph--pen > i > i:nth-child(3) { left: 0; top: 15px; width: 5px; height: 6px; background: currentColor; clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.rd-glyph--hl > i > i:nth-child(3) { left: 0; top: 15px; width: 5px; height: 5px; background: currentColor; clip-path: polygon(0 0, 100% 0, 100% 40%, 0 100%); }
+.rd-glyph--pen > b { left: 1px; bottom: 1px; width: 5px; height: 2px; background: var(--sk-blue); }
+.rd-glyph--hl > b { left: 0; bottom: 0; width: 9px; height: 4px; background: var(--sk-yellow); }
+.rd-glyph--er > i {
+  left: 2px;
+  top: 6px;
+  width: 16px;
+  height: 8px;
+  transform: rotate(-35deg);
+  box-shadow: inset 0 0 0 1.8px currentColor;
+}
+.rd-glyph--er > i > i { left: 0; top: 0; width: 7px; height: 8px; background: var(--sk-red); box-shadow: inset 0 0 0 1.8px currentColor; }
+.rd-glyph--er > b { left: 3px; bottom: 1px; width: 15px; height: 1.8px; background: currentColor; }
 
-/* ---------- the tool settings popover (above the bar) ---------- */
-
-/* Mounted always, shown by `data-open`, so it arrives and leaves on a transform and an opacity
-   instead of a mount — and `visibility` is what takes its swatches and sliders out of the tab order
-   once it has gone, which `opacity: 0` alone would not. `inert` on the element covers the pointer and
-   the assistive-technology tree; between them nothing hidden is reachable.
-   It grows out of the bar, so the origin is the bottom edge and the translate is downward. */
+/* ---------- the tool settings popover ---------- */
 .rd-tool-pop {
   position: absolute;
-  bottom: calc(100% + 10px);
+  bottom: calc(100% + 12px);
   left: 50%;
   width: 300px;
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 12px 16px 14px;
-  border-radius: var(--r-panel);
-  background: var(--glass-strong);
-  -webkit-backdrop-filter: blur(30px) saturate(170%);
-  backdrop-filter: blur(30px) saturate(170%);
-  border: 1px solid var(--glass-brd);
-  box-shadow: var(--shadow-card-h), inset 0 1px 0 var(--glass-hi);
+  background: var(--ground);
+  box-shadow: 0 0 0 2px var(--line), 6px 6px 0 var(--line);
   transform-origin: 50% 100%;
-  transform: translateX(-50%) translateY(8px) scale(0.96);
+  transform: translateX(-50%) translateY(8px) scale(.96);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.16s ease, transform 0.22s cubic-bezier(0.2, 0.7, 0.2, 1),
-    visibility 0s 0.22s;
+  transition: opacity .16s ease, transform .22s cubic-bezier(.2, .7, .2, 1), visibility 0s .22s;
 }
 .rd-tool-pop[data-open='true'] {
   transform: translateX(-50%) translateY(0) scale(1);
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
-  transition: opacity 0.16s ease, transform 0.22s cubic-bezier(0.2, 0.7, 0.2, 1), visibility 0s;
+  transition: opacity .16s ease, transform .22s cubic-bezier(.2, .7, .2, 1), visibility 0s;
 }
-
-/* Its head names the tool and carries the × — the affordance that was missing, and the reason the
-   only way to dismiss this used to be to put the pen down. */
 .rd-tool-pop-head {
   display: flex;
   align-items: center;
@@ -499,21 +586,20 @@ button.rd-cliphint-go {
   flex: none;
   width: 16px;
   height: 16px;
-  color: var(--accent);
 }
 .rd-tool-pop-gap {
   flex: 1 1 0;
   height: 1px;
 }
-
 .rd-tool-pop .rd-swatches {
   justify-content: center;
 }
-/* A stable slot for the live preview so the popover does not resize as the nib grows. */
 .rd-pen-preview-box {
   display: grid;
   place-items: center;
   height: 44px;
+  background: #fffefb;
+  box-shadow: inset 0 0 0 2px var(--line);
 }
 .rd-pen-preview {
   display: block;
@@ -531,18 +617,16 @@ button.rd-cliphint-go {
 .rd-pen-rowlabel {
   flex: none;
   width: 50px;
-  color: var(--ink-3);
+  font-size: 12.5px;
 }
 .rd-pen-val {
   flex: none;
   width: 42px;
   text-align: right;
-  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
   white-space: nowrap;
 }
-
-/* §1's ink palette — six 22px discs, HORIZONTAL, gap 11. The fill is `var(--token)` set inline, so
-   the swatch shows the token and the stroke stores the literal it resolved to. */
 .rd-swatches {
   display: flex;
   align-items: center;
@@ -554,67 +638,23 @@ button.rd-cliphint-go {
   height: 22px;
   padding: 0;
   border-radius: 50%;
-  transition: transform 0.16s cubic-bezier(0.2, 0.7, 0.2, 1);
+  cursor: pointer;
+  transition: transform .16s cubic-bezier(.2, .7, .2, 1);
 }
 .rd-swatch:hover {
   transform: scale(1.08);
 }
-/* §1: the selected swatch wears a 1.5px `--ink` ring drawn OUTSIDE the disc (inset −6.82% of 22 =
-   1.5px), so a hair of the popover shows between disc and ring. The inner layer paints an opaque
-   surface because a transparent box-shadow layer does not punch a hole in the one under it. Using
-   box-shadow rather than `outline` leaves the focus ring its own channel. */
 .rd-swatch[aria-pressed='true'] {
-  box-shadow: 0 0 0 0.75px var(--card), 0 0 0 2.25px var(--ink);
-}
-/* index.css's global `:focus-visible` squares every ring off at 6px; this one is a disc. */
-.rd-swatch:focus-visible {
-  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--ground), 0 0 0 4px var(--ink);
 }
 
-/* ---------- §7 tool panel `194:733` — DELETED ----------
- *
- * The 268-wide panel and both of its cards are gone. TOOLS (§7b) has moved into the floating bar's
- * settings popover above, which is where the tool you are holding is; QUESTIONS (§7c) never had
- * anything real to show — nothing in the app parses question boundaries out of a paper — and the exam
- * timer card was a second, invented copy of the one measurement the app does take.
- *
- * What went with them, all confirmed unreferenced by any `.tsx` before deletion: `.rd-panel`,
- * `.rd-card`, `.rd-cardhead*`, `.rd-strokes*` and `.rd-stroke*` (the 5 / 8 / 12 nib picker, replaced
- * by the popover's continuous Size slider), `.rd-opacity*` (replaced by `@ui/Slider`), `.rd-questions`,
- * `.rd-qs`, `.rd-q*` and `.rd-empty`. `.rd-swatches` / `.rd-swatch` survive and now live with the
- * popover. Column 3 of the grid is the mark scheme's, and nothing else claims it.
- */
-
-/* ---------- mark-scheme sheet — a slide-over the reader makes ROOM for ---------- */
-
-/* Opening the mark scheme grows column 3 from 0 to `--ms-w` (defined on `section.rd`), so the
-   reader well genuinely shrinks and the tool bar recentres onto it — nothing is covered, unlike the
-   old overlay that painted over the bar. The sheet itself stays an absolute slide-over so it still
-   animates in from the right, landing exactly over the space column 3 vacated. */
-section.rd[data-ms='open'] {
-  grid-template-columns: 140px minmax(0, 1fr) var(--ms-w);
-}
-section.rd[data-nb='open'] {
-  grid-template-columns: 140px minmax(0, 1fr) var(--nb-w);
-}
-/* Keep the floating tool bar centred on the now-narrower well: the well runs 140..(W − ms), so its
-   midline is (70 − ms/2) off the frame's. On a narrow window that pill is wider than what is left of
-   the well and overhangs the split — which is what `.rd-barwrap`'s z-index 8 is for. */
-section.rd[data-ms='open'] .rd-barwrap {
-  transform: translateX(calc(70px - var(--ms-w) / 2));
-}
-section.rd[data-nb='open'] .rd-barwrap {
-  transform: translateX(calc(70px - var(--nb-w) / 2));
-}
-
-/* Zero-delay tracking while the user is actively dragging the divider */
+/* ---------- the mark scheme column ---------- */
 section.rd[data-resizing='true'],
 section.rd[data-resizing='true'] .rd-barwrap,
 section.rd[data-resizing='true'] .rd-ms,
 section.rd[data-resizing='true'] .rd-nb {
   transition: none !important;
 }
-
 .rd-ms {
   position: absolute;
   top: 0;
@@ -624,82 +664,82 @@ section.rd[data-resizing='true'] .rd-nb {
   z-index: 7;
   display: flex;
   flex-direction: column;
-  background: var(--glass-strong);
-  -webkit-backdrop-filter: blur(30px) saturate(170%);
-  backdrop-filter: blur(30px) saturate(170%);
-  border-left: 1px solid var(--glass-brd);
-  box-shadow: var(--shadow-pop), inset 1px 0 0 var(--glass-hi);
+  background: var(--ground);
+  border-left: 2px solid var(--line);
   transform: translateX(100%);
-  /* Closed, `visibility` takes the close button out of the tab order; the 0.4s delay holds that
-     step back until the slide-out has finished. */
   visibility: hidden;
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.1, 1), visibility 0s 0.4s;
+  transition: transform .34s cubic-bezier(.2, .8, .2, 1), visibility 0s .34s;
 }
 .rd-ms[data-open='true'] {
   transform: none;
   visibility: visible;
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.1, 1), visibility 0s;
+  transition: transform .34s cubic-bezier(.2, .8, .2, 1), visibility 0s;
 }
-
 .rd-ms-head {
+  height: 52px;
   flex: none;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 14px 12px 18px;
-  border-bottom: 1px solid var(--hair);
+  padding: 0 12px 0 16px;
+  border-bottom: 2px solid var(--line);
 }
-.rd-ms-glyph {
+.rd-ms-title {
   flex: none;
-  width: 18px;
-  height: 18px;
-  color: var(--accent);
+  font-size: 16px;
+  font-weight: 600;
 }
 .rd-ms-tag {
-  /* The one thing in the head that may shrink. At the narrow end of `--ms-w` (360) the title, the
-     tag, the zoom group and the close button want ~375px, so something has to give — and it is this,
-     because the paper it names is spelled out in the top bar two inches above. The spacer's 0 basis
-     goes first, then this ellipsises. */
   flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  color: var(--ink-3);
-  border: 1px solid var(--hair);
-  border-radius: 5px;
   padding: 2px 6px;
-}
-.rd-ms-head > .t-title-card {
-  flex: none;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  box-shadow: inset 0 0 0 1.5px var(--line);
 }
 .rd-ms-spacer {
   flex: 1 1 0;
 }
-/* The sheet's own zoom, tight against the close button. Its own group, because the pane it acts on
-   is not the one §8's zoom acts on — and at 360px the head has no room for anything looser. */
 .rd-ms-zoom {
   display: flex;
   align-items: center;
-  gap: 0;
   flex: none;
+}
+.rd-ms-zoom .icobtn {
+  width: 28px;
+  height: 28px;
 }
 .rd-ms-zoom .rd-zoom-read {
   min-width: 38px;
+  font-size: 11px;
 }
-
-/* A flex ROW holding one centred stage, not a column of pages — the same arrangement `.rd-well` has
-   with `.rd-stage`, and for the same reason: `margin-inline: auto` centres the stage while there is
-   room and collapses to 0 once a zoomed page is wider than the pane, so the left of the page stays
-   reachable. `align-items: center` here would make that overflow unscrollable.
-   The 74 at the foot clears the floating tool bar, which on a narrow window overhangs this pane. */
+.rd-ms-close {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+}
+.rd-ms-close:hover {
+  background: var(--inkbg);
+  color: var(--onink);
+}
 .rd-ms-body {
   flex: 1 1 0;
   min-height: 0;
-  padding: 18px 18px 74px;
+  padding: 16px;
   overflow: auto;
   display: flex;
   align-items: flex-start;
+  background: var(--rule);
 }
 .rd-ms-stage {
   margin-inline: auto;
@@ -708,74 +748,71 @@ section.rd[data-resizing='true'] .rd-nb {
   align-items: center;
   gap: 14px;
 }
-/* One page's slot. The sheet mounts `PaperCanvas` now — the same white page, ink layer and
-   fraction-of-the-box geometry the well uses — so this is only the slot, and `.rd-paper` paints it.
-   The old rule rasterised at a fixed 640 and CSS-scaled the canvas with `width: 100% !important`,
-   which cannot carry an ink overlay: the ink canvas would have been scaled by a different factor
-   than the strokes were captured against. */
 .rd-ms-page {
   flex: none;
   position: relative;
 }
 .rd-ms-empty {
   margin: 0;
-  color: var(--ink-2);
+  font-size: 14px;
 }
 
-/* ---------- focus mode: the chrome recedes, transform and opacity only ---------- */
+/* How did this one feel? — pinned under the mark scheme. */
+.rd-feel {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px 72px;
+  border-top: 2px solid var(--line);
+  background: var(--ground);
+}
+.rd-feel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rd-feel-head span {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .12em;
+  white-space: nowrap;
+}
+.rd-feel-head i {
+  flex: 1;
+  height: 2px;
+  background: var(--line);
+}
 
-/* Hidden as a control (`SHOW_FOCUS_TOGGLE`), still wired: Escape leaves it, and `.app[data-focus]`
-   still drives this. `visibility` for the same reason as the sheet — a control faded to zero opacity
-   is still in the tab order, so fading the rail out without it would leave every thumbnail reachable
-   from the keyboard while invisible. */
+/* ---------- focus mode ---------- */
 .app[data-focus='on'] .rd-rail {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   transform: translateX(-100%);
-  transition: opacity 0.34s ease, transform 0.4s cubic-bezier(0.4, 0, 0.1, 1), visibility 0s 0.4s;
+  transition: opacity .34s ease, transform .4s cubic-bezier(.4, 0, .1, 1), visibility 0s .4s;
 }
-/* The rail keeps its track, so the paper is nudged back onto the frame's midline and the tool bar
-   drops its own correction. Two transforms, no relayout. */
 .app[data-focus='on'] .rd-well {
-  transform: translateX(-70px);
+  transform: translateX(calc(var(--rail-w) / -2));
 }
 .app[data-focus='on'] .rd-barwrap {
   transform: none;
 }
-/* In the top bar, only what is about the paper stays: back, the timer, the tone pill. */
-.app[data-focus='on'] .rd-ident {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 0.25s ease, visibility 0s 0.25s;
+
+.rd-back:focus-visible,
+.rd-topbtn:focus-visible,
+.rd-tool:focus-visible,
+.rd-glyphbtn:focus-visible,
+.rd-ink:focus-visible,
+.rd-swatch:focus-visible,
+.rd-thumb:focus-visible,
+.rd-ms-close:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  border-radius: 0;
 }
 
-/* ---------- reduced motion ---------- */
-
-/* Every transition in this sheet, collapsed. Nothing here is information — the sheet, the rail and
-   the settings popover all still arrive, they just arrive at once. The popover's `visibility` delay
-   goes too, which is what keeps a dismissed panel from staying focusable for 0.22s. */
-@media (prefers-reduced-motion: reduce) {
-  .rd-ident,
-  .rd-msbtn,
-  .rd-rail,
-  .rd-thumb-sheet,
-  .rd-well,
-  .rd-stage,
-  .rd-paper-page,
-  .rd-barwrap,
-  .rd-swatch,
-  .rd-ms,
-  .rd-ms[data-open='true'],
-  .rd-tool-pop,
-  .rd-tool-pop[data-open='true'],
-  .rd-bar button.rd-caret svg,
-  .app[data-focus='on'] .rd-rail,
-  .app[data-focus='on'] .rd-ident {
-    transition: none;
-  }
-  .rd-swatch:hover {
-    transform: none;
-  }
+/* A single left-arrow glyph serves both page buttons; the next-page one is mirrored. */
+.rd-flip svg {
+  transform: scaleX(-1);
 }

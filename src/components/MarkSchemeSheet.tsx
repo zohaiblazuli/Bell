@@ -25,11 +25,10 @@
  *
  * Its CSS lives in `src/views/WorkspaceView.css` with the rest of the Reader.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Notice from '@ui/Notice';
 import IconButton from '@ui/IconButton';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import Icon from './Icon';
 import PaperCanvas from './PaperCanvas';
 import { openPdf } from '../lib/pdf';
 import type { InkSettings, Mark, PageInk, Tool } from '../lib/annotations';
@@ -144,6 +143,8 @@ export interface Props {
   /** This mark scheme's ink, keyed by page. */
   marks: PageInk;
   onCommit: (page: number, mark: Mark) => void;
+  /** Pinned under the pages — the reader's feelings row. */
+  footer?: ReactNode;
   /** The page spanning the pane's midpoint, so undo and redo act on what is on screen. */
   onPage: (page: number) => void;
 }
@@ -159,6 +160,7 @@ export default function MarkSchemeSheet({
   marks,
   onCommit,
   onPage,
+  footer,
 }: Props) {
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -269,8 +271,7 @@ export default function MarkSchemeSheet({
     // order. `aria-hidden` alone would leave a focusable control parked off-screen.
     <aside className="rd-ms" data-open={open ? 'true' : undefined} aria-hidden={!open}>
       <div className="rd-ms-head">
-        <Icon name="book" className="rd-ms-glyph" />
-        <b className="t-title-card">Mark scheme</b>
+        <b className="rd-ms-title">Mark scheme</b>
         <span className="rd-ms-tag t-mono-small">{label}</span>
         <span className="rd-ms-spacer" />
         {/* Its own zoom, because the pane it acts on is not the one the bar's zoom acts on. */}
@@ -289,7 +290,9 @@ export default function MarkSchemeSheet({
             onClick={() => setZoom((z) => Math.min(ZOOMS.length - 1, z + 1))}
           />
         </span>
-        <IconButton icon="x" label="Close the mark scheme" onClick={onClose} />
+        <button type="button" className="rd-ms-close" aria-label="Close the mark scheme" title="Close the mark scheme" onClick={onClose}>
+          ✕
+        </button>
       </div>
       <div className="rd-ms-body" ref={body}>
         <div className="rd-ms-stage">
@@ -317,6 +320,7 @@ export default function MarkSchemeSheet({
             ))}
         </div>
       </div>
+      {footer}
     </aside>
   );
 }

@@ -37,52 +37,29 @@ describe('Library paper-number filtering', () => {
   });
 });
 
-describe('Theme switcher and Library Filter dropdowns', () => {
-  test('exactly one TonePill exists globally in TabBar.tsx', async () => {
+describe('Shape Kit chrome and the Past Papers filters (Bell App v2)', () => {
+  test('Day/Night lives in the shared top bar and the notebook bar, and nowhere else', async () => {
     const fs = await import('node:fs');
     const path = await import('node:path');
 
-    const srcFiles = [
-      'src/components/TabBar.tsx',
-      'src/components/TopBar.tsx',
-      'src/views/NotebookView.tsx',
-      'src/views/LibraryView.tsx',
-    ];
+    const count = (rel: string) =>
+      (fs.readFileSync(path.resolve(rel), 'utf-8').match(/<TonePill/g) ?? []).length;
 
-    let count = 0;
-    for (const rel of srcFiles) {
-      const content = fs.readFileSync(path.resolve(rel), 'utf-8');
-      const matches = content.match(/<TonePill/g);
-      if (matches) count += matches.length;
-    }
-
-    assert.equal(count, 1, 'Expected exactly 1 global <TonePill> across all top bars and views');
-
-    // TabBar.tsx must be the one containing it
-    const tabBarContent = fs.readFileSync(path.resolve('src/components/TabBar.tsx'), 'utf-8');
-    assert.ok(tabBarContent.includes('<TonePill'), 'TabBar.tsx must contain the global TonePill');
+    assert.equal(count('src/components/TopBar.tsx'), 1, 'TopBar draws the tone switch');
+    assert.equal(count('src/views/NotebookView.tsx'), 1, 'the notebook owns its own bar');
+    assert.equal(count('src/components/TabBar.tsx'), 0, 'the document tab row carries no tone switch');
+    assert.equal(count('src/views/LibraryView.tsx'), 0);
   });
 
-  test('background bloom layers use GPU transform and will-change acceleration', async () => {
+  test('Past Papers filters are chips, season chips and a P1–P6 toggle, with no Downloaded chip', async () => {
     const fs = await import('node:fs');
     const path = await import('node:path');
 
-    const bgCss = fs.readFileSync(path.resolve('src/styles/background.css'), 'utf-8');
-    assert.ok(bgCss.includes('will-change: opacity;'), 'background.css must declare will-change: opacity');
-    assert.ok(
-      bgCss.includes('transform: translate3d(0, 0, 0);'),
-      'background.css must promote bloom layers to GPU compositing via translate3d',
-    );
-  });
-
-  test('LibraryView uses FilterDropdown for Level, Season, and Paper filtering', async () => {
-    const fs = await import('node:fs');
-    const path = await import('node:path');
-
-    const lvContent = fs.readFileSync(path.resolve('src/views/LibraryView.tsx'), 'utf-8');
-    assert.ok(lvContent.includes("import FilterDropdown from '@ui/FilterDropdown';"));
-    assert.ok(lvContent.includes('<FilterDropdown\n                label="Level"'));
-    assert.ok(lvContent.includes('<FilterDropdown\n                label="Season"'));
-    assert.ok(lvContent.includes('<FilterDropdown\n                    label="Paper"'));
+    const lv = fs.readFileSync(path.resolve('src/views/LibraryView.tsx'), 'utf-8');
+    assert.ok(lv.includes('className="lv-filters-btn"'), 'a collapsible Filters button');
+    assert.ok(lv.includes('className="lv-papers"'), 'a paper-number toggle');
+    assert.ok(lv.includes('<SeasonIcon season={s.key}'), 'season chips carry their glyph');
+    assert.ok(!/['">]Downloaded['"<]/.test(lv), 'the Downloaded chip is gone — cards say Solve or Download');
+    assert.ok(!lv.includes('FilterDropdown'), 'no dropdowns');
   });
 });

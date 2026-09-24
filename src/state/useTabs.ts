@@ -52,12 +52,12 @@ const STORAGE_KEY = 'bell:tabs:v1';
 export const DEFAULT_LIBRARY_TAB: TabItem = {
   id: 'shelf:library',
   kind: 'shelf',
-  title: 'Library',
-  subtitle: 'Catalogue',
-  icon: 'lib',
+  // Bell App v2 opens on Home; the id keeps its old name so persisted tab sets still restore.
+  title: 'Home',
+  icon: 'dash',
   closable: false,
   pinned: true,
-  shelfView: 'library',
+  shelfView: 'dashboard',
 };
 
 export function shelfIcon(view: View): string {
@@ -88,7 +88,7 @@ export function shelfTitle(view: View): string {
     case 'workspace':
       return 'Workspace';
     case 'dashboard':
-      return 'Dashboard';
+      return 'Home';
     case 'bookmarks':
       return 'Bookmarks';
     case 'recent':
@@ -98,7 +98,7 @@ export function shelfTitle(view: View): string {
     case 'settings':
       return 'Settings';
     default:
-      return 'Library';
+      return 'Past Papers';
   }
 }
 

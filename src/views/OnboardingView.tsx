@@ -28,8 +28,8 @@ import Chip from '@ui/Chip';
 import Field from '@ui/Field';
 import Kbd from '@ui/Kbd';
 import Notice from '@ui/Notice';
-import Rail from '@ui/Rail';
-import type { BellMood } from '@ui/brand/MrBell';
+import OwlMark from '@ui/shapekit/OwlMark';
+import BellWordmark from '@ui/shapekit/BellWordmark';
 import SeasonIcon, { seasonKeyOf } from '@ui/icons/SeasonIcon';
 import SubjectIcon from '@ui/icons/SubjectIcon';
 import Icon from '@/components/Icon';
@@ -114,21 +114,6 @@ const RHYTHMS = [
 /** Season code → the Chip palette that season's wash is authored under (§4). */
 const SEASON_PALETTE = { s: 'may-june', w: 'oct-nov', m: 'feb-march' } as const;
 
-/**
- * Which of the twelve `Motion — Mr. Bell` timelines each step plays, published as `data-anim` by
- * `MrBell`. The names are `BellMood`, so a mood that is renamed in the rig breaks here rather than
- * silently stopping. He reads your name back (specs push-up), cranes over the three boards
- * (periscope), puts his reading glasses on for the densest screen (lens draw-on), catches the light
- * as the plan lands (glint), scurries off to do the work (scuttle), and hops when it is done.
- */
-const MOODS: Record<number, BellMood> = {
-  1: 'specs-push-up',
-  2: 'periscope',
-  3: 'lens-draw-on',
-  4: 'glint',
-  5: 'scuttle',
-  6: 'hop',
-};
 
 /** 4 columns x 3 rows — the measured grid (§5.3). Also what "Showing 12 of 34" counts. */
 /**
@@ -495,28 +480,56 @@ export default function OnboardingView({
       value: `${rhythm.count} papers a week`,
     });
 
+  const caption = [
+    '',
+    'Type your name',
+    answers.board ? `Qualification: ${answers.board}` : 'Pick a qualification',
+    plural(answers.subjects.length, 'subject', 'subjects'),
+    answers.plan.session ? 'Next sitting chosen' : 'Choose a sitting',
+    busy ? 'Building…' : 'Library built',
+    'Ready',
+  ][step];
+
   return (
     /* The drag handle. `decorations: false` makes the OS window ours, and with no topbar on this
        screen the frame around the sheet is the only thing left to drag it by; Tauri only starts a
        drag when the press lands on the element carrying the attribute, so the panel and every
        control inside it stay clickable. */
-    <div className="onb" data-step={step} data-tauri-drag-region>
-      <div className="onb__lights">
-        <WindowLights />
-      </div>
+    <div className="onb" data-step={step}>
+      {/* Bell App v2's poster: a Bauhaus composition that assembles one shape per answered step, with
+          your name set large across it and Hush below. Decoration — the questions are on the right. */}
+      <aside className="onb-poster" aria-hidden="true" data-tauri-drag-region>
+        {step >= 2 && <i className="onb-shape onb-shape--sun" />}
+        {step >= 3 && <i className="onb-shape onb-shape--quarter" />}
+        {step >= 4 && <i className="onb-shape onb-shape--tri" />}
+        {step >= 5 && <i className="onb-shape onb-shape--bar" />}
+        {step >= 6 && <i className="onb-shape onb-shape--half" />}
+        <span className="onb-poster-mark">
+          <OwlMark size={26} />
+          <BellWordmark size={26} />
+        </span>
+        <div className="onb-poster-name">
+          <span>YOUR DESK, BUILT FROM YOUR ANSWERS</span>
+          <b>{answers.name.trim() ? (step >= 6 ? `${answers.name.trim()}’s desk` : `Hi, ${answers.name.trim()}.`) : 'Hi.'}</b>
+        </div>
+        <div className="onb-poster-hush">
+          <Mascot size={144} mood={step >= 6 ? 'proud' : step === 5 && busy ? 'download' : 'hello'} />
+        </div>
+        <span className="onb-poster-caption">{caption}</span>
+      </aside>
 
-      {/* The stage is the panel's own 1040x640 box, and it exists so Mr. Bell can be positioned
-          against the panel's edges rather than the window's — he overhangs it by 76px on the left
-          and 16px below (§3.5), and nothing in this subtree may clip him (TRAP 5). */}
-      <div className="onb__stage">
-        <div className="onb__panel">
-          <Rail
-            current={Math.min(step, 4)}
-            label={step === 5 ? 'Setting up' : step === 6 ? 'All set' : undefined}
-          />
-          {/* `key={step}` remounts the region, which is what replays its entrance; every step's
-              content is a different shape, so there is nothing to preserve across the swap. The
-              per-step gap, alignment and copy widths are all in the CSS under `[data-step]`. */}
+      <div className="onb-main">
+        <div className="onb-top" data-tauri-drag-region>
+          <span className="onb-counter">
+            {String(step).padStart(2, '0')} / 06
+          </span>
+          <div className="onb-segs" role="progressbar" aria-label="Setup progress" aria-valuemin={1} aria-valuemax={6} aria-valuenow={step}>
+            {[1, 2, 3, 4, 5, 6].map((n) => (
+              <i key={n} data-on={n <= step ? 'true' : undefined} />
+            ))}
+          </div>
+          <WindowLights />
+        </div>
           <div className="onb__body" data-step={step} key={step} ref={bodyRef}>
             {step === 1 && (
               <>
@@ -886,31 +899,16 @@ export default function OnboardingView({
             )}
           </div>
 
-          {/* counterAxisAlignItems CENTER is load-bearing, not cosmetic: Primary is 38 tall and
-              Secondary 34, so without it Back and Continue sit on different baselines (TRAP 4). */}
           <div className="onb__actions" ref={actionsRef}>
-            {/* Back is on 02-04 only (§3.3). 01 has nothing behind it, and 05/06 are terminal —
-                there is no way out of onboarding but through it. */}
+            {/* Back is on 02-04 only. 01 has nothing behind it, and 05/06 are terminal — there is no
+                way out of onboarding but through it. */}
             {step >= 2 && step <= 4 && <Button label="Back" onClick={() => setStep(step - 1)} />}
-            <Button
-              /* 05 was the file's one Secondary because it walked away from a running job. It
-                 waits for that job now, so it commits like every other step and takes Primary. */
-              variant="primary"
-              icon={step === 4 ? 'check' : step === 5 && !busy ? 'ret' : step === 6 ? 'ret' : undefined}
-              label={continueLabel}
-              disabled={!satisfied}
-              onClick={advance}
-            />
+            <span className="onb__actions-gap" />
+            <button type="button" className="onb-next" disabled={!satisfied} onClick={advance}>
+              {continueLabel}
+              <i aria-hidden="true" />
+            </button>
           </div>
-        </div>
-
-        {/* Azure stays beside the task sheet, never on top of a first-run control. */}
-        <Mascot
-          size={160}
-          petSize="clamp(420px, 50vh, 520px)"
-          mood={MOODS[step]}
-          className="onb__bell"
-        />
       </div>
     </div>
   );

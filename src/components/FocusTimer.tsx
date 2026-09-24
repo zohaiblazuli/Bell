@@ -19,19 +19,11 @@
  *     the day log: those minutes were studied, and the streak, the week total and the activity grid
  *     all read that log. Reset is immediate, matching an ordinary stopwatch.
  *
- * `Ring` is the shared primitive (`@ui/Ring`), and the arc paints through a gradient THIS COMPONENT
- * defines rather than the app-wide `#iris`. Two reasons, and the second is the load-bearing one:
- *   `#iris` ends on `--bell-cap-deep` `#0e2596`, which on the Night glass composites to all but
- *     nothing — the ring simply vanished in Night, which is what Zohaib reported.
- *   the fix wants the mode-PAIRED `--accent`, and `components/Sprite` is mounted as a sibling of
- *     `.app` where the Night overrides are declared, so a `var(--accent)` stop defined there would
- *     inherit `:root` and paint Day's value in both tones. Defined here it is inside `.app` and
- *     resolves per tone: `#1436c8 → #58c8ff` in Day, `#6aa8ff → #58c8ff` in Night. Still the accent
- *     spent as a line on a live element, which is the rule that licenses a timer ring at all.
+ * The face is Bell App v2's: a card pill in a 2px ink frame with a red conic ring. The design mock
+ * printed `of 1:50:00` beside the clock; that is exactly the denominator removed above, so it stays
+ * out — the ring is the second hand, and it is red in both tones because it is drawn on the card.
  */
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import Ring from '@ui/Ring';
-import Icon from './Icon';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import './FocusTimer.css';
 import { addFocusSeconds, loadFocus, resetPaperFocus } from '../lib/store';
 
@@ -50,7 +42,6 @@ interface Props {
 export default function FocusTimer({ paper }: Props) {
   const [elapsed, setElapsed] = useState(() => Math.floor(loadFocus().papers[paper] ?? 0));
   const [running, setRunning] = useState(true);
-  const gradientId = `bell-timer-${useId().replace(/:/g, '')}`;
   // Seconds counted but not yet written to disk.
   const unsaved = useRef(0);
 
@@ -92,47 +83,43 @@ export default function FocusTimer({ paper }: Props) {
     setElapsed(0);
   };
 
+  const pct = ((elapsed % 60) / 60) * 100;
+
   return (
-    <div
-      className="timer"
-      data-running={running ? 'true' : undefined}
-      /* The second hand snaps home at the top of each minute instead of unwinding for most of a
-         second. Set on the wrap render, so the arc's own transition is off in the same commit that
-         moves it. */
-      data-wrap={running && elapsed > 0 && elapsed % 60 === 0 ? 'true' : undefined}
-    >
-      <Ring
-        value={(elapsed % 60) / 60}
-        size={30}
-        stroke={3}
-        fill={`url(#${gradientId})`}
-        gradient={{ id: gradientId, from: 'var(--accent)', to: 'var(--bell-cap-hi)' }}
-      />
-
-      <span className="timer-read t-mono-timer">{clock(elapsed)}</span>
-
-      <span className="timer-sep" aria-hidden="true" />
-
-      <div className="timer-btns">
-        <button
-          type="button"
-          className="timer-btn"
-          aria-label={running ? 'Pause the focus timer' : 'Resume the focus timer'}
-          title={running ? 'Pause' : 'Resume'}
-          onClick={() => setRunning((r) => !r)}
-        >
-          <Icon name={running ? 'pause' : 'play'} />
-        </button>
-        <button
-          type="button"
-          className="timer-btn timer-reset"
-          aria-label="Reset this paper’s timer"
-          title="Reset this paper’s timer — the minutes already banked for today are kept"
-          onClick={reset}
-        >
-          <Icon name="reset" />
-        </button>
-      </div>
+    <div className="timer" data-running={running ? 'true' : undefined}>
+      <span
+        className="timer-ring"
+        style={{ background: `conic-gradient(var(--red) 0 ${pct.toFixed(2)}%, var(--pale) 0)` }}
+        aria-hidden="true"
+      >
+        <i />
+      </span>
+      <span className="timer-read">{clock(elapsed)}</span>
+      <button
+        type="button"
+        className="timer-btn timer-run"
+        aria-label={running ? 'Pause the clock' : 'Resume the clock'}
+        title={running ? 'Pause the clock' : 'Resume the clock'}
+        onClick={() => setRunning((r) => !r)}
+      >
+        {running ? (
+          <>
+            <i className="timer-bar" />
+            <i className="timer-bar" />
+          </>
+        ) : (
+          <i className="timer-play" />
+        )}
+      </button>
+      <button
+        type="button"
+        className="timer-btn timer-reset"
+        aria-label="Reset this paper’s timer"
+        title="Reset the clock — the minutes already banked for today are kept"
+        onClick={reset}
+      >
+        <i className="timer-arc" />
+      </button>
     </div>
   );
 }

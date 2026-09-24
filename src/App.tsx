@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Sprite from './components/Sprite';
-import AppBackground from './components/AppBackground';
 import Sidebar, { type View } from './components/Sidebar';
 import TopBar from './components/TopBar';
 import TabBar from './components/TabBar';
@@ -11,7 +10,7 @@ import Mascot from './components/Mascot';
 import * as api from './lib/api';
 import Splash, { type SplashPhase } from './components/Splash';
 import { startupWatchdogMs } from './lib/startup';
-import { UpdateCorner, UpdateDialog } from './components/UpdateFlow';
+import { UpdateCorner, UpdateDialog, UpdateRestarting } from './components/UpdateFlow';
 import LibraryView from './views/LibraryView';
 import DashboardView from './views/DashboardView';
 import WorkspaceView from './views/WorkspaceView';
@@ -34,7 +33,8 @@ import { useTabs } from './state/useTabs';
 import { useWorkspace } from './state/useWorkspace';
 import { UPDATES_CONFIGURED } from './lib/updates';
 import { windowsBetween } from './lib/sessions';
-import { loadRecent, type MarkFilter } from './lib/store';
+import { loadRecent, todayFocusMinutes, type MarkFilter } from './lib/store';
+import { hushLine } from './lib/hushLines';
 import type { PaperRow } from './lib/types';
 import type { CommunityResource } from './lib/community';
 import { readWorkspaceDocument, recordWorkspaceOpen, workspaceReaderResource, type WorkspaceDocument } from './lib/workspace';
@@ -53,13 +53,13 @@ import { APP_VERSION, APP_BUILD } from './lib/version';
 /** The bar's title per route. The Reader and the open notebook compose their own, so both are here
  *  only because the union demands it — neither renders `TopBar` from `screens()`. */
 const TITLES: Record<View, string> = {
-  library: 'Library',
-  community: 'Community Resources',
+  library: 'Past Papers',
+  community: 'Community',
   workspace: 'Workspace',
   'community-reader': 'Community Resource',
   bookmarks: 'Bookmarks',
   recent: 'Recent',
-  dashboard: 'Dashboard',
+  dashboard: '',
   notebooks: 'Notebooks',
   notebook: 'Notebook',
   settings: 'Settings',
@@ -144,6 +144,12 @@ export default function App() {
   );
   const study = useStudyState();
   const up = useUpdates(settings.updateAuto, lib.setError);
+  /* × / Later on the update corner hides it for the phase it was in; any change of phase (a finished
+     download, a fresh manual check) clears that and brings the panel back. */
+  const [cornerHiddenAt, setCornerHiddenAt] = useState<string | null>(null);
+  useEffect(() => {
+    setCornerHiddenAt((h) => (h === up.state.phase ? h : null));
+  }, [up.state.phase]);
   const notebooks = useNotebooks();
 
   /**
@@ -158,6 +164,32 @@ export default function App() {
   const [resetting, setResetting] = useState(false);
 
   const [splash, setSplash] = useState<SplashPhase>('splash');
+
+  /**
+   * The download toast (Bell App v2): Hush carries the paper home while the bar fills, then celebrates
+   * "On your disk." A failure clears it and leaves the library's own error notice to explain.
+   */
+  /** Hush's answer to the reader's feelings row — shown while that paper is the open tab. */
+  const [feelLine, setFeelLine] = useState<string | null>(null);
+  useEffect(() => setFeelLine(null), [tabsMgr.activeId]);
+
+  const [toast, setToast] = useState<{ phase: 'dl' | 'done'; label: string } | null>(null);
+  const toastTimer = useRef<number | undefined>(undefined);
+  const fetchPaper = useCallback(
+    async (paper: PaperRow) => {
+      window.clearTimeout(toastTimer.current);
+      setToast({ phase: 'dl', label: `${paper.subjectName} ${paper.subjectCode} /${paper.component}` });
+      const path = await lib.download(paper.id, 'qp');
+      if (!path) return setToast(null);
+      setToast({ phase: 'done', label: 'Works offline now. Solve when ready.' });
+      toastTimer.current = window.setTimeout(() => setToast(null), 2800);
+    },
+    [lib],
+  );
+  const downloadingIds = useMemo(
+    () => new Set(Object.values(lib.downloading).filter((d) => d.kind === 'qp').map((d) => d.paperId)),
+    [lib.downloading],
+  );
 
   /**
    * The sidebar mascot's mood. Failures, tone changes, direct interaction, active work, successful
@@ -385,13 +417,13 @@ export default function App() {
    */
   useEffect(() => {
     if (splash === 'done') return;
-    const ms = startupWatchdogMs(splash, settings.pet, settings.reduceMotion);
+    const ms = startupWatchdogMs(splash, settings.reduceMotion);
     const timer = window.setTimeout(
       () => setSplash((p) => (p === 'splash' ? 'handoff' : 'done')),
       ms,
     );
     return () => window.clearTimeout(timer);
-  }, [settings.pet, settings.reduceMotion, splash]);
+  }, [settings.reduceMotion, splash]);
 
   /* ---- derived ------------------------------------------------------------ */
 
@@ -503,7 +535,6 @@ export default function App() {
       <>
         <Sprite />
         <div className="app app-bare" data-startup={splash} data-view="onboarding" data-tone={tone} data-motion={motion}>
-          <AppBackground />
           <OnboardingView
             answers={onboarding}
             onAnswer={prefs.answerOnboarding}
@@ -537,7 +568,6 @@ export default function App() {
       <>
         <Sprite />
         <div className="app app-bare" data-startup={splash} data-view="stargate" data-tone={tone} data-motion={motion}>
-          <AppBackground />
           <StarGateView
             userName={onboarding.name}
             onComplete={() => {
@@ -562,39 +592,34 @@ export default function App() {
         data-motion={motion}
         data-focus={focusMode && (inReader || inCommunityReader || inNotebook) ? 'on' : 'off'}
       >
-        <AppBackground />
 
-        <TabBar
-          tabs={tabsMgr.tabs}
-          activeId={tabsMgr.activeId}
-          onSelectTab={tabsMgr.selectTab}
-          onCloseTab={tabsMgr.closeTab}
-          onNewTab={handleNewTab}
-          onReorderTabs={tabsMgr.reorderTabs}
-          tone={tone}
-          onTone={toggleTone}
-          onSearch={() => setPalette(true)}
-        />
+        {!isBare && (
+          <Sidebar
+            view={currentView}
+            onView={go}
+            version={APP_VERSION}
+            build={APP_BUILD}
+            subjects={mySubjects}
+            activeSubject={lib.subjectId}
+            onSubject={pickSubject}
+            paperCount={lib.stats ? visiblePapers : null}
+            bookmarkCount={study.marks.bookmarks.size}
+            recentCount={loadRecent().length}
+            notebookCount={notebooks.list?.length ?? null}
+            todayMinutes={todayFocusMinutes()}
+            goalMinutes={settings.goalMinutes}
+            line={feelLine && inReader ? feelLine : hushLine(currentView, {
+              papers: lib.stats?.papers ?? null,
+              recentCount: loadRecent().length,
+              bookmarks: study.marks.bookmarks.size,
+            })}
+            mascot={mascot.mood}
+            onPokeMascot={mascot.poke}
+          />
+        )}
+
 
         <div className={`app-stage ${isBare ? 'app-stage-bare' : ''}`}>
-          {!isBare && (
-            <Sidebar
-              view={currentView}
-              onView={go}
-              version={APP_VERSION}
-              build={APP_BUILD}
-              subjects={mySubjects}
-              activeSubject={lib.subjectId}
-              onSubject={pickSubject}
-              paperCount={lib.stats ? visiblePapers : null}
-              bookmarkCount={study.marks.bookmarks.size}
-              recentCount={loadRecent().length}
-              notebookCount={notebooks.list?.length ?? null}
-              mascot={mascot.mood}
-              studying={mascot.studying}
-              onPokeMascot={mascot.poke}
-            />
-          )}
 
           {renderTabPanes()}
         </div>
@@ -606,11 +631,25 @@ export default function App() {
           commands={commands}
         />
 
-        <UpdateCorner
-          state={up.state}
-          onDownload={() => void up.download()}
-          onInstall={() => void up.install()}
-        />
+        {toast && (
+          <div className="sk-toast" role="status" key={toast.phase}>
+            <Mascot size={76} mood={toast.phase === 'dl' ? 'download' : 'done'} />
+            <div className="sk-toast__text">
+              <b>{toast.phase === 'dl' ? 'Carrying it home…' : 'On your disk.'}</b>
+              <span>{toast.label}</span>
+            </div>
+          </div>
+        )}
+
+        {cornerHiddenAt !== up.state.phase && (
+          <UpdateCorner
+            state={up.state}
+            onDownload={() => void up.download()}
+            onInstall={() => void up.install()}
+            onHide={() => setCornerHiddenAt(up.state.phase)}
+          />
+        )}
+        <UpdateRestarting state={up.state} />
 
         <Dialog
           open={resetOpen}
@@ -654,6 +693,21 @@ export default function App() {
   );
 
   function renderTabPanes() {
+    const docTabs = (
+      <TabBar
+        tabs={tabsMgr.tabs}
+        activeId={tabsMgr.activeId}
+        onSelectTab={tabsMgr.selectTab}
+        onCloseTab={tabsMgr.closeTab}
+        onNewTab={handleNewTab}
+        onBack={() => {
+          setFocusMode(false);
+          go('library');
+        }}
+        onReorderTabs={tabsMgr.reorderTabs}
+      />
+    );
+
     return tabsMgr.tabs.map((tab) => {
       const isSelected = tab.id === tabsMgr.activeId;
       // Preserve the live reader session when changing tabs. Page canvases are still viewport-evicted
@@ -682,6 +736,7 @@ export default function App() {
             className="app-tab-pane"
             data-active={isSelected ? 'true' : 'false'}
           >
+            {docTabs}
             <div className="main">
               <WorkspaceView
                 paper={tab.paper}
@@ -691,11 +746,6 @@ export default function App() {
                   setFocusMode(false);
                   tabsMgr.openShelf('library');
                 }}
-                tone={tone}
-                onTone={toggleTone}
-                busy={lib.busy}
-                onReindex={() => void lib.runSync()}
-                onSearch={() => setPalette(true)}
                 onDownload={lib.download}
                 notebooks={notebooks.list}
                 onNewNotebook={() => {
@@ -704,6 +754,7 @@ export default function App() {
                 }}
                 onOpenNotebook={(id, page) => openNotebookAt(id, page)}
                 onRefreshNotebooks={notebooks.refresh}
+                onFeel={setFeelLine}
               />
             </div>
           </div>
@@ -717,6 +768,7 @@ export default function App() {
             className="app-tab-pane"
             data-active={isSelected ? 'true' : 'false'}
           >
+            {docTabs}
             <div className="main">
               <CommunityReaderView
                 resource={tab.community}
@@ -752,6 +804,7 @@ export default function App() {
             className="app-tab-pane"
             data-active={isSelected ? 'true' : 'false'}
           >
+            {docTabs}
             <div className="main">
               <CommunityReaderView
                 resource={workspaceReaderResource(tab.workspace)}
@@ -789,6 +842,7 @@ export default function App() {
             className="app-tab-pane"
             data-active={isSelected ? 'true' : 'false'}
           >
+            {docTabs}
             {openNb ? (
               <NotebookView
                 notebook={openNb}
@@ -797,6 +851,8 @@ export default function App() {
                 focus={focusMode}
                 onToggleFocus={() => setFocusMode((f) => !f)}
                 onSearch={() => setPalette(true)}
+                tone={tone}
+                onTone={toggleTone}
                 onSaveMeta={(meta) => notebooks.save(tab.notebook!.id, meta)}
                 onDelete={async () => {
                   await notebooks.remove(tab.notebook!.id);
@@ -827,7 +883,7 @@ export default function App() {
 
             {isSelected && (
               <div className="notebook-mascot" aria-hidden="true" onPointerDown={mascot.poke}>
-                <Mascot size={160} petSize="clamp(260px, 34vh, 400px)" mood={mascot.mood} studying={true} />
+                <Mascot size={96} mood={mascot.mood} />
               </div>
             )}
           </div>
@@ -883,8 +939,8 @@ export default function App() {
             onPaperNumber={lib.setPaperNumber}
             subjectId={lib.subjectId}
             onSubject={lib.setSubjectId}
-            downloadedOnly={lib.downloadedOnly}
-            onDownloadedOnly={lib.setDownloadedOnly}
+            onDownload={(paper) => void fetchPaper(paper)}
+            downloading={downloadingIds}
             marks={study.marks}
             onMark={study.toggleMark}
             markFilter={study.markFilter}
@@ -921,6 +977,7 @@ export default function App() {
             subjects={lib.subjects}
             marks={study.marks}
             onOpen={openPaperAt}
+            onBrowse={() => go('library')}
             sittingTotals={lib.sittingTotals}
             onSubject={pickSubject}
           />
@@ -954,6 +1011,7 @@ export default function App() {
             onExportData={() => void up.exportData()}
             onRevealData={() => void up.revealData()}
             onClearData={() => void up.clearData()}
+            onRunSetup={() => prefs.answerOnboarding('done', false)}
           />
         )}
       </>

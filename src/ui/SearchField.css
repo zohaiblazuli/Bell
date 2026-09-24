@@ -1,53 +1,41 @@
-/* Search Field — `45:41`. Supersedes `.search`, `.search:hover`, `.search svg`, `.search .kbd`
-   and the `@media (max-width: 900px) .search { min-width: 0 }` override in `src/styles/app.css`.
-   Numbers are `design/specs/screen-library-settings.md` §4. */
-
-.searchfield {
-  /* Figma's stroke is INSIDE, so the hairline must not push 420 x 34 to 422 x 36. */
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  height: 34px;
-  padding: 0 10px 0 12px; /* l12 r10 — the cap sits closer to the edge than the glyph does */
-  min-width: 0; /* the inline `width` is a basis; the field may be squeezed below it */
-  border: 1px solid var(--hair);
-  border-radius: var(--r-pill);
-  background: var(--glass-strong);
-  color: var(--ink-2); /* the glyph, via currentColor */
-  text-align: left;
-  /* clipsContent: true, and load-bearing here: the placeholder is a FILL node, so a long string
-     must be clipped by the pill rather than reflow the cap. */
-  overflow: hidden;
-  transition: border-color 0.16s;
-}
-
-/* §4 documents no hover for `search` — it is not a component set. This is the app's own
-   affordance, kept from `.search:hover`, and it earns its place on a control that looks like an
-   input: it is the only signal that the pill is live. */
-.searchfield:hover {
-  border-color: var(--accent);
-}
-
-/* index.css's global `:focus-visible` sets `border-radius: 6px` on the focused element and is
-   loaded after ui.css, so a pill has to reassert itself or it squares off while focused. */
-.searchfield:focus-visible {
-  border-radius: var(--r-pill);
-}
-
-.sf-icon {
-  flex: none;
-  width: 16px;
-  height: 16px;
-}
-
-.sf-text {
-  /* FILL: this is what pushes the Kbd to the right edge. Ellipsis rather than a wrap, because the
-     field's 34 is fixed and a second line would be cropped, not shown. */
-  flex: 1 1 auto;
+/* Search Field — Bell App v2 top bar: a 420 x 36 card in a 2px ink frame, an open ring for the lens,
+   the placeholder in the mute tone and the Ctrl K key cap at the right. It is a button: it opens the
+   command palette. */
+button.searchfield {
+  height: 36px;
   min-width: 0;
-  overflow: hidden;
+  flex: 0 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 6px 0 12px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 2px var(--line);
+  color: var(--mute);
+  text-align: left;
+  cursor: pointer;
+  transition: box-shadow .16s;
+}
+button.searchfield:hover {
+  box-shadow: inset 0 0 0 2px var(--line), 3px 3px 0 var(--line);
+}
+button.searchfield:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  border-radius: 0;
+}
+.sf-icon {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+.sf-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
   white-space: nowrap;
+  overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--ink-3);
 }

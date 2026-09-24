@@ -1,42 +1,28 @@
 /**
- * Update flow — the sidebar notice pill and the restart dialog. Spec:
- * `design/specs/update-and-startup.md` PART A — dialog `437:7` (§A1), notice set `440:115` (§A2),
- * and the page's own notes (§A3). The two motion frames are `motion-mr-bell.md` §4 (notice, 4.6s)
- * and §5 (dialog, 2.2s).
+ * Update flow — Bell App v2: a framed corner panel (bottom right) that carries an update from
+ * available → downloading → ready, a small dialog for the answers a manual check needs (checking,
+ * up to date, failed), and a full-screen "reopening" overlay while the install restarts the app.
  *
  * MANUAL BY DEFAULT — DO NOT ADD A POLL. CLAUDE.md makes running with the network unplugged a hard
  * requirement, so nothing here checks, downloads or installs on mount, on render, or on a timer.
  * This file imports nothing from `@tauri-apps`, which means it cannot reach the network even by
  * accident: every act that does is a callback the caller passes in and a person pressed. The
- * "check automatically" opt-in is a switch on the Settings UPDATES card
- * (`screen-library-settings.md` `536:435` / `536:447`) and it belongs there, in the one place a
- * user can see it and turn it off. If a background check ever lands it goes behind that switch in
- * App.tsx — not into a `useEffect` here.
+ * "check automatically" opt-in is a switch on the Settings UPDATES card and it belongs there.
  *
- * WHO OWNS WHAT. The state lives in App.tsx; both components take it and emit intent. The pill is
- * the ambient indicator and the dialog is the moment that needs an answer, which is the split the
- * spec makes itself: "The indicator is a 30px glass pill in the sidebar; the dialog owns the
- * restart moment" (§A3). Neither component opens the other — App raises the dialog when the pill
- * asks for it, and should raise it on `error` too, because the pill has no error face.
+ * WHO OWNS WHAT. The state lives in App.tsx; these components take it and emit intent.
  *
  * PROGRESS IS MEASURED, NEVER GUESSED. `UpdateProgress` is bytes over total, straight off the
- * updater's download event. Where the response carried no length there is no fraction, and the
- * pill — which can only render a percentage — stays out rather than print a 0% that means nothing.
+ * updater's download event. Where the response carried no length there is no fraction and no bar.
  *
  * RELEASE NOTES ARE TEXT, NOT MARKUP. The payload comes off a remote server, so it is rendered as
  * a text child and nothing else: no `dangerouslySetInnerHTML`, no `innerHTML` write, no markdown
- * pass. React escapes it, which is the whole defence; `white-space: pre-wrap` in the stylesheet
- * keeps the line breaks its author typed without letting a tag through.
+ * pass. React escapes it, which is the whole defence; `white-space: pre-wrap` keeps line breaks.
  */
 import './UpdateFlow.css';
 import type { ReactNode } from 'react';
-import UpdateNotice from '@ui/UpdateNotice';
 import Dialog from '@ui/Dialog';
 import Button from '@ui/Button';
-import Notice from '@ui/Notice';
-import Meter from '@ui/Meter';
-import type { BellMood } from '@ui/brand/MrBell';
-import Mascot from './Mascot';
+import OwlMark from '@ui/shapekit/OwlMark';
 
 /* ── the state machine ─────────────────────────────────────────────────────────────────────── */
 
@@ -77,80 +63,23 @@ export type UpdateState =
   | { phase: 'installing'; version: string }
   | { phase: 'error'; during: UpdateStep; message: string };
 
-/* ── the pill · §A2 ────────────────────────────────────────────────────────────────────────── */
+/* ── the corner panel ──────────────────────────────────────────────────────────────────── */
 
-export interface UpdatePillProps {
+export interface UpdateCornerProps {
   state: UpdateState;
-  /** Available → fetch the build. The only press in this component that reaches the network. */
+  /** Available → fetch the build. */
   onDownload: () => void;
-  /**
-   * Ready → raise `UpdateDialog`. It must NOT install: the dialog owns the restart moment, and
-   * keeping this handler to "open the dialog" makes it idempotent, so a second press on a pill that
-   * is already installing cannot start a second install.
-   */
-  onRestart: () => void;
-  className?: string;
+  /** Ready → the confirmed restart. */
+  onInstall: () => void;
+  /** × and Later: hide the panel until something changes. Cancels nothing. */
+  onHide: () => void;
 }
 
 /**
- * The sidebar indicator. Three faces and no more — `UpdateNotice` hard-codes one string per face,
- * so there is no way to render a fourth here and no reason to want one: the pill says what is
- * true, and anything that needs a sentence belongs in the dialog.
+ * The persistent update control: one bottom-right panel whose action changes in place — Download
+ * becomes a progress bar, then Restart now. It rolls up out of the corner when it first appears.
  */
-export function UpdatePill({ state, onDownload, onRestart, className }: UpdatePillProps) {
-  const cls = className ? `uflow-pill ${className}` : 'uflow-pill';
-
-  switch (state.phase) {
-    /* Nothing is waiting, so nothing is indicated. `checking` and `current` get no face either:
-       Figma's axis is Available / Downloading / Ready, and the button that starts a check lives on the
-       Settings UPDATES card, which owns the feedback for its own press. An "up to date" pill parked in
-       the sidebar for the rest of the session would be an indicator with nothing to indicate. */
-    case 'idle':
-    case 'checking':
-    case 'current':
-      return null;
-
-    case 'available':
-      return <UpdateNotice state="available" onClick={onDownload} className={cls} />;
-
-    case 'downloading': {
-      const p = state.progress;
-      const total = p && p.total !== null && p.total > 0 ? p.total : null;
-      /* No length means no fraction. The Downloading face always prints
-         `Math.round(progress * 100)%`, so rendering it here would put a 0 % on screen that the app
-         cannot stand behind; the pill stays out and the dialog reports the bytes it does have. */
-      if (!p || total === null) return null;
-      return <UpdateNotice state="downloading" progress={p.downloaded / total} className={cls} />;
-    }
-
-    case 'ready':
-    case 'installing':
-      return <UpdateNotice state="ready" onClick={onRestart} className={cls} />;
-
-    /* A failure has no face of its own and must not be styled into one. What the pill shows is
-       whatever is still true underneath it: a failed check leaves nothing waiting, a failed
-       download leaves the update available, a failed install leaves it downloaded — and in those
-       last two a press retries. The message itself reaches the user in the dialog. */
-    case 'error':
-      if (state.during === 'check') return null;
-      return state.during === 'download' ? (
-        <UpdateNotice state="available" onClick={onDownload} className={cls} />
-      ) : (
-        <UpdateNotice state="ready" onClick={onRestart} className={cls} />
-      );
-  }
-}
-
-/**
- * Persistent update control for the app shell. Unlike the old sidebar pill plus modal sequence,
- * this keeps the update's current action in one unobtrusive bottom-right panel: Download becomes
- * Restart in place after the bytes have landed.
- */
-export function UpdateCorner({
-  state,
-  onDownload,
-  onInstall,
-}: Pick<UpdatePillProps, 'state' | 'onDownload'> & { onInstall: () => void }) {
+export function UpdateCorner({ state, onDownload, onInstall, onHide }: UpdateCornerProps) {
   const isUpdateFlow =
     state.phase === 'available' ||
     state.phase === 'downloading' ||
@@ -160,42 +89,124 @@ export function UpdateCorner({
   if (!isUpdateFlow) return null;
 
   const downloading = state.phase === 'downloading';
-  const ready = state.phase === 'ready' || state.phase === 'installing';
-  const retryingDownload = state.phase === 'error' && state.during === 'download';
-  const retryingInstall = state.phase === 'error' && state.during === 'install';
+  const ready = state.phase === 'ready' || state.phase === 'installing' || (state.phase === 'error' && state.during === 'install');
+  const retrying = state.phase === 'error';
   const version = 'version' in state ? state.version : 'the latest version';
   const notes = state.phase === 'available' ? state.notes?.trim() : null;
   const busy = state.phase === 'installing';
+  const primary = busy
+    ? 'Restarting…'
+    : ready
+      ? retrying
+        ? 'Try restart again'
+        : 'Restart now'
+      : retrying
+        ? 'Try download again'
+        : 'Download now';
 
   return (
     <aside className="uflow-corner" aria-live="polite" aria-label="Application update">
-      <span className="uflow-corner__eyebrow">
-        {downloading ? 'Downloading update' : ready ? 'Update ready' : 'Update available'}
-      </span>
-      <strong className="uflow-corner__title">
-        {ready ? `Restart to install v${version}` : `Bell v${version}`}
-      </strong>
+      <div className="uflow-corner__head">
+        {ready ? <ReadyGlyph /> : <DownloadGlyph falling={downloading} />}
+        <div className="uflow-corner__id">
+          <span className="uflow-corner__eyebrow">
+            {downloading ? 'DOWNLOADING UPDATE' : ready ? 'UPDATE READY' : 'UPDATE AVAILABLE'}
+          </span>
+          <strong className="uflow-corner__title">
+            {ready ? `Restart to install v${version}` : `Bell v${version}`}
+          </strong>
+        </div>
+        {!busy && (
+          <button type="button" className="uflow-corner__x" title="Hide until next launch" aria-label="Hide update panel" onClick={onHide}>
+            ×
+          </button>
+        )}
+      </div>
+
       {downloading ? (
         <DownloadProgress progress={state.progress} />
       ) : state.phase === 'error' ? (
-        <Notice className="uflow-error">{state.message}</Notice>
+        <ErrorNote>{state.message}</ErrorNote>
       ) : ready ? (
         <p className="uflow-corner__copy">{RESTART_BODY}</p>
-      ) : notes ? (
-        <p className="uflow-corner__copy">{notes}</p>
       ) : (
-        <p className="uflow-corner__copy">A new version is ready to download.</p>
+        <p className="uflow-corner__copy">{notes || 'A new version is ready to download.'}</p>
       )}
+
       {!downloading && (
-        <Button
-          variant="primary"
-          label={busy ? 'Restarting…' : ready ? 'Restart now' : retryingDownload ? 'Try download again' : retryingInstall ? 'Try restart again' : 'Download now'}
-          onClick={busy ? undefined : ready || retryingInstall ? onInstall : onDownload}
-          aria-disabled={busy ? 'true' : undefined}
-          aria-busy={busy ? true : undefined}
-        />
+        <div className="uflow-corner__actions" data-solo={busy ? 'true' : undefined}>
+          {!busy && <Button label="Later" onClick={onHide} />}
+          <Button
+            variant="primary"
+            label={primary}
+            onClick={busy ? undefined : ready ? onInstall : onDownload}
+            aria-disabled={busy ? 'true' : undefined}
+            aria-busy={busy ? true : undefined}
+          />
+        </div>
       )}
     </aside>
+  );
+}
+
+/** A cream arrow dropping into an ink tray on a blue tile; it falls on repeat while downloading. */
+function DownloadGlyph({ falling }: { falling: boolean }) {
+  return (
+    <span className="uflow-glyph uflow-glyph--dl" data-falling={falling ? 'true' : undefined} aria-hidden="true">
+      <span className="uflow-glyph__arrow">
+        <i />
+        <b />
+      </span>
+      <span className="uflow-glyph__tray" />
+    </span>
+  );
+}
+
+/** The bell tile — yellow, a red quarter ringing in its corner and an ink dot — thrown in with a burst. */
+function ReadyGlyph() {
+  return (
+    <span className="uflow-glyph uflow-glyph--ready" aria-hidden="true">
+      <span className="uflow-glyph__burst">
+        <i style={{ borderRadius: '50%', background: 'var(--sk-blue)', animationName: 'sk-burst-1' }} />
+        <i style={{ background: 'var(--sk-red)', animationName: 'sk-burst-2' }} />
+        <i style={{ background: 'var(--sk-black)', clipPath: 'polygon(50% 0,100% 100%,0 100%)', animationName: 'sk-burst-3' }} />
+        <i style={{ background: 'var(--sk-yellow)', clipPath: 'polygon(50% 0,100% 50%,50% 100%,0 50%)', animationName: 'sk-burst-4' }} />
+      </span>
+      <span className="uflow-glyph__tile">
+        <i className="uflow-glyph__bell" />
+        <i className="uflow-glyph__dot" />
+      </span>
+    </span>
+  );
+}
+
+function ErrorNote({ children }: { children: ReactNode }) {
+  return (
+    <div className="uflow-error" role="alert">
+      <i />
+      <span>{children}</span>
+    </div>
+  );
+}
+
+/* ── the restarting overlay ─────────────────────────────────────────────────────────────────── */
+
+/**
+ * While the installer runs, the app irises closed to paper and the owl mark pops in, wiggles its
+ * ears and blinks over "REOPENING INTO V…" and a filling rule. The restart itself tears it down.
+ */
+export function UpdateRestarting({ state }: { state: UpdateState }) {
+  if (state.phase !== 'installing') return null;
+  return (
+    <div className="uflow-restart" role="status" aria-live="assertive">
+      <span className="uflow-restart__owl">
+        <OwlMark size={84} />
+      </span>
+      <span className="uflow-restart__line">REOPENING INTO V{state.version}</span>
+      <span className="uflow-restart__bar">
+        <i />
+      </span>
+    </div>
   );
 }
 
@@ -224,7 +235,8 @@ interface Face {
   dismiss: string;
   /** The Primary action, where the face has one. A `label` with no `onClick` is one in flight. */
   primary?: { label: string; onClick?: () => void };
-  mood: BellMood;
+  /** How the owl mark in the dialog moves: tilting while it asks, a hop for good news, a sigh for bad. */
+  mood: 'think' | 'hop' | 'sigh' | 'still';
 }
 
 /**
@@ -263,20 +275,27 @@ function ReleaseNotes({ notes }: { notes: string | null }) {
 function DownloadProgress({ progress }: { progress: UpdateProgress | null }) {
   /* Asked for, nothing measured yet: the download has started and the first progress event has not
      arrived. Saying so is honest where a 0 % or an empty bar is not. */
-  if (!progress) return <span>Starting the download.</span>;
+  if (!progress) return <span className="uflow-corner__copy">Starting the download.</span>;
 
   const total = progress.total !== null && progress.total > 0 ? progress.total : null;
+  const pct = total === null ? null : Math.min(100, Math.round((progress.downloaded / total) * 100));
   return (
     <div className="uflow-progress">
-      <span className="uflow-bytes t-mono-small">
-        {total === null
-          ? `${formatBytes(progress.downloaded)} downloaded`
-          : `${formatBytes(progress.downloaded)} of ${formatBytes(total)}`}
-      </span>
-      {/* No length, no bar — a bar with no total is a shape pretending to be a fraction. The bar
-          carries a name so it becomes a real `progressbar`: the byte line above is static text and
-          a screen reader would read it once, at the value it happened to have. */}
-      {total !== null && <Meter value={progress.downloaded / total} label="Download progress" />}
+      <div className="uflow-bytes">
+        <span>
+          {total === null
+            ? `${formatBytes(progress.downloaded)} downloaded`
+            : `${formatBytes(progress.downloaded)} of ${formatBytes(total)}`}
+        </span>
+        {pct !== null && <span>{pct}%</span>}
+      </div>
+      {/* No length, no bar — a bar with no total is a shape pretending to be a fraction. */}
+      {pct !== null && (
+        <div className="uflow-bar" role="progressbar" aria-label="Download progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+          <i style={{ width: `${pct}%` }} />
+        </div>
+      )}
+      <span className="uflow-progress__note">Keep studying. Nothing closes until you say so.</span>
     </div>
   );
 }
@@ -284,9 +303,8 @@ function DownloadProgress({ progress }: { progress: UpdateProgress | null }) {
 /**
  * Which face the panel wears. Only `ready` is drawn in Figma — the file specifies the restart
  * moment because that is the only one it needed to — so the rest reuse the same 420-wide shell with
- * copy written here. Mr. Bell's mood follows the same rule: `specs-push-up` is the gesture motion
- * §5 measures on this dialog, `slump` is the system's own mood for a bad moment, and the faces the
- * file does not draw get `idle` rather than an invented gesture.
+ * copy written here. The owl mark tilts while a question is out, hops for good news and sighs for
+ * a failure.
  */
 function faceFor(state: UpdateState, on: Record<UpdateStep, () => void>): Face | null {
   switch (state.phase) {
@@ -298,9 +316,9 @@ function faceFor(state: UpdateState, on: Record<UpdateStep, () => void>): Face |
     case 'checking':
       return {
         title: 'Checking for updates',
-        body: 'Bell is asking the update server for a newer build.',
+        body: 'Asking the update server for a newer build.',
         dismiss: 'Close',
-        mood: 'scuttle',
+        mood: 'think',
       };
 
     /**
@@ -316,7 +334,7 @@ function faceFor(state: UpdateState, on: Record<UpdateStep, () => void>): Face |
         title: 'Bell is up to date',
         body: `You are running v${state.version}, which is the newest build.`,
         dismiss: 'Close',
-        mood: 'specs-push-up',
+        mood: 'hop',
       };
 
     case 'available':
@@ -325,7 +343,7 @@ function faceFor(state: UpdateState, on: Record<UpdateStep, () => void>): Face |
         body: <ReleaseNotes notes={state.notes} />,
         dismiss: 'Later',
         primary: { label: 'Download now', onClick: on.download },
-        mood: 'idle',
+        mood: 'still',
       };
 
     case 'downloading':
@@ -333,9 +351,9 @@ function faceFor(state: UpdateState, on: Record<UpdateStep, () => void>): Face |
         title: `Downloading v${state.version}`,
         body: <DownloadProgress progress={state.progress} />,
         /* "Later" would read as "cancel" here. Closing the panel abandons nothing: the download
-           carries on and the pill keeps counting it. */
+           carries on and the corner panel keeps counting it. */
         dismiss: 'Close',
-        mood: 'scuttle',
+        mood: 'think',
       };
 
     /* The measured face: title `437:105`, body `437:106`, Later + Restart now `437:107`. */
@@ -345,7 +363,7 @@ function faceFor(state: UpdateState, on: Record<UpdateStep, () => void>): Face |
         body: RESTART_BODY,
         dismiss: 'Later',
         primary: { label: 'Restart now', onClick: on.install },
-        mood: 'specs-push-up',
+        mood: 'hop',
       };
 
     /* Every pixel of the ready face, because the question has been answered rather than replaced —
@@ -356,26 +374,25 @@ function faceFor(state: UpdateState, on: Record<UpdateStep, () => void>): Face |
         body: RESTART_BODY,
         dismiss: 'Close',
         primary: { label: 'Restarting…' },
-        mood: 'scuttle',
+        mood: 'think',
       };
 
     case 'error':
       return {
         title: ERROR_TITLE[state.during],
-        body: <Notice className="uflow-error">{state.message}</Notice>,
+        body: <ErrorNote>{state.message}</ErrorNote>,
         dismiss: 'Close',
         /* The retry is whatever failed, which is the whole reason `during` is in the state. */
         primary: { label: 'Try again', onClick: on[state.during] },
-        mood: 'slump',
+        mood: 'sigh',
       };
   }
 }
 
 export interface UpdateDialogProps {
   /**
-   * Raised by an act, never by a phase: the Ready pill asks for it, and App should also raise it
-   * when the phase turns to `error`, since the pill has no error face. Nothing in this file opens
-   * itself, which is what keeps a modal from appearing over someone's paper unbidden.
+   * Raised by an act, never by a phase: a manual check, or a failure the corner cannot explain.
+   * Nothing in this file opens itself, so a modal never appears over someone's paper unbidden.
    */
   open: boolean;
   state: UpdateState;
@@ -392,7 +409,7 @@ export interface UpdateDialogProps {
 
 /**
  * The 420 x 280 panel. `Dialog` owns the measured geometry, the scrim, the focus trap and Escape;
- * everything here is the copy, the 96px Mr. Bell (0.375 of the 256 rig, still whole pixels) and the
+ * everything here is the copy, the owl mark and the
  * two buttons.
  */
 export function UpdateDialog({
@@ -421,7 +438,11 @@ export function UpdateDialog({
       open
       onClose={onDismiss}
       title={face.title}
-      art={<Mascot size={96} mood={face.mood} />}
+      art={
+        <span className="uflow-owl" data-mood={face.mood} key={face.mood}>
+          <OwlMark size={64} />
+        </span>
+      }
       className={panelClass}
       actions={
         <>

@@ -43,6 +43,7 @@ import NotebookCover, { StickerGlyph } from '@ui/NotebookCover';
 import Notice from '@ui/Notice';
 import SegmentedControl from '@ui/SegmentedControl';
 import Icon from '@/components/Icon';
+import Mascot from '@/components/Mascot';
 import NewNotebookDialog from '@/components/NewNotebookDialog';
 import type { NbAuthored, NbEntry } from '@/lib/notebooks';
 import type { Subject } from '@/lib/types';
@@ -66,7 +67,7 @@ const startOfDay = (at: number) => {
 };
 
 /** Whole calendar days back. `Math.round` absorbs the 23- and 25-hour days either side of a DST
- *  shift — the idiom LibraryView, DashboardView and ActivityGrid all use on the focus log. */
+ *  shift — the idiom LibraryView, DashboardView and Heatmap all use on the focus log. */
 const daysAgo = (at: number) => Math.round((startOfDay(Date.now()) - startOfDay(at)) / DAY_MS);
 
 /**
@@ -230,9 +231,10 @@ export default function NotebooksView({
     );
   };
 
-  const tileFor = (n: NbEntry) => (
+  const tileFor = (n: NbEntry, index: number) => (
     <NotebookCover
       key={n.id}
+      index={index}
       cover={n.cover}
       name={n.name}
       meta={metaOf(n)}
@@ -289,17 +291,13 @@ export default function NotebooksView({
             </p>
           )}
 
-          {/* §4f: the empty composition has no header at all — the ghost cover teaches the
-              affordance and the button names it, so a greeting above them would only repeat itself.
-              No Mr. Bell either, and that is explicit: he is already on screen 100px lower in the
-              sidebar's mascot slot, and two crabs on one 1320px frame reads as a mistake. */}
+          {/* The empty shelf has no header: Hush, sighing, as every Bell App v2 empty state draws him,
+              then the words and the one button that fixes it. */}
           {empty && (
             <div className="nb-empty">
-              <div className="nb-ghost" aria-hidden="true">
-                <Icon name="plus" />
-              </div>
+              <Mascot size={108} mood="empty" />
               <div className="nb-words">
-                <h2 className="nb-empty-head t-display-setup-title">No notebooks yet</h2>
+                <h2 className="nb-empty-head">No notebooks yet</h2>
                 <p className="nb-empty-copy t-body-default">
                   Make one for a topic you keep coming back to. It opens on two blank pages, and
                   there are as many more as you need.
@@ -318,8 +316,8 @@ export default function NotebooksView({
             <>
               <header className="nb-head">
                 <div className="nb-greeting">
-                  <h2 className="nb-greeting-title t-greeting">Your notebooks</h2>
-                  <p className="nb-subline t-body-small">
+                  <h2 className="nb-greeting-title">Your notebooks</h2>
+                  <p className="nb-subline">
                     {plural(shelf.length, 'notebook')}
                     {' · '}
                     {plural(written, 'page')} written

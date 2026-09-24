@@ -12,7 +12,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import Button from '@ui/Button';
-import Chip from '@ui/Chip';
+import Faces from '@ui/shapekit/Faces';
+import Mascot from '@/components/Mascot';
+import { loadPref, savePref } from '@/lib/store';
 import Icon from '@/components/Icon';
 import * as api from '@/lib/api';
 import { openPdf, renderPage } from '@/lib/pdf';
@@ -829,496 +831,123 @@ function AdminWorkspace({
   );
 }
 
-interface BookCardProps {
+/** Your own reaction to a resource, kept on this machine. There is no shared reaction service, so
+ *  Bell shows no counts rather than invent them; the faces are how you file a resource for yourself. */
+const REACTIONS = [
+  { id: 'helpful', label: 'Helpful', kind: 'sun' as const },
+  { id: 'wow', label: 'Wow', kind: 'blob' as const },
+  { id: 'clear', label: 'Clear', kind: 'box' as const },
+  { id: 'confusing', label: 'Confusing', kind: 'tri' as const },
+];
+
+function useMyReactions(resourceId: string | null) {
+  const key = resourceId ? `react.${resourceId}` : null;
+  const [mine, setMine] = useState<string[]>(() => (key ? loadPref<string[]>(key, []) : []));
+  useEffect(() => setMine(key ? loadPref<string[]>(key, []) : []), [key]);
+  const toggle = (id: string) => {
+    if (!key) return;
+    const next = mine.includes(id) ? mine.filter((m) => m !== id) : [...mine, id];
+    setMine(next);
+    savePref(key, next);
+  };
+  return { picked: new Set(mine), toggle };
+}
+
+function transferLabel(resource: CommunityResource, transfer: TransferProgress | null | undefined): string {
+  if (!transfer) return resource.localPath ? 'Open in the reader' : 'Download to this machine';
+  const total = transfer.total && transfer.total > 0 ? transfer.total : resource.sizeBytes;
+  const pct = getTransferPercent(transfer.uploaded, total);
+  if (transfer.phase === 'starting') return 'Connecting…';
+  if (transfer.phase === 'verifying') return 'Verifying checksum…';
+  if (transfer.phase === 'opening') return 'Opening in Bell…';
+  return pct != null ? `Downloading ${pct}%` : `Downloading (${formatResourceBytes(transfer.uploaded)})`;
+}
+
+/** The desk's right-hand column: who made it, the file, the approval note, the upvote, your reaction
+ *  and the one action that matters — getting it onto this machine. */
+function DeskDetails({
+  resource,
+  transfer,
+  onVote,
+  onOpen,
+}: {
   resource: CommunityResource;
-  isSelected: boolean;
-  onSelect: () => void;
+  transfer: TransferProgress | null | undefined;
+  onVote: () => void;
   onOpen: () => void;
-  transfer: TransferProgress | null;
-}
-
-function BookCard({ resource, isSelected, onSelect, onOpen, transfer }: BookCardProps) {
-  const { url, failed, ref } = useThumbnailUrl(resource, false);
-  const pct = transfer ? getTransferPercent(transfer.uploaded, transfer.total || resource.sizeBytes) : null;
-  const isTransferring = Boolean(transfer);
-  const transferLabel = transfer
-    ? transfer.phase === 'opening'
-      ? 'Opening…'
-      : transfer.phase === 'verifying'
-        ? 'Verifying…'
-        : transfer.phase === 'starting'
-          ? 'Starting…'
-          : pct != null
-            ? `${pct}%`
-            : `${formatResourceBytes(transfer.uploaded)}`
-    : resource.localPath
-      ? 'Open'
-      : 'Get';
-
+}) {
+  const reactions = useMyReactions(resource.id);
+  const total = transfer?.total && transfer.total > 0 ? transfer.total : resource.sizeBytes;
+  const pct = transfer ? getTransferPercent(transfer.uploaded, total) : null;
   return (
-    <div
-      ref={ref}
-      className="cr-card"
-      data-selected={isSelected || undefined}
-      onClick={onSelect}
-      tabIndex={0}
-      role="button"
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onSelect();
-        }
-      }}
-      aria-label={`${resource.title} by ${resource.authorName}`}
-    >
-      <div className="cr-card-cover-stage">
-        <div className="cr-card-cover">
-          {url ? (
-            <img src={url} alt={`Cover of ${resource.title}`} loading="lazy" />
-          ) : (
-            <div className="cr-card-placeholder">
-              <Icon name={failed ? 'warn' : 'doc'} />
-              <span className="cr-card-placeholder-code">{resource.subjectCode}</span>
-              <span className="cr-card-placeholder-label">
-                {failed ? 'No preview' : 'Loading…'}
-              </span>
-            </div>
-          )}
-          {/* Realistic spine fold highlight */}
-          <div className="cr-card-spine" aria-hidden="true" />
-          {/* Badge overlays */}
-          <div className="cr-card-badges">
-            <span className={`cr-tag-qual cr-tag-${resource.qualification.replace('_', '-')}`}>
-              {communityQualificationLabel(resource.qualification)}
-            </span>
-          </div>
-          <div className="cr-card-type-tag">
-            {communityTypeLabel(resource.resourceType)}
-          </div>
-          <div className="cr-card-votes">
-            <span>↑ {resource.upvotes.toLocaleString()}</span>
-          </div>
-        </div>
+    <aside className="crd-details" aria-label="Resource details">
+      <div className="crd-id">
+        <span className="crd-eyebrow">
+          {resource.subjectName} · {resource.subjectCode}
+        </span>
+        <span className="crd-title">{resource.title}</span>
       </div>
-
-      <div className="cr-card-info">
-        <h3 className="cr-card-title" title={resource.title}>
-          {resource.title}
-        </h3>
-        <p className="cr-card-author">By {resource.authorName}</p>
-        <div className="cr-card-meta">
-          <span className="cr-card-subject">
-            {resource.subjectName} · {resource.subjectCode}
-          </span>
-          <span className="cr-card-size">
-            {resource.pageCount ? `${resource.pageCount}p · ` : ''}
-            {formatResourceBytes(resource.sizeBytes)}
-          </span>
-        </div>
-        <div className="cr-card-actions" onClick={(e) => e.stopPropagation()}>
-          <Button
-            variant={resource.localPath ? 'primary' : undefined}
-            icon={resource.localPath ? 'book' : 'folder'}
-            label={transferLabel}
-            disabled={isTransferring}
-            onClick={onOpen}
-          />
-          <Button
-            label="Details"
-            onClick={onSelect}
-          />
-        </div>
-      </div>
-
-      {transfer && (
-        <div className="cr-card-progress-track" aria-hidden="true">
-          <div
-            className={`cr-card-progress-bar ${pct == null ? 'indeterminate' : ''}`}
-            style={pct != null ? { width: `${pct}%` } : undefined}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
-interface HeroSpotlightProps {
-  resources: CommunityResource[];
-  onSelect: (resource: CommunityResource) => void;
-  onOpen: (resource: CommunityResource) => void;
-  progress: Record<string, TransferProgress>;
-}
-
-function HeroSpotlight({ resources, onSelect, onOpen, progress }: HeroSpotlightProps) {
-  const [index, setIndex] = useState(0);
-  const [isHovered, setIsHovered] = useState(false);
-
-  // Keep index within bounds if resources change
-  const activeIndex = index >= resources.length ? 0 : index;
-  const current = resources[activeIndex];
-
-  // Auto-advance timer (every 6.5s), pauses on hover
-  useEffect(() => {
-    if (resources.length <= 1 || isHovered) return;
-    const timer = setInterval(() => {
-      setIndex((prev) => (prev + 1) % resources.length);
-    }, 6500);
-    return () => clearInterval(timer);
-  }, [resources.length, isHovered]);
-
-  if (!current) return null;
-
-  const { url } = useThumbnailUrl(current);
-  const transfer = progress[current.id] ?? null;
-  const pct = transfer ? getTransferPercent(transfer.uploaded, transfer.total || current.sizeBytes) : null;
-  const isTransferring = Boolean(transfer);
-  const heroButtonLabel = transfer
-    ? transfer.phase === 'opening'
-      ? 'Opening in Bell…'
-      : transfer.phase === 'verifying'
-        ? 'Verifying…'
-        : transfer.phase === 'starting'
-          ? 'Connecting…'
-          : pct != null
-            ? `Downloading ${pct}%${transfer.secondsLeft ? ` · ~${transfer.secondsLeft}s` : ''}`
-            : `Downloading (${formatResourceBytes(transfer.uploaded)})`
-    : current.localPath
-      ? 'Read in Bell'
-      : 'Download & Read';
-
-  const handlePrev = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIndex((prev) => (prev - 1 + resources.length) % resources.length);
-  };
-
-  const handleNext = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIndex((prev) => (prev + 1) % resources.length);
-  };
-
-  return (
-    <section
-      className="cr-hero"
-      aria-label="Featured community resources"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <div className="cr-hero-glow" aria-hidden="true" />
-
-      {/* Navigation arrows (when more than 1 item) */}
-      {resources.length > 1 && (
-        <>
-          <button
-            type="button"
-            className="cr-hero-arrow cr-hero-arrow-prev"
-            onClick={handlePrev}
-            aria-label="Previous featured resource"
-          >
-            <Icon name="left" />
-          </button>
-          <button
-            type="button"
-            className="cr-hero-arrow cr-hero-arrow-next"
-            onClick={handleNext}
-            aria-label="Next featured resource"
-          >
-            <Icon name="right" />
-          </button>
-        </>
-      )}
-
-      <div className="cr-hero-content-slider" key={current.id}>
-        <div className="cr-hero-left">
-          <div className="cr-hero-badge-pill">
-            <Icon name="checkc" />
-            <span>
-              Featured Resource {resources.length > 1 ? `· ${activeIndex + 1} of ${resources.length}` : ''}
-            </span>
-          </div>
-          <div className="cr-hero-qual">
-            {communityQualificationLabel(current.qualification)} · {current.subjectName} ({current.subjectCode})
-          </div>
-          <h2 className="cr-hero-title">{current.title}</h2>
-          <p className="cr-hero-author">By {current.authorName}</p>
-          <p className="cr-hero-desc">{current.description}</p>
-          <div className="cr-hero-meta-row">
-            <span className="cr-hero-meta-item">
-              <Icon name="doc" /> {communityTypeLabel(current.resourceType)}
-            </span>
-            <span className="cr-hero-meta-item">
-              {current.pageCount ? `${current.pageCount} pages · ` : ''}
-              {formatResourceBytes(current.sizeBytes)}
-            </span>
-            <span className="cr-hero-meta-item cr-hero-upvotes">
-              ↑ {current.upvotes.toLocaleString()} upvotes
-            </span>
-          </div>
-          <div className="cr-hero-actions">
-            <Button
-              variant="primary"
-              icon={current.localPath ? 'book' : 'folder'}
-              label={heroButtonLabel}
-              disabled={isTransferring}
-              onClick={() => onOpen(current)}
-            />
-            <Button
-              label="Inspect Details"
-              onClick={() => onSelect(current)}
-            />
-          </div>
-
-          {transfer && (
-            <div className="cr-hero-transfer-card" role="status">
-              <div className="cr-hero-transfer-track">
-                <div
-                  className={`cr-hero-transfer-bar ${pct == null ? 'indeterminate' : ''}`}
-                  style={pct != null ? { width: `${pct}%` } : undefined}
-                />
-              </div>
-              <div className="cr-hero-transfer-meta">
-                <span>
-                  {transfer.phase === 'opening'
-                    ? 'Opening in Bell…'
-                    : transfer.phase === 'verifying'
-                      ? 'Verifying document checksum…'
-                      : transfer.phase === 'starting'
-                        ? 'Connecting to repository…'
-                        : `${formatResourceBytes(transfer.uploaded)}${
-                            (transfer.total || current.sizeBytes) > 0
-                              ? ` / ${formatResourceBytes(transfer.total || current.sizeBytes)}`
-                              : ''
-                          }`}
-                </span>
-                <span>
-                  {[formatTransferSpeed(transfer.speed), formatTransferEta(transfer.secondsLeft)]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div
-          className="cr-hero-right"
-          onClick={() => onSelect(current)}
-          role="button"
-          tabIndex={0}
-          aria-label={`Inspect ${current.title}`}
-        >
-          <div className="cr-hero-book-wrap">
-            <div className="cr-hero-book">
-              {url ? (
-                <img src={url} alt={`Cover of ${current.title}`} />
-              ) : (
-                <div className="cr-hero-book-fallback">
-                  <Icon name="doc" />
-                  <span>{current.subjectCode}</span>
-                </div>
-              )}
-              <div className="cr-hero-book-spine" aria-hidden="true" />
-            </div>
-            <div className="cr-hero-shadow" aria-hidden="true" />
-          </div>
-        </div>
-      </div>
-
-      {/* Pagination indicators / dots */}
-      {resources.length > 1 && (
-        <div className="cr-hero-dots" role="tablist" aria-label="Featured slides">
-          {resources.map((item, idx) => (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              className="cr-hero-dot"
-              data-active={idx === activeIndex || undefined}
-              aria-selected={idx === activeIndex}
-              aria-label={`Slide ${idx + 1}: ${item.title}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                setIndex(idx);
-              }}
-            >
-              <span className="cr-hero-dot-bar" />
-            </button>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
-interface DetailsDrawerProps {
-  resource: CommunityResource | null;
-  onClose: () => void;
-  onVote: (resource: CommunityResource) => void;
-  onOpen: (resource: CommunityResource) => void;
-  transfer: TransferProgress | null;
-}
-
-function DetailsDrawer({ resource, onClose, onVote, onOpen, transfer }: DetailsDrawerProps) {
-  useEffect(() => {
-    if (!resource) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [resource, onClose]);
-
-  if (!resource) return null;
-
-  const displayTotal = transfer?.total && transfer.total > 0 ? transfer.total : resource.sizeBytes;
-  const pct = transfer ? getTransferPercent(transfer.uploaded, displayTotal) : null;
-  const isTransferring = Boolean(transfer);
-
-  const drawerButtonLabel = transfer
-    ? transfer.phase === 'starting'
-      ? 'Connecting…'
-      : transfer.phase === 'verifying'
-        ? 'Verifying checksum…'
-        : transfer.phase === 'opening'
-          ? 'Opening in Bell…'
-          : pct != null
-            ? `Downloading ${pct}%${transfer.secondsLeft ? ` · ~${transfer.secondsLeft}s left` : ''}`
-            : `Downloading (${formatResourceBytes(transfer.uploaded)})`
-    : resource.localPath
-      ? 'Open in Bell'
-      : 'Download & open in Bell';
-
-  return (
-    <div className="cr-drawer-scrim" onClick={onClose} role="presentation">
-      <aside
-        className="cr-drawer"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="cr-drawer-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="cr-drawer-head">
-          <div className="cr-drawer-head-tag">
-            <span>{communityQualificationLabel(resource.qualification)} · {resource.subjectCode}</span>
-          </div>
-          <button
-            type="button"
-            className="cr-drawer-close"
-            onClick={onClose}
-            aria-label="Close details"
-          >
-            <Icon name="x" />
-          </button>
-        </div>
-
-        <div className="cr-drawer-body">
-          <div className="cr-drawer-cover-stage">
-            <div className="cr-drawer-cover-frame">
-              <CommunityThumbnail resource={resource} />
-            </div>
-          </div>
-
-          <div className="cr-drawer-info">
-            <h2 id="cr-drawer-title" className="cr-drawer-title">{resource.title}</h2>
-            <p className="cr-drawer-author">By {resource.authorName}</p>
-
-            <div className="cr-drawer-pills">
-              <span className="cr-drawer-pill">{communityTypeLabel(resource.resourceType)}</span>
-              <span className="cr-drawer-pill">
-                {resource.pageCount ? `${resource.pageCount} pages · ` : ''}
-                {formatResourceBytes(resource.sizeBytes)}
-              </span>
-              <span className="cr-drawer-pill">↑ {resource.upvotes.toLocaleString()} upvotes</span>
-            </div>
-
-            <p className="cr-drawer-desc">{resource.description}</p>
-
-            <div className="cr-drawer-specs">
-              <div className="cr-spec-row">
-                <span className="cr-spec-dt">Subject</span>
-                <span className="cr-spec-dd">{resource.subjectName} ({resource.subjectCode})</span>
-              </div>
-              <div className="cr-spec-row">
-                <span className="cr-spec-dt">Qualification</span>
-                <span className="cr-spec-dd">{communityQualificationLabel(resource.qualification)}</span>
-              </div>
-              <div className="cr-spec-row">
-                <span className="cr-spec-dt">Uploaded by</span>
-                <span className="cr-spec-dd">{resource.uploaderName}</span>
-              </div>
-              {resource.contributorCredit && (
-                <div className="cr-spec-row">
-                  <span className="cr-spec-dt">Contributor credit</span>
-                  <span className="cr-spec-dd">{resource.contributorCredit}</span>
-                </div>
-              )}
-              <div className="cr-spec-row">
-                <span className="cr-spec-dt">Published</span>
-                <span className="cr-spec-dd">
-                  {resource.publishedAt ? new Date(resource.publishedAt).toLocaleDateString() : 'Recently'}
-                </span>
-              </div>
-            </div>
-
-            <div className="cr-drawer-trust">
-              <Icon name="checkc" />
-              <span>PDF validated and approved before community publication.</span>
-            </div>
-          </div>
-        </div>
-
-        {transfer && (
-          <div className="cr-drawer-transfer" role="status" aria-live="polite">
-            <div className="cr-transfer-header">
-              <div className="cr-transfer-status">
-                <span className="cr-transfer-spinner" />
-                <span className="cr-transfer-phase">
-                  {transfer.phase === 'starting' && 'Connecting to repository…'}
-                  {transfer.phase === 'downloading' && 'Downloading document…'}
-                  {transfer.phase === 'verifying' && 'Verifying document integrity…'}
-                  {transfer.phase === 'opening' && 'Preparing reader in Bell…'}
-                </span>
-              </div>
-              {pct != null && <span className="cr-transfer-pct">{pct}%</span>}
-            </div>
-
-            <div className="cr-transfer-track">
-              <div
-                className={`cr-transfer-bar ${pct == null ? 'indeterminate' : ''}`}
-                style={pct != null ? { width: `${pct}%` } : undefined}
-              />
-            </div>
-
-            <div className="cr-transfer-meta">
-              <span className="cr-transfer-bytes">
-                {formatResourceBytes(transfer.uploaded)}
-                {displayTotal > 0 ? ` / ${formatResourceBytes(displayTotal)}` : ''}
-              </span>
-              <span className="cr-transfer-speed-eta">
-                {[formatTransferSpeed(transfer.speed), formatTransferEta(transfer.secondsLeft)]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </span>
-            </div>
-          </div>
+      <dl className="crd-facts">
+        <dt>Author</dt>
+        <dd>{resource.authorName}</dd>
+        <dt>Uploaded by</dt>
+        <dd>{resource.uploaderName}</dd>
+        {resource.contributorCredit && (
+          <>
+            <dt>Credit</dt>
+            <dd>{resource.contributorCredit}</dd>
+          </>
         )}
-
-        <div className="cr-drawer-footer">
-          <Button
-            variant="toggle"
-            active={resource.hasVoted}
-            label={`Upvote · ${resource.upvotes.toLocaleString()}`}
-            onClick={() => onVote(resource)}
-          />
-          <Button
-            variant="primary"
-            icon={resource.localPath ? 'book' : 'folder'}
-            label={drawerButtonLabel}
-            disabled={isTransferring}
-            onClick={() => onOpen(resource)}
-          />
+        <dt>File</dt>
+        <dd>
+          PDF · {formatResourceBytes(resource.sizeBytes)}
+          {resource.pageCount ? ` · ${resource.pageCount} pages` : ''}
+        </dd>
+        <dt>Published</dt>
+        <dd>{resource.publishedAt ? new Date(resource.publishedAt).toLocaleDateString() : 'Recently'}</dd>
+      </dl>
+      {resource.description && <p className="crd-desc">{resource.description}</p>}
+      <div className="crd-trust">
+        <i aria-hidden="true" />
+        <span>
+          <b>Validated, scanned and approved.</b> Nothing here goes public until the administrator publishes it.
+        </span>
+      </div>
+      <div className="crd-vote">
+        <button type="button" aria-pressed={resource.hasVoted} onClick={onVote} title={resource.hasVoted ? 'Remove your upvote' : 'Upvote'}>
+          <i aria-hidden="true" />
+          {resource.upvotes.toLocaleString()}
+        </button>
+        <span>Votes help others judge. They don't vouch for accuracy.</span>
+      </div>
+      <div className="crd-react">
+        <div className="crd-rule">
+          <span>REACTIONS</span>
+          <i />
         </div>
-      </aside>
-    </div>
+        <Faces label="Your reaction to this resource" options={REACTIONS} picked={reactions.picked} onPick={reactions.toggle} />
+      </div>
+      {transfer && (
+        <div className="crd-transfer" role="status" aria-live="polite">
+          <div className="crd-transfer-track">
+            <i style={pct != null ? { width: `${pct}%` } : undefined} data-indeterminate={pct == null ? 'true' : undefined} />
+          </div>
+          <span>
+            {formatResourceBytes(transfer.uploaded)}
+            {total > 0 ? ` / ${formatResourceBytes(total)}` : ''}
+            {' · '}
+            {[formatTransferSpeed(transfer.speed), formatTransferEta(transfer.secondsLeft)].filter(Boolean).join(' · ')}
+          </span>
+        </div>
+      )}
+      <button type="button" className="crd-get" disabled={Boolean(transfer)} onClick={onOpen}>
+        {!resource.localPath && <i aria-hidden="true" />}
+        {transferLabel(resource, transfer)}
+      </button>
+      <span className="crd-get-note">
+        {resource.localPath ? 'It is on this machine and opens offline.' : 'Once downloaded it opens in the reader, offline.'}
+      </span>
+    </aside>
   );
 }
 
@@ -1327,7 +956,8 @@ export default function CommunityView({ community, subjects, onOpen }: Props) {
   const [loginOpen, setLoginOpen] = useState(false);
   const adminButtonRef = useRef<HTMLButtonElement>(null);
   const admin = useCommunityAdmin(adminMode || loginOpen, community.refresh);
-  const selected = community.selected;
+  // The desk always shows something: the chosen resource, or the first in the list.
+  const selected = community.selected ?? community.result.items[0] ?? null;
   const filteredSubjects = community.filters.qualification
     ? subjects.filter((subject) => subject.qualification === community.filters.qualification)
     : subjects;
@@ -1342,13 +972,6 @@ export default function CommunityView({ community, subjects, onOpen }: Props) {
     prevAdminMode.current = adminMode;
   }, [adminMode, community.refresh]);
 
-  const featuredList = useMemo(() => {
-    if (community.filters.query.trim() || community.result.items.length === 0) return [];
-    const sorted = [...community.result.items].sort(
-      (a, b) => b.upvotes - a.upvotes || b.opens - a.opens,
-    );
-    return sorted.slice(0, Math.min(5, sorted.length));
-  }, [community.filters.query, community.result.items]);
 
   async function enterAdmin() {
     if (admin.identity && !admin.identity.requiresMfa) {
@@ -1385,211 +1008,163 @@ export default function CommunityView({ community, subjects, onOpen }: Props) {
     );
   }
 
+  const openResource = (r: CommunityResource) => void community.open(r).then((ready) => ready && onOpen(ready));
+
   return (
-    <div className="view cr-view">
-      <div className="cr-head">
-        <div className="cr-brand">
-          <div className="cr-brand-badge">
-            <Icon name="book" />
-          </div>
-          <div className="cr-brand-text">
-            <h1>Community Library</h1>
-            <p>Curated Cambridge textbooks, revision guides & notes</p>
-          </div>
-        </div>
-        <div className="cr-search-wrap">
-          <Icon name="search" />
+    <div className="view cr-view crd">
+      {/* Bell App v2's Community desk: filters across the top, then the resource rail, a large
+          first-page preview, and the details column. The preview is the biggest thing on screen —
+          the resource earns trust, not the chrome around it (DESIGN.md, Community Resources). */}
+      <div className="crd-bar">
+        <label className="crd-search">
+          <i aria-hidden="true" />
           <input
             value={community.filters.query}
             onChange={(event) => community.patchFilters({ query: event.target.value })}
-            placeholder="Search notes, authors, subjects or syllabus codes…"
+            placeholder="Search community resources"
             aria-label="Search community resources"
           />
           {community.filters.query && (
-            <button
-              type="button"
-              aria-label="Clear search"
-              onClick={() => community.patchFilters({ query: '' })}
-            >
-              <Icon name="x" />
+            <button type="button" aria-label="Clear search" onClick={() => community.patchFilters({ query: '' })}>
+              ✕
             </button>
           )}
-        </div>
-        <Button ref={adminButtonRef} label="Admin" icon="sliders" onClick={enterAdmin} />
-      </div>
-
-      <div className="cr-filters">
-        <div role="group" aria-label="Qualification">
+        </label>
+        <div className="crd-quals" role="group" aria-label="Qualification">
           {COMMUNITY_QUALIFICATIONS.map((qualification) => (
-            <Chip
+            <button
               key={qualification}
-              label={communityQualificationLabel(qualification)}
-              palette={
-                qualification === 'a_level'
-                  ? 'a-level'
-                  : qualification === 'igcse'
-                    ? 'igcse'
-                    : 'o-level'
-              }
-              filled={community.filters.qualification === qualification}
+              type="button"
+              aria-pressed={community.filters.qualification === qualification}
               onClick={() =>
                 community.patchFilters({
-                  qualification:
-                    community.filters.qualification === qualification ? null : qualification,
+                  qualification: community.filters.qualification === qualification ? null : qualification,
                   subjectCode: null,
                 })
               }
-            />
+            >
+              {communityQualificationLabel(qualification)}
+            </button>
           ))}
         </div>
-        <label>
-          Subject
-          <select
-            value={community.filters.subjectCode ?? ''}
-            onChange={(event) =>
-              community.patchFilters({ subjectCode: event.target.value || null })
-            }
-          >
-            <option value="">All subjects</option>
-            {filteredSubjects.map((subject) => (
-              <option
-                key={`${subject.qualification}-${subject.code}`}
-                value={subject.code}
-              >
-                {subject.name} · {subject.code}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Type
-          <select
-            value={community.filters.resourceType ?? ''}
-            onChange={(event) =>
-              community.patchFilters({
-                resourceType: (event.target.value || null) as typeof community.filters.resourceType,
-              })
-            }
-          >
-            <option value="">All resources</option>
-            {COMMUNITY_RESOURCE_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {communityTypeLabel(type)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Sort
-          <select
-            value={community.filters.sort}
-            onChange={(event) =>
-              community.patchFilters({ sort: event.target.value as typeof community.filters.sort })
-            }
-          >
-            {COMMUNITY_SORTS.map((sort) => (
-              <option key={sort} value={sort}>
-                {communitySortLabel(sort)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <span className="cr-count">
-          {community.loading
-            ? 'Looking…'
-            : `${community.result.total.toLocaleString()} resource${
-                community.result.total === 1 ? '' : 's'
-              }`}
-        </span>
-      </div>
-
-      <div className="cr-main-scroll">
-        {community.error && community.result.items.length === 0 ? (
-          <div className="cr-state" role="status">
-            <Icon name={community.configured === false ? 'folder' : 'warn'} />
-            <h2>
-              {community.configured === false
-                ? 'Community Resources needs its home'
-                : 'The catalogue is out of reach'}
-            </h2>
-            <p>{community.error}</p>
-            <Button label="Try again" icon="sync" onClick={() => void community.refresh()} />
-          </div>
-        ) : community.result.items.length === 0 && !community.loading ? (
-          <div className="cr-state">
-            <Icon name="search" />
-            <h2>No resources match</h2>
-            <p>Clear a filter or try a broader search.</p>
-            <Button
-              label="Clear filters"
-              onClick={() =>
-                community.patchFilters({
-                  query: '',
-                  qualification: null,
-                  subjectCode: null,
-                  resourceType: null,
-                })
-              }
-            />
-          </div>
-        ) : (
-          <div className="cr-catalog">
-            {featuredList.length > 0 && (
-              <HeroSpotlight
-                resources={featuredList}
-                onSelect={(r) => community.setSelectedId(r.id)}
-                onOpen={(r) =>
-                  void community.open(r).then((ready) => ready && onOpen(ready))
-                }
-                progress={community.progress}
-              />
-            )}
-
-            <div className="cr-grid-section">
-              <div className="cr-section-bar">
-                <div className="cr-section-text">
-                  <h2>
-                    {community.filters.query
-                      ? `Search Results for "${community.filters.query}"`
-                      : 'All Resources'}
-                  </h2>
-                  <p>Browse books, revision guides, and notes</p>
-                </div>
-                <span className="cr-section-count">
-                  {community.result.total.toLocaleString()}{' '}
-                  {community.result.total === 1 ? 'resource' : 'resources'}
-                </span>
-              </div>
-
-              <div className="cr-card-grid">
-                {community.result.items.map((resource) => (
-                  <BookCard
-                    key={resource.id}
-                    resource={resource}
-                    isSelected={selected?.id === resource.id}
-                    onSelect={() => community.setSelectedId(resource.id)}
-                    onOpen={() =>
-                      void community.open(resource).then((ready) => ready && onOpen(ready))
-                    }
-                    transfer={community.progress[resource.id] ?? null}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {selected && (
-        <DetailsDrawer
-          resource={selected}
-          onClose={() => community.setSelectedId(null)}
-          onVote={(r) => void community.vote(r)}
-          onOpen={(r) =>
-            void community.open(r).then((ready) => ready && onOpen(ready))
+        <select
+          className="crd-select"
+          aria-label="Subject"
+          value={community.filters.subjectCode ?? ''}
+          onChange={(event) => community.patchFilters({ subjectCode: event.target.value || null })}
+        >
+          <option value="">All subjects</option>
+          {filteredSubjects.map((subject) => (
+            <option key={`${subject.qualification}-${subject.code}`} value={subject.code}>
+              {subject.name} · {subject.code}
+            </option>
+          ))}
+        </select>
+        <select
+          className="crd-select"
+          aria-label="Type"
+          value={community.filters.resourceType ?? ''}
+          onChange={(event) =>
+            community.patchFilters({ resourceType: (event.target.value || null) as typeof community.filters.resourceType })
           }
-          transfer={transfer}
-        />
+        >
+          <option value="">All types</option>
+          {COMMUNITY_RESOURCE_TYPES.map((type) => (
+            <option key={type} value={type}>
+              {communityTypeLabel(type)}
+            </option>
+          ))}
+        </select>
+        <span className="crd-gap" />
+        <span className="crd-sort-label">Sort</span>
+        <select
+          className="crd-select"
+          aria-label="Sort"
+          value={community.filters.sort}
+          onChange={(event) => community.patchFilters({ sort: event.target.value as typeof community.filters.sort })}
+        >
+          {COMMUNITY_SORTS.map((sort) => (
+            <option key={sort} value={sort}>
+              {communitySortLabel(sort)}
+            </option>
+          ))}
+        </select>
+        <span className="crd-online" data-online={community.error ? undefined : 'true'}>
+          <i aria-hidden="true" />
+          {community.error ? 'Offline' : 'Online'}
+        </span>
+        <Button ref={adminButtonRef} label="Admin" onClick={enterAdmin} />
+      </div>
+
+      {community.error && community.result.items.length === 0 ? (
+        <div className="crd-state" role="status">
+          <Mascot size={108} mood="empty" />
+          <h2>{community.configured === false ? 'Community Resources needs its home' : 'The catalogue is out of reach'}</h2>
+          <p>{community.error}</p>
+          <Button label="Try again" icon="sync" onClick={() => void community.refresh()} />
+        </div>
+      ) : community.result.items.length === 0 && !community.loading ? (
+        <div className="crd-state">
+          <Mascot size={108} mood="empty" />
+          <h2>No resources match</h2>
+          <p>Clear a filter or try a broader search.</p>
+          <Button
+            label="Clear filters"
+            onClick={() => community.patchFilters({ query: '', qualification: null, subjectCode: null, resourceType: null })}
+          />
+        </div>
+      ) : (
+        <div className="crd-desk">
+          <nav className="crd-rail" aria-label="Resources">
+            <div className="crd-rail-head">
+              {community.loading ? 'LOOKING…' : `${community.result.total.toLocaleString()} RESOURCE${community.result.total === 1 ? '' : 'S'} · ADMIN-APPROVED`}
+            </div>
+            {community.result.items.map((resource) => (
+              <button
+                key={resource.id}
+                type="button"
+                className="crd-item"
+                aria-current={selected?.id === resource.id ? 'true' : undefined}
+                onClick={() => community.setSelectedId(resource.id)}
+                onDoubleClick={() => openResource(resource)}
+              >
+                <ListThumbnail resource={resource} />
+                <span className="crd-item-text">
+                  <b>{resource.title}</b>
+                  <span>
+                    {resource.subjectName} · {communityTypeLabel(resource.resourceType)}
+                  </span>
+                </span>
+                <span className="crd-item-votes">▲ {resource.upvotes.toLocaleString()}</span>
+              </button>
+            ))}
+          </nav>
+
+          <div className="crd-preview">
+            {selected && (
+              <div className="crd-sheet" key={selected.id}>
+                <span className="crd-sheet-code">
+                  {selected.subjectCode} · {communityTypeLabel(selected.resourceType).toUpperCase()}
+                </span>
+                <span className="crd-sheet-title">{selected.title}</span>
+                <span className="crd-sheet-author">{selected.authorName}</span>
+                <i className="crd-sheet-rule" />
+                <div className="crd-sheet-page">
+                  <CommunityThumbnail resource={selected} />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {selected && (
+            <DeskDetails
+              resource={selected}
+              transfer={transfer}
+              onVote={() => void community.vote(selected)}
+              onOpen={() => openResource(selected)}
+            />
+          )}
+        </div>
       )}
 
       {loginOpen && (

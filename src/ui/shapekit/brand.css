@@ -1,0 +1,50 @@
+/* OwlMark + BellWordmark */
+.owl-mark {
+  position: relative;
+  display: block;
+  width: 1em;
+  height: 1em;
+  flex: none;
+}
+.owl-mark > i { position: absolute; display: block; }
+.owl-mark__ear { top: 0; width: .32em; height: .32em; background: var(--sk-black); }
+.owl-mark__ear--l { left: 0; clip-path: polygon(0 0, 100% 100%, 0 100%); }
+.owl-mark__ear--r { left: .68em; clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+.owl-mark__head { left: 0; top: .22em; width: 1em; height: .78em; background: var(--sk-blue); }
+.owl-mark__eye { top: .36em; width: .3em; height: .3em; border-radius: 50%; background: var(--sk-cream); }
+.owl-mark__pupil { top: .45em; width: .12em; height: .12em; border-radius: 50%; background: var(--sk-black); }
+.owl-mark__beak {
+  left: .44em;
+  top: .74em;
+  width: .12em;
+  height: .1em;
+  background: var(--sk-red);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+.bell-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  font-family: 'Jost', var(--font-ui);
+  font-weight: 700;
+  letter-spacing: -.04em;
+  line-height: 1;
+  color: var(--ink);
+}
+.bell-wordmark__stop {
+  display: block;
+  width: .15em;
+  height: .15em;
+  margin-left: .05em;
+  background: var(--blue);
+}
+
+/* On ink (Night), the brand sheet turns the ears cream and lightens the full stop, so neither sinks
+   into the dark ground. Only where the mark sits straight on the app's ground — a notebook sticker
+   keeps its literal colours on its cover. */
+.app[data-tone='night'] :is(.sk-side__lockup, .onb-poster, .uflow-owl, .uflow-restart__owl) .owl-mark__ear {
+  background: var(--sk-cream);
+}
+.app[data-tone='night'] .bell-wordmark__stop {
+  background: #6f95d6;
+}

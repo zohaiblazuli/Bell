@@ -1,25 +1,11 @@
 /**
  * Command Palette — the ⌘K / Ctrl-K sheet that jumps to a paper or runs a command.
  *
- * The Figma file has no palette artboard, so the surface is assembled out of measured language
- * rather than copied off one node, and each borrowing is cited where it lands:
- *
- *   panel  chrome glass, because a palette is frame and never content (CLAUDE.md rule 1):
- *          `--glass-strong` behind a `--glass-brd` hairline at `--r-panel`, the window shadow, a
- *          `--glass-hi` specular top, over `--scrim`. Same recipe as the sheets in
- *          `design/specs/screen-library-settings.md` §4 and `components-controls.md`.
- *   head   `SearchField`'s field row (`45:41`) continued past the click that opened it — 16px
- *          `search` glyph, the text at FILL in `Body/Default`, placeholder `--ink-3`. The type does
- *          not change under the user's hands between the top bar's pill and this panel.
- *   rows   the Recent list's measured row, `design/specs/screen-bookmarks-recent.md` §6: 48 tall,
- *          gap 14, a 20px `Subject Icon` stroked `--ink-2` — explicitly *not* the sidebar's iris
- *          tint — then the subject, `9706 /12` in Mono/Meta, the session in Mono/Small.
- *
- * Two deviations from those nodes, both deliberate: the row's primary text is `--ink` where the
- * Recent row uses `--ink-2` (the row is the thing being picked, and this list is the only content
- * on screen while it is up), and the rows are inset pills in an 8px-padded list rather than flush
- * rows in a `--card` with `--hair-2` dividers, because they are selectable and a card would put a
- * content surface inside chrome.
+ * Bell App v2 draws it as a Shape Kit sheet: a 640px paper panel with a 2px ink frame and an 8px
+ * hard shadow, top-anchored over a dark scrim. The head is the search ring plus the query and an
+ * `esc` chip; rows are 46px, the cursor row inverts to ink with a ⏎ chip at its end, paper rows
+ * lead with their subject glyph and commands with a framed icon; the foot names the keys and counts
+ * the results.
  *
  * The interaction model is the ARIA combobox: the input keeps focus and owns every key, the list is a
  * listbox whose options are grouped by section, and the cursor is published through
@@ -37,7 +23,6 @@
  */
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import Kbd from '@ui/Kbd';
-import SectionLabel from '@ui/SectionLabel';
 import SubjectIcon from '@ui/icons/SubjectIcon';
 import Icon, { type IconName } from './Icon';
 import { searchPapers } from '../lib/api';
@@ -209,7 +194,7 @@ export function screenCommands(
       label: 'Check for updates',
       hint: 'Look now instead of waiting for the daily check',
       /* `sync` is the closest glyph the set has: it holds no download and no restart icon, which is
-         why `ui/UpdateNotice.tsx` had to author both by hand. */
+         why the update corner draws its own glyphs. */
       icon: 'sync',
       keywords: 'update version upgrade release notes',
       run: check,
@@ -465,13 +450,11 @@ export default function CommandPalette({ open, onClose, onOpenPaper, commands }:
         <span className="cmdk-row__glyph">
           <SubjectIcon code={p.subjectCode} size={20} />
         </span>
-        <span className="cmdk-row__name t-body-nav">{p.subjectName}</span>
-        <span className="cmdk-row__code t-mono-meta">{code}</span>
-        <span className="cmdk-row__session t-mono-small">{sessionLabel(p.scode)}</span>
+        <span className="cmdk-row__name">{p.subjectName}</span>
+        <span className="cmdk-row__code">{code}</span>
+        <span className="cmdk-row__hint">{sessionLabel(p.scode)}</span>
         <span className="cmdk-row__end">
-          <span className="cmdk-row__enter">
-            <Icon name="ret" />
-          </span>
+          <Kbd>⏎</Kbd>
         </span>
       </button>
     );
@@ -490,16 +473,14 @@ export default function CommandPalette({ open, onClose, onOpenPaper, commands }:
       onMouseEnter={() => point(i)}
       onClick={() => choose(i)}
     >
-      <span className="cmdk-row__glyph">
+      <span className="cmdk-row__glyph cmdk-row__glyph--cmd">
         <Icon name={c.icon} />
       </span>
-      <span className="cmdk-row__name t-body-nav">{c.label}</span>
-      {c.hint && <span className="cmdk-row__hint t-body-meta">{c.hint}</span>}
+      <span className="cmdk-row__name">{c.label}</span>
+      <span className="cmdk-row__code">{c.shortcut ?? ''}</span>
+      <span className="cmdk-row__hint">{c.hint ?? ''}</span>
       <span className="cmdk-row__end">
-        {c.shortcut && <Kbd>{c.shortcut}</Kbd>}
-        <span className="cmdk-row__enter">
-          <Icon name="ret" />
-        </span>
+        <Kbd>⏎</Kbd>
       </span>
     </button>
   );
@@ -527,12 +508,12 @@ export default function CommandPalette({ open, onClose, onOpenPaper, commands }:
         }}
       >
         <div className="cmdk__head">
-          <Icon name="search" className="cmdk__glyph" />
+          <i className="cmdk__glyph" aria-hidden="true" />
           {/* A combobox over the list below: the input keeps focus and the arrows move a cursor
               inside the listbox, which is what `aria-activedescendant` reports. */}
           <input
             ref={input}
-            className="cmdk__input t-body-default"
+            className="cmdk__input"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -550,16 +531,17 @@ export default function CommandPalette({ open, onClose, onOpenPaper, commands }:
             autoComplete="off"
             spellCheck={false}
           />
+          <Kbd>esc</Kbd>
         </div>
 
         {/* Both empty states sit OUTSIDE the listbox: a listbox may only hold options and groups, and
             neither of these lines is one. Honest about which case it is, and never a placeholder row. */}
         {q === '' && papers.length === 0 && (
-          <p className="cmdk__empty t-body-default">Nothing opened yet — papers you open land here.</p>
+          <p className="cmdk__empty">Nothing opened yet — papers you open land here.</p>
         )}
         {q !== '' && rows.length === 0 && (
-          <p className="cmdk__empty t-body-default">
-            Nothing matched <span className="t-mono-meta">{q}</span>
+          <p className="cmdk__empty">
+            Nothing matched <span className="cmdk__q">{q}</span>
           </p>
         )}
 
@@ -575,11 +557,8 @@ export default function CommandPalette({ open, onClose, onOpenPaper, commands }:
                the one section this component names itself. */
             <div role="group" aria-label={g.section} key={g.at}>
               <div className="cmdk__eyebrow" aria-hidden="true">
-                <SectionLabel
-                  label={g.section}
-                  meta={g.section === paperSection ? paperMeta : undefined}
-                  rule={false}
-                />
+                <span>{g.section.toUpperCase()}</span>
+                {g.section === paperSection && paperMeta && <em>{paperMeta}</em>}
               </div>
 
               {g.items.map(({ row, i }) =>
@@ -589,7 +568,7 @@ export default function CommandPalette({ open, onClose, onOpenPaper, commands }:
           ))}
         </div>
 
-        <div className="cmdk__foot t-body-meta">
+        <div className="cmdk__foot">
           <span className="cmdk__legend">
             <Kbd>↑↓</Kbd> navigate
           </span>
@@ -598,6 +577,10 @@ export default function CommandPalette({ open, onClose, onOpenPaper, commands }:
           </span>
           <span className="cmdk__legend">
             <Kbd>esc</Kbd> close
+          </span>
+          <span className="cmdk__count">
+            {papers.length} {papers.length === 1 ? 'paper' : 'papers'} · {cmds.length}{' '}
+            {cmds.length === 1 ? 'command' : 'commands'}
           </span>
         </div>
       </div>

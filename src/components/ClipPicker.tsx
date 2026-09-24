@@ -1,11 +1,9 @@
 /**
  * "Clip to notebook" — the destination picker.
  *
- * Spec: `design/specs/screen-notebooks.md` §6 gives the glass-popover recipe this borrows (glass,
- * 1px hair, blur 26, clip) and §4e gives the cover swatch. The picker itself is not drawn in Figma —
- * the file specifies the affordance ("Clip to notebook" in the Reader topbar, the new `clip` glyph)
- * and leaves the destination step to the implementation, so this is built from the file's parts
- * rather than invented in a different vocabulary.
+ * Bell App v2 draws it as a 280px framed menu under the Reader's Clip button: a CLIP TO eyebrow,
+ * one row per notebook (its cover as a small framed book, the name, then subject and pages), and a
+ * "New notebook…" row under a rule.
  *
  * It is deliberately a list of notebooks and nothing else. Asking for a page as well would be the
  * obvious next control and it is the wrong one: a clip goes where your working goes, which is the
@@ -14,7 +12,6 @@
  */
 import './ClipPicker.css';
 import { useEffect, useRef } from 'react';
-import Icon from './Icon';
 import type { NbEntry } from '@/lib/notebooks';
 
 export interface Props {
@@ -24,7 +21,7 @@ export interface Props {
   loading?: boolean;
   onPick: (entry: NbEntry) => void;
   onClose: () => void;
-  /** Offered when there is nothing to clip into yet. Takes the student to the shelf. */
+  /** The "New notebook…" row at the foot of the menu. Takes the student to the shelf. */
   onNew: () => void;
 }
 
@@ -60,26 +57,18 @@ export default function ClipPicker({ open, notebooks, loading, onPick, onClose, 
 
   return (
     <div className="clipp" ref={box} role="dialog" aria-label="Clip to which notebook?">
-      <div className="clipp-head t-label-section">Clip to</div>
+      <div className="clipp-head">CLIP TO</div>
 
       {loading ? (
         <p className="clipp-empty t-body-meta">Reading your notebooks…</p>
       ) : notebooks.length === 0 ? (
-        <>
-          <p className="clipp-empty t-body-meta">
-            No notebooks yet. Make one and anything you clip out of a paper lands on its pages.
-          </p>
-          <button type="button" className="clipp-row clipp-new" onClick={onNew}>
-            <span className="clipp-plus" aria-hidden="true">
-              <Icon name="plus" />
-            </span>
-            <span className="clipp-name t-body-default">New notebook…</span>
-          </button>
-        </>
+        <p className="clipp-empty">
+          No notebooks yet. Make one and anything you clip out of a paper lands on its pages.
+        </p>
       ) : (
         <ul className="clipp-list">
-          {notebooks.map((n) => (
-            <li key={n.id}>
+          {notebooks.map((n, i) => (
+            <li key={n.id} style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
               <button type="button" className="clipp-row" onClick={() => onPick(n)}>
                 <span
                   className="clipp-swatch"
@@ -87,8 +76,8 @@ export default function ClipPicker({ open, notebooks, loading, onPick, onClose, 
                   aria-hidden="true"
                 />
                 <span className="clipp-text">
-                  <span className="clipp-name t-body-default">{n.name}</span>
-                  <span className="clipp-meta t-body-meta">
+                  <span className="clipp-name">{n.name}</span>
+                  <span className="clipp-meta">
                     {n.subject ? `${n.subject.name} ${n.subject.code} · ` : ''}
                     {n.pages} pages
                   </span>
@@ -97,6 +86,12 @@ export default function ClipPicker({ open, notebooks, loading, onPick, onClose, 
             </li>
           ))}
         </ul>
+      )}
+      {!loading && (
+        <button type="button" className="clipp-row clipp-new" onClick={onNew}>
+          <span className="clipp-plus" aria-hidden="true">+</span>
+          <span className="clipp-name">New notebook…</span>
+        </button>
       )}
     </div>
   );

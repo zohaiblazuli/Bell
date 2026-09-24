@@ -1,163 +1,321 @@
-/* Update flow — `design/specs/update-and-startup.md` PART A. The rationale is in UpdateFlow.tsx.
-   Everything measured already lives in `@ui/UpdateNotice` (§A2) and `@ui/Dialog` (§A1); what is
-   left here is the pill's entrance and the dialog bodies the file does not draw. */
+/* Update flow — Bell App v2. The corner panel, the dialog's owl and bodies, and the restarting
+   overlay. The rationale is in UpdateFlow.tsx. */
 
-/* The entrance, from `motion-mr-bell.md` §4: `pill Available` `444:109` runs TRANSLATE_Y 8 → 0 over
-   300ms on Figma easeOut, and its OPACITY is a HOLD that snaps at 80ms. Two animations rather than
-   one keyframe list, because a shared list would split the rise's easing at the opacity step and
-   bend the curve; `steps(1, end)` across 80ms is the HOLD, written the way that spec's
-   implementation notes ask for it. Both keyframes are `from`-only, so the resting state is the
-   element's own and no fill mode is needed.
-
-   It plays whenever the pill's element MOUNTS, and that includes two changes of face: `UpdateNotice`
-   renders a <div> for Downloading and a <button> for the other two, so React must rebuild the node
-   on available → downloading and on downloading → ready, and the entrance replays there. Read that
-   as the product's stand-in for the file's own device — §4 stacks three detached pills at one x,y
-   and crossfades them, where only one state exists at a time here — but it is a replay, not a
-   one-time appearance, and in Figma only `pill Available` carries the rise. It cannot be suppressed
-   from this file: the element type is the primitive's choice, so no `key` keeps the node alive. */
-@media (prefers-reduced-motion: no-preference) {
-  .uflow-pill {
-    animation:
-      uflow-pill-rise 0.3s cubic-bezier(0, 0, 0.58, 1),
-      uflow-pill-appear 0.08s steps(1, end);
-  }
-}
-
-@keyframes uflow-pill-rise {
-  from {
-    transform: translateY(8px);
-  }
-}
-
-@keyframes uflow-pill-appear {
-  from {
-    opacity: 0;
-  }
-}
-
-/* Both dialog buttons measure 181 — `181 + 10 + 181 = 372` — which is what `.dlg-actions > *` in
-   Dialog.css asks for with `flex: 1 0 0`. That does not land on a Button: `button.bell-btn { flex:
-   none }` is element-qualified and outranks a class-plus-universal selector whichever order the two
-   stylesheets load in, so a Button in the row hugs its label instead. Two classes plus the element
-   beats both. The proper home for this is Dialog.css or Button.css — it is in the build report. */
-.dlg-actions > button.uflow-action {
-  flex: 1 0 0;
-  min-width: 0;
-  /* Figma's Button master is `primaryAxisAlignItems: MIN`, which is invisible at its hugging 123
-     and very visible at 181, where the label would sit hard against the 14px inset. §A1's own
-     drawing of the row centres both labels. */
-  justify-content: center;
-}
-
-/* The dialog's specs flick is ~30% quicker than the standalone push-up, and the file warns against
-   sharing one animation across the three pages (motion TRAPS 15). Measured, the difference is purely
-   tempo — the dialog's beats are 0.717x the standalone's on every one — so MrBell.css exposes the
-   duration and this is the whole override. 1.2s x 0.717 = 0.86s, which lands its peaks on
-   0.172 / 0.244 and its return on 0.538 against the file's 0.17 / 0.25 / 0.53. */
-.dlg-panel .bell[data-anim='specs-push-up'] {
-  --bell-flick: 0.86s;
-}
-/* The notice's own tempo: 0.689x, i.e. 0.827s → 0.165 / 0.234 / 0.517 against 0.16 / 0.24 / 0.52. */
-.bell-notice .bell[data-anim='specs-push-up'],
-.uflow-pill .bell[data-anim='specs-push-up'] {
-  --bell-flick: 0.827s;
-}
-
-/* A face with no Primary to offer — checking, downloading — has one button, and one button
-   stretched across 372 reads as a bar. It keeps Button's own hug and the row centres it. */
-.uflow-solo .dlg-actions {
-  justify-content: center;
-}
-
-/* Release notes. `.dlg-body` centres its text, which is right for the file's one-sentence copy and
-   wrong for a list — a centred changelog is unreadable — so this block is the one thing in the
-   panel that left-aligns. `pre-wrap` keeps the line breaks the release author typed, and is the
-   only formatting the payload gets, since it arrives as text. The height cap is not styling: notes
-   come off a server with no length limit and `.dlg-panel` clips, so an uncapped block would simply
-   be cut. 130px is about nine lines of Body/Small at `line-height: normal`, which keeps the panel
-   under ~390 tall — the stack is `20 + 96 + 18 + 20 + 18 + body + 18 + 38 + 24`. */
-.uflow-notes {
-  max-height: 130px;
-  overflow-y: auto;
-  text-align: left;
-  white-space: pre-wrap;
-  /* A bare URL or a commit subject can arrive with no break opportunity in it at all. */
-  overflow-wrap: anywhere;
-}
-
-/* Some builds ship with no notes, and saying so beats a panel with a hole in it. */
-.uflow-empty {
-  color: var(--ink-3);
-}
-
-.uflow-progress {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
-}
-
-/* `--ink-2` and Mono/Small are the pill's own treatment of its `62%` readout (§A2.3, `438:119`).
-   The two describe the same download and should not disagree about how a number looks. */
-.uflow-bytes {
-  color: var(--ink-2);
-}
-
-/* `.meter-bar` is authored `flex: 1` for the dashboard rows it was measured in; in a column that
-   growth resolves against the wrong axis. */
-.uflow-progress .meter-bar {
-  flex: none;
-}
-
-/* Machine text left-aligns for the same reason the notes do: an OS error string with a path in it
-   is read, not admired. The class rides on `Notice` itself rather than on a wrapper — the primitive
-   publishes `className`, and `.bell-notice` is a flex box whose text span takes the alignment by
-   inheritance. `Notice` brings the danger wash, the glyph and `role="alert"` with it. */
-.uflow-error {
-  text-align: left;
-}
-
-/* The update control belongs to the application shell, not the sidebar. It remains in one known
-   lower-right location while its action changes from Download to Restart, avoiding a modal over
-   the work someone is already doing. */
+/* ---------- corner panel ---------- */
 .uflow-corner {
   position: absolute;
   right: 24px;
   bottom: 24px;
-  z-index: 55;
+  z-index: 25;
+  width: 320px;
   box-sizing: border-box;
-  width: min(360px, calc(100vw - 48px));
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: 12px;
-  padding: 18px;
-  background: var(--card);
-  border: 1px solid var(--card-brd);
-  border-radius: var(--r-panel);
-  box-shadow: var(--shadow-win);
-}
-
-.uflow-corner__eyebrow {
-  color: var(--accent);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.uflow-corner__title {
+  padding: 14px 16px 16px;
+  background: var(--ground);
   color: var(--ink);
+  box-shadow: 0 0 0 2px var(--line), 6px 6px 0 var(--line);
+  transform-origin: 100% 100%;
+  animation: sk-corner-in .6s cubic-bezier(.2, .8, .2, 1) both;
 }
-
+.uflow-corner__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.uflow-corner__id {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.uflow-corner__eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: .14em;
+}
+.uflow-corner__title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+.uflow-corner__x {
+  align-self: flex-start;
+  width: 26px;
+  height: 26px;
+  margin: -4px -6px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.uflow-corner__x:hover {
+  color: var(--red);
+}
 .uflow-corner__copy {
   margin: 0;
-  max-height: 76px;
-  overflow: auto;
-  color: var(--ink-3);
+  font-size: 13.5px;
+  line-height: 1.45;
   white-space: pre-wrap;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.uflow-corner__actions {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 8px;
+  animation: sk-rise .35s cubic-bezier(.2, .8, .2, 1) .15s both;
+}
+.uflow-corner__actions[data-solo='true'] {
+  grid-template-columns: 1fr;
+}
+.uflow-corner__actions > .bell-btn {
+  width: 100%;
 }
 
-.uflow-corner .uflow-progress {
-  width: 100%;
+/* glyphs — literal kit colours, like the logo */
+.uflow-glyph {
+  position: relative;
+  flex: none;
+  display: block;
+  width: 34px;
+  height: 34px;
+}
+.uflow-glyph--dl {
+  overflow: hidden;
+  background: var(--sk-blue);
+  animation: sk-pop .4s cubic-bezier(.2, .8, .2, 1) both;
+}
+.uflow-glyph__arrow {
+  position: absolute;
+  inset: 0;
+  animation: sk-bob 1.8s ease-in-out infinite;
+}
+.uflow-glyph__arrow i {
+  position: absolute;
+  left: 15px;
+  top: 7px;
+  width: 4px;
+  height: 12px;
+  background: var(--sk-cream);
+}
+.uflow-glyph__arrow b {
+  position: absolute;
+  left: 9px;
+  top: 17px;
+  width: 16px;
+  height: 9px;
+  background: var(--sk-cream);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.uflow-glyph__tray {
+  position: absolute;
+  left: 7px;
+  bottom: 5px;
+  width: 20px;
+  height: 3px;
+  background: var(--sk-black);
+}
+.uflow-glyph--dl[data-falling='true'] .uflow-glyph__arrow {
+  animation: sk-arrow-fall 1s cubic-bezier(.5, 0, .3, 1) infinite;
+}
+.uflow-glyph--dl[data-falling='true'] .uflow-glyph__tray {
+  animation: sk-tray-catch 1s ease-out infinite;
+}
+.uflow-glyph--ready {
+  animation: sk-pop-big .5s cubic-bezier(.2, 1.3, .4, 1) both;
+}
+.uflow-glyph__burst {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
+  transform: scale(.7);
+}
+.uflow-glyph__burst i {
+  position: absolute;
+  inset: 0;
+  animation-duration: .8s;
+  animation-timing-function: ease-out;
+  animation-delay: .15s;
+  animation-fill-mode: both;
+}
+.uflow-glyph__tile {
+  position: relative;
+  display: block;
+  width: 34px;
+  height: 34px;
+  overflow: hidden;
+  background: var(--sk-yellow);
+}
+.uflow-glyph__bell {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 0 0 0 26px;
+  background: var(--sk-red);
+  transform-origin: 100% 0;
+  animation: sk-bell 1.6s ease-in-out infinite;
+}
+.uflow-glyph__dot {
+  position: absolute;
+  left: 5px;
+  bottom: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sk-black);
+}
+
+/* progress */
+.uflow-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.uflow-bytes {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+.uflow-bar {
+  position: relative;
+  height: 8px;
+  overflow: hidden;
+  background: var(--pale);
+  box-shadow: inset 0 0 0 1.5px var(--line);
+}
+.uflow-bar i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--blue) repeating-linear-gradient(135deg, transparent 0 6px, rgba(239, 233, 220, .35) 6px 10px);
+  background-size: 28px 100%;
+  transition: width .15s linear;
+  animation: sk-stripe .6s linear infinite;
+}
+.uflow-progress__note {
+  font-size: 12.5px;
+  color: var(--mute);
+}
+
+/* the red note, shared by the corner and the dialog */
+.uflow-error {
+  align-self: stretch;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.4;
+  background: var(--t-red);
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+.uflow-error i {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-top: 3px;
+  background: var(--red);
+}
+
+/* ---------- dialog ---------- */
+.uflow-owl {
+  display: block;
+  padding: 6px 0 4px;
+}
+.uflow-owl .owl-mark {
+  display: block;
+}
+.uflow-owl[data-mood='think'] .owl-mark { animation: sk-owl-tilt 1s ease-in-out infinite; }
+.uflow-owl[data-mood='hop'] .owl-mark { animation: sk-hop .6s cubic-bezier(.2, .8, .2, 1) both; }
+.uflow-owl[data-mood='sigh'] .owl-mark { animation: sk-sigh 3s ease-in-out infinite; transform-origin: 50% 100%; }
+
+/* A lone Close centres instead of stretching across the panel. */
+.uflow-solo .dlg-actions {
+  justify-content: center;
+}
+.uflow-solo .dlg-actions > * {
+  flex: 0 0 auto;
+  min-width: 120px;
+}
+.dlg-actions > button.uflow-action {
+  flex: 1 0 0;
+}
+
+.uflow-notes {
+  max-height: 180px;
+  overflow-y: auto;
+  text-align: left;
+  font-size: 13.5px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+.uflow-empty {
+  font-size: 14px;
+  color: var(--mute);
+}
+
+/* ---------- restarting overlay ---------- */
+.uflow-restart {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: var(--ground);
+  color: var(--ink);
+  animation: sk-iris .6s cubic-bezier(.6, 0, .2, 1) both;
+}
+.uflow-restart__owl {
+  display: block;
+  animation: sk-pop-big .6s cubic-bezier(.2, 1.3, .4, 1) .35s both;
+}
+.uflow-restart__owl .owl-mark__ear--l {
+  transform-origin: 100% 100%;
+  animation: sk-ear-wig-l .6s ease-in-out 1s 2;
+}
+.uflow-restart__owl .owl-mark__ear--r {
+  transform-origin: 0 100%;
+  animation: sk-ear-wig-r .6s ease-in-out 1s 2;
+}
+.uflow-restart__owl .owl-mark__pupil {
+  animation: sk-blink 1.2s 1.1s infinite;
+}
+.uflow-restart__line {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: .14em;
+  animation: sk-fade .3s ease .7s both;
+}
+.uflow-restart__bar {
+  display: block;
+  width: 160px;
+  height: 4px;
+  overflow: hidden;
+  background: var(--pale);
+}
+.uflow-restart__bar i {
+  display: block;
+  height: 4px;
+  background: var(--ink);
+  transform-origin: 0 50%;
+  animation: sk-fill 1.8s ease-in-out .6s both;
 }

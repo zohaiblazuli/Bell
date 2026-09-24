@@ -14,7 +14,7 @@ import Slider from '@ui/Slider';
 import NotebookPage from './NotebookPage';
 import SideResizeHandle from './SideResizeHandle';
 import { useNotebook } from '../state/useNotebook';
-import { StickerGlyph } from '@ui/NotebookCover';
+import { ScaledCoverArt, StickerGlyph } from '@ui/NotebookCover';
 import {
   DEFAULT_AUTHORED,
   nbCreate,
@@ -34,12 +34,12 @@ const NO_SELECTION: readonly string[] = Object.freeze([]);
 
 const NB_SWATCHES: { token: string; label: string }[] = [
   { token: '--page-ink', label: 'Ink' },
-  { token: '--iris-3', label: 'Blue' },
-  { token: '--cover-2', label: 'Indigo' },
-  { token: '--cover-3', label: 'Emerald' },
-  { token: '--cover-4', label: 'Amber' },
-  { token: '--cover-5', label: 'Rose' },
-  { token: '--cover-8', label: 'Purple' },
+  { token: '--sk-blue', label: 'Blue' },
+  { token: '--sk-red', label: 'Red' },
+  { token: '--sk-green', label: 'Green' },
+  { token: '--sk-yellow', label: 'Yellow' },
+  { token: '--sk-purple', label: 'Purple' },
+  { token: '--sk-navy', label: 'Navy' },
 ];
 
 const NB_TOOLS: { tool: NbTool; icon: IconName; label: string; title: string }[] = [
@@ -671,23 +671,8 @@ export default function NotebookSheet({
       onClick={() => setSelectedId(n.id)}
       aria-label={`Open notebook ${n.name}`}
     >
-      <div
-        className="rd-nb-tile-book"
-        style={{ background: `var(--cover-${n.cover})` }}
-      >
-        <div className="rd-nb-tile-spine" aria-hidden="true" />
-        <svg className="rd-nb-tile-rings" viewBox="0 0 10 90" aria-hidden="true">
-          <circle cx="5" cy="12" r="3" />
-          <circle cx="5" cy="27" r="3" />
-          <circle cx="5" cy="42" r="3" />
-          <circle cx="5" cy="57" r="3" />
-          <circle cx="5" cy="72" r="3" />
-          <circle cx="5" cy="87" r="3" />
-        </svg>
-        <div className="rd-nb-tile-edges" aria-hidden="true">
-          <span />
-          <span />
-        </div>
+      <div className="rd-nb-tile-book">
+        <ScaledCoverArt cover={n.cover} />
 
         <div className="rd-nb-tile-sticker">
           {n.sticker ? (
@@ -725,12 +710,8 @@ export default function NotebookSheet({
       onClick={() => setSelectedId(n.id)}
       aria-label={`Open notebook ${n.name}`}
     >
-      <div
-        className="rd-nb-item-cover"
-        style={{ background: `var(--cover-${n.cover})` }}
-        aria-hidden="true"
-      >
-        <div className="rd-nb-item-cover-spine" />
+      <div className="rd-nb-item-cover" aria-hidden="true">
+        <ScaledCoverArt cover={n.cover} />
       </div>
       <div className="rd-nb-item-info">
         <div className="rd-nb-item-name">{n.name}</div>
@@ -813,22 +794,8 @@ export default function NotebookSheet({
               </div>
 
               <div className="rd-nb-companion-right" aria-hidden="true">
-                <div
-                  className="rd-nb-mini-book"
-                  style={{ background: `var(--cover-${suggestedCover})` }}
-                >
-                  <div className="rd-nb-mini-spine" />
-                  <svg className="rd-nb-mini-coils" viewBox="0 0 10 70">
-                    <circle cx="5" cy="11" r="3.2" />
-                    <circle cx="5" cy="23" r="3.2" />
-                    <circle cx="5" cy="35" r="3.2" />
-                    <circle cx="5" cy="47" r="3.2" />
-                    <circle cx="5" cy="59" r="3.2" />
-                  </svg>
-                  <div className="rd-nb-mini-edges">
-                    <span />
-                    <span />
-                  </div>
+                <div className="rd-nb-mini-book">
+                  <ScaledCoverArt cover={suggestedCover} />
                   <div className="rd-nb-mini-sticker">
                     <Icon name="pen" />
                   </div>

@@ -7,7 +7,7 @@
   --font-display: var(--font-disp);
   /* --font-mono collides with the app's own token name, so it carries a literal rather than
      a self-referential var(). Kept in step with tokens.css here. */
-  --font-mono: 'Geist Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+  --font-mono: 'Azeret Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
 
   --color-ground: var(--ground);
   --color-ground-2: var(--ground-2);

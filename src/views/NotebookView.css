@@ -33,8 +33,8 @@
 .nbs {
   position: relative;
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) 268px;
-  grid-template-rows: 52px minmax(0, 1fr);
+  grid-template-columns: 56px minmax(0, 1fr) 272px;
+  grid-template-rows: 48px minmax(0, 1fr);
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -51,12 +51,37 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 16px;
-  border: 1px solid var(--hair);
-  background: var(--glass);
-  backdrop-filter: blur(26px) saturate(165%);
+  padding: 0 0 0 12px;
+  border-bottom: 2px solid var(--line);
+  background: var(--ground);
   overflow: hidden;
-  transition: var(--tone-chrome);
+}
+/* Bell App v2's editor bar: framed 32px buttons, the cover swatch beside the name. */
+.nbs-top .icobtn {
+  width: 32px;
+  height: 32px;
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+.nbs-top .icobtn:hover:not(:disabled) {
+  background: var(--inkbg);
+  color: var(--onink);
+}
+.nbs-top .icobtn svg {
+  width: 15px;
+  height: 15px;
+}
+.nbs-top .tonepill {
+  height: 32px;
+}
+.nbs-top .tonepill__btn {
+  width: 32px;
+  height: 32px;
+}
+.nbs-swatch {
+  flex: none;
+  width: 14px;
+  height: 18px;
+  box-shadow: inset 0 0 0 2px var(--line), inset 4px 0 0 var(--line);
 }
 /* The bar is the window's drag handle, as it is on every other screen: `data-tauri-drag-region` sits
    on this element, exactly as `components/TopBar` does it, and the buttons inside still get their
@@ -67,7 +92,7 @@
    space between them, and then the title at 124. Cancelling the row's gap once, on the lights, is what
    reproduces all three — 16 + 62 = 78, 78 + 34 + 12 = 124. */
 .nbs-top > .wlights {
-  margin-right: -12px;
+  margin-left: -2px;
 }
 
 /* §5a `title` at x 124: four styles in one row at gap 9. */
@@ -79,6 +104,8 @@
 }
 .nbs-title-name {
   color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -103,15 +130,15 @@
   color: var(--ink-3);
 }
 .nbs-save-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--accent);
+  width: 8px;
+  height: 8px;
+  background: var(--green);
 }
 .nbs-save-label {
   font-family: var(--font-ui);
-  font-size: 10px;
-  font-weight: 500;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--ink);
 }
 /* While a flush is in flight the label joins the dot in the accent — the one state change here. */
 .nbs-save[data-state='saving'] {
@@ -141,26 +168,29 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 15px;
-  border: 1px solid var(--hair);
-  border-top: 0;
-  background: var(--glass);
-  backdrop-filter: blur(26px) saturate(165%);
+  gap: 2px;
+  padding: 8px 0;
+  border-right: 2px solid var(--line);
+  background: var(--ground);
   overflow: hidden;
   transition: var(--tone-chrome), transform 0.4s cubic-bezier(0.4, 0, 0.1, 1), opacity 0.3s;
 }
 .nbs-dock-grp {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
+}
+.nbs-dock .icobtn {
+  width: 40px;
+  height: 40px;
 }
 /* §5b's `sep`, 24x1. The dock's own 6px gap either side of it reproduces the file's 175 → 182 step. */
 .nbs-dock-sep {
   flex: none;
-  width: 24px;
-  height: 1px;
-  background: var(--hair);
+  width: 28px;
+  height: 2px;
+  margin: 4px 0;
+  background: var(--line);
 }
 .nbs-dock-gap {
   flex: 1 1 auto;
@@ -176,6 +206,7 @@
   position: relative;
   grid-column: 2;
   grid-row: 2;
+  background: var(--rule);
   display: grid;
   grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   min-width: 0;
@@ -239,7 +270,7 @@
   top: 0;
   width: 580px;
   height: 644px;
-  border-radius: 3px;
+  border-radius: 0;
   background: var(--paper);
   color: var(--page-ink);
   box-shadow: var(--shadow-paper);
@@ -332,27 +363,35 @@
 .nbs-nav-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px;
-  border: 1px solid var(--hair);
-  border-radius: var(--r-pill);
-  background: var(--glass-strong);
-  backdrop-filter: blur(26px) saturate(165%);
-  box-shadow: var(--shadow-pop);
+  gap: 0;
+  height: 40px;
+  padding: 0 4px;
+  background: var(--ground);
+  box-shadow: 0 0 0 2px var(--line), 4px 4px 0 var(--line);
   pointer-events: auto;
+  animation: sk-rise .45s cubic-bezier(.2, .8, .2, 1) .25s both;
+}
+.nbs-nav-bar .icobtn {
+  width: 34px;
+  height: 36px;
 }
 /* TRAP 15: `pages 12-13`, never `12 of 40`, and `next` is never disabled. The whole of "infinite
    pages, never ask the student" is in this one readout. */
 .nbs-nav-read {
   min-width: 84px;
+  padding: 0 6px;
   text-align: center;
-  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink);
+  white-space: nowrap;
 }
 .nbs-nav-sep {
   flex: none;
-  width: 1px;
-  height: 20px;
-  background: var(--hair);
+  width: 2px;
+  height: 22px;
+  margin: 0 6px;
+  background: var(--line);
 }
 .nbs-nav-zoom {
   min-width: 40px;
@@ -377,13 +416,9 @@
 }
 .nbs-notice-pill {
   max-width: 100%;
-  padding: 7px 14px;
-  border: 1px solid var(--danger);
-  border-radius: var(--r-pill);
-  background: var(--glass-strong);
-  backdrop-filter: blur(26px) saturate(165%);
-  box-shadow: var(--shadow-card);
-  color: var(--danger);
+  padding: 7px 12px;
+  background: var(--inkbg);
+  color: var(--onink);
 }
 
 /* ---------- §6 inspector 268x808 ---------- */
@@ -404,12 +439,12 @@
    because `opacity: 0` leaves sixteen invisible dock buttons and a whole inspector in the tab order and
    no CSS property removes them without animating something the design system forbids. */
 .app[data-focus='on'] .nbs-dock {
-  transform: translateX(-64px);
+  transform: translateX(-56px);
   opacity: 0;
   pointer-events: none;
 }
 .app[data-focus='on'] .nbs-inspector {
-  transform: translateX(268px);
+  transform: translateX(272px);
   opacity: 0;
   pointer-events: none;
 }
@@ -423,8 +458,7 @@
   content: '';
   position: absolute;
   inset: 12px;
-  border: 1.5px dashed var(--accent);
-  border-radius: var(--r-card);
+  border: 2.5px dashed var(--blue);
   background: var(--accent-soft);
   pointer-events: none;
 }
@@ -441,7 +475,7 @@
   min-height: 44px;
   padding: 6px 8px;
   border: 1px solid var(--accent);
-  border-radius: 4px;
+  border-radius: 0;
   background: var(--paper);
   color: var(--page-ink);
   font-family: var(--font-ui);
