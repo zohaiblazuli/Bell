@@ -20,7 +20,6 @@
  *    paint is `--ink-2` (`design/specs/icons.md`), a step darker than the placeholder. The old rule
  *    set `color: --ink-3` on the whole button and let the glyph inherit it.
  */
-import Icon from '../components/Icon';
 import Kbd from './Kbd';
 
 /** The spec's fixed width. The topbar's `16+58+12+420+12+374+12+116+12+34+16 = 1082` depends on it. */
@@ -52,7 +51,7 @@ export default function SearchField({
       onClick={onClick}
       aria-label={`${placeholder}. Opens the command palette, ${hint}`}
     >
-      <Icon name="search" className="sf-icon" />
+      <span className="sf-icon" aria-hidden="true" />
       <span className="sf-text t-body-default">{placeholder}</span>
       <Kbd>{hint}</Kbd>
     </button>

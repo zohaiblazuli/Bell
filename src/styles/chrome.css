@@ -1,7 +1,8 @@
 /* The window shell — everything that is the app rather than a screen inside it.
  *
  * Shape Kit (Bell App v2): a square window framed by a 2px ink rule, a full-height sidebar on the
- * left, the tab strip above the main column, and each screen's 56px top bar under it. No glass, no
+ * left and each screen's 56px top bar — with Day/Night and the window controls — over the main
+ * column. An open document adds its 40px tab row above its own toolbar (components/TabBar). No glass, no
  * blur, no radius — 2px ink rules are the only borders. The sidebar's own rules live in
  * components/Sidebar.css; this file is the frame: the window grid, the top bar, the view container,
  * focus mode and the narrow-window fallback.
@@ -14,9 +15,8 @@
   box-sizing: border-box;
   display: grid;
   grid-template-columns: 228px minmax(0, 1fr);
-  grid-template-rows: var(--tabbar-h, 42px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   --topbar-h: 56px;
-  --tabbar-h: 42px;
   min-height: 0;
   overflow: hidden;
   background: var(--ground);
@@ -34,15 +34,11 @@
   --tone-content: background-color 0.2s ease-out, border-color 0.2s ease-out;
 }
 
-/* The tab strip sits over the main column; the sidebar owns the left edge top to bottom. */
-.app > .tabbar {
-  grid-column: 2;
-  grid-row: 1;
-}
+/* The sidebar owns the left edge; every screen — and an open document's tab row — lives in the stage. */
 .app-stage {
   position: relative;
   grid-column: 2;
-  grid-row: 2;
+  grid-row: 1;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
@@ -51,8 +47,7 @@
   overflow: hidden;
 }
 
-/* A notebook owns the whole window: no sidebar, so the strip and the stage take both columns. */
-.app[data-view='notebook'] > .tabbar,
+/* A notebook owns the whole window: no sidebar, so the stage takes both columns. */
 .app[data-view='notebook'] > .app-stage {
   grid-column: 1 / -1;
 }

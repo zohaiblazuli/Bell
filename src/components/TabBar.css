@@ -1,179 +1,138 @@
-/* The tab strip — Shape Kit: square tabs divided by 2px ink rules, the open one lifted onto the card
-   colour with a blue bar along its top. Day/Night and the window controls sit at the right edge. */
-.tabbar {
-  position: relative;
-  z-index: 10;
-  height: var(--tabbar-h, 42px);
+/* The document tab row — Bell App v2's reader tabs: 40px on the pale tone, ruled underneath. */
+@keyframes doctab-in { 0% { opacity: 0; transform: translateY(12px); } 100% { opacity: 1; transform: none; } }
+
+.doctabs {
+  height: 40px;
   flex: none;
   display: flex;
   align-items: stretch;
-  gap: 0;
-  padding: 0 4px 0 0;
-  background: var(--ground);
+  padding-left: 8px;
+  background: var(--pale2);
   border-bottom: 2px solid var(--line);
-  user-select: none;
-}
-
-.tabbar-strip {
-  display: flex;
-  align-items: stretch;
-  height: 100%;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
-  min-width: 0;
+  user-select: none;
 }
-.tabbar-strip::-webkit-scrollbar {
+.doctabs::-webkit-scrollbar {
   display: none;
 }
 
-.tab-item {
+.doctabs__back,
+.doctabs__new {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color .16s;
+}
+.doctabs__back {
+  width: 40px;
+}
+.doctabs__back > i {
+  display: block;
+  width: 14px;
+  height: 14px;
+  background: repeating-linear-gradient(90deg, currentColor 0 3px, transparent 3px 5.5px);
+}
+.doctabs__new {
+  width: 38px;
+  font-size: 18px;
+}
+.doctabs__back:hover,
+.doctabs__new:hover {
+  background: var(--card);
+}
+
+.doctab {
   position: relative;
+  flex: none;
   display: flex;
   align-items: center;
   gap: 8px;
-  min-width: 120px;
-  max-width: 220px;
-  flex: 1 1 170px;
+  min-width: 0;
+  max-width: 230px;
   padding: 0 8px 0 12px;
-  border-right: 2px solid var(--line);
-  background: transparent;
   color: var(--ink);
-  font-family: var(--font-ui);
+  background: transparent;
+  cursor: pointer;
+  animation: doctab-in .32s cubic-bezier(.2, .8, .2, 1) both;
+  transition: background-color .16s;
+}
+.doctab:hover {
+  background: var(--card);
+}
+.doctab[aria-selected='true'] {
+  background: var(--ground);
+  box-shadow: inset 0 3px 0 var(--red), inset 2px 0 0 var(--line), inset -2px 0 0 var(--line);
+}
+.doctab__title {
   font-size: 13px;
   font-weight: 500;
-  cursor: pointer;
-  transition: background-color .16s, color .16s;
-}
-.tab-item:hover {
-  background: var(--pale2);
-}
-.tab-item[data-active='true'] {
-  background: var(--card);
-  font-weight: 600;
-  box-shadow: inset 0 3px 0 var(--blue);
-  animation: sk-draw .26s cubic-bezier(.2, .8, .2, 1) both;
-}
-.tab-item[data-kind='paper'][data-active='true'] {
-  min-width: 0;
-  max-width: none;
-  flex: 0 0 auto;
-}
-.tab-item[data-kind='paper'][data-active='true'] .tab-title {
-  flex: none;
-  overflow: visible;
-  text-overflow: clip;
-}
-
-.tab-icon {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 15px;
-  height: 15px;
-}
-.tab-icon svg {
-  width: 15px;
-  height: 15px;
-  stroke-width: 2;
-}
-.tab-title {
-  flex: 1;
-  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.tab-sub {
-  flex: none;
+.doctab[aria-selected='true'] .doctab__title {
+  font-weight: 700;
+}
+.doctab__sub {
   font-family: var(--font-mono);
-  font-size: 10px;
-  padding: 2px 5px;
-  box-shadow: inset 0 0 0 1.5px var(--line);
-  max-width: 60px;
+  font-size: 11px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-
-/* A running focus timer: a small red square that pulses like the bell. */
-.tab-timer-dot {
+.doctab__timer {
   flex: none;
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
   background: var(--red);
-  animation: tab-pulse 1.8s ease-in-out infinite;
+  animation: sk-puff 1.2s ease-in-out infinite;
 }
-@keyframes tab-pulse {
-  0%, 100% { opacity: .45; transform: scale(.9); }
-  50% { opacity: 1; transform: scale(1.15); }
-}
-
-.tab-close {
+.doctab__close {
   flex: none;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  margin-left: 2px;
-  background: transparent;
+  font-size: 15px;
+  line-height: 1;
   color: var(--ink);
+  background: transparent;
   cursor: pointer;
-  opacity: .55;
-  transition: opacity .14s, background-color .14s, color .14s;
 }
-.tab-item:hover .tab-close,
-.tab-item[data-active='true'] .tab-close {
-  opacity: .9;
+.doctab__close:hover {
+  background: var(--inkbg);
+  color: var(--onink);
 }
-.tab-close:hover {
-  opacity: 1 !important;
-  background: var(--ink);
-  color: var(--ground);
-}
-.tab-close svg {
+
+/* Non-paper tabs: a notebook is a small blue cover, a community or workspace document a ruled page. */
+.doctab__mark {
+  flex: none;
+  display: block;
   width: 10px;
   height: 10px;
-  stroke-width: 2.4;
-}
-
-.tab-new {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  background: transparent;
-  color: var(--ink);
-  cursor: pointer;
-  transition: background-color .15s, color .15s;
-}
-.tab-new:hover {
   background: var(--ink);
-  color: var(--ground);
 }
-.tab-new svg {
-  width: 14px;
-  height: 14px;
-  stroke-width: 2.4;
+.doctab__mark--notebook {
+  width: 8px;
+  height: 11px;
+  background: var(--blue);
 }
-
-.tabbar-drag {
-  flex: 1;
-  min-width: 24px;
-}
-.tabbar-actions {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.doctab__mark--book,
+.doctab__mark--workspace-doc {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--line);
 }
 
-.tab-item:focus-visible,
-.tab-new:focus-visible,
-.tab-close:focus-visible {
+.doctabs__back:focus-visible,
+.doctabs__new:focus-visible,
+.doctab:focus-visible,
+.doctab__close:focus-visible {
   outline: 2px solid var(--blue);
   outline-offset: -3px;
   border-radius: 0;

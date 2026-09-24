@@ -1,5 +1,6 @@
 import SearchField from '@ui/SearchField';
-import type { Tone } from '@ui/TonePill';
+import TonePill, { type Tone } from '@ui/TonePill';
+import WindowLights from './WindowLights';
 import IconButton from '@ui/IconButton';
 
 /**
@@ -39,6 +40,8 @@ interface Props {
 
 export default function TopBar({
   title,
+  tone,
+  onTone,
   busy,
   onReindex,
   onSearch,
@@ -75,6 +78,9 @@ export default function TopBar({
             onClick={onReindex}
           />
         )}
+
+        {tone && onTone && <TonePill tone={tone} onToggle={onTone} />}
+        <WindowLights />
       </div>
 
       {/* Last in DOM order and absolutely positioned, so it centres on the bar rather than on the
