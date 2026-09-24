@@ -51,23 +51,28 @@ from the same shapes, is the only mascot. Actual documents stay bright and visua
 
 ## Community Resources direction
 
-The chosen direction is a preview-led **paper desk** (Operate seed `135520f6`, assigned structure 5).
-The resource itself earns trust, so the first-page preview owns the largest share of the catalogue
-viewport. A compact resource rail narrows the collection on the left; provenance, file facts, trust
-state, upvote, and the local-download action sit beside the selected paper. This is a study catalogue,
-not a feed, marketplace, or promotional card wall.
+The chosen direction is the **Poster** layout (Bell App v2). Subject chips run across the top (My
+subjects, All subjects, then each subject the student sits). A subject-coloured carousel shows the
+most downloaded resources for their subjects, each on a paper sheet that bleeds off the slide's foot,
+with the download count set large and one action: get it onto this machine. Below it, every resource
+in scope is a card, most downloaded first. Pressing a card puts it in the carousel. This is a study
+catalogue, not a feed or a marketplace.
 
-The opening-frame contract is:
-
-- Search and compact qualification/subject/type/sort controls span the top.
-- The resource rail is subordinate to a large selected-paper preview.
-- Authorship, uploader identity, file facts, and approval language stay visible with the preview.
-- Administration replaces the desk only after privileged authentication and uses a compact
+- The first-page preview is always shown on its paper sheet; the resource earns trust, not the chrome.
+- Authorship, type, pages and size stay on the featured slide.
+- Administration replaces the page only after privileged authentication and uses a compact
   operational table, explicit scan/IP/audit inspection, and one upload form.
 - The reader reuses Bell's existing paper canvas and annotation tools so community documents do not
   feel like a separate product.
-- Reactions are the kit's four faces (Helpful, Wow, Clear, Confusing), stored on this machine only;
-  the desk shows no reaction counts.
+
+## Notebooks
+
+Notebooks are **exercise books**: the cover is the subject's colour (Physics blue, Mathematics red,
+Computer Science yellow, Chemistry green, everything else ink) with an ink spine and a printed label
+sheet — the subject's mark, BELL · A LEVEL, then SUBJECT, CODE and BOOK ("No. 2" is the second
+notebook for that subject). A notebook without a subject keeps its picked cover colour and reads
+General. Every A Level subject has its own Shape Kit mark (`ui/icons/SubjectIcon.tsx`); other levels
+borrow their subject's.
 
 ## Quality bar
 

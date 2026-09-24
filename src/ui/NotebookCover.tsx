@@ -4,59 +4,92 @@ import SubjectIcon, { SUBJECT_GLYPH_BY_CODE } from './icons/SubjectIcon';
 import type { CoverId, StickerId } from '@/lib/notebooks';
 
 /**
- * Notebook Cover — Bell App v2's shelf card: a 196px Bauhaus composition (a ground colour with three
- * flat shapes and an ink spine), then the name, the subject line and when it was last edited. The
- * eight covers are fixed compositions, one per `CoverId`; their colours are literal because a cover
- * is an object and a real notebook does not change colour with the lights.
+ * Notebook Cover — Bell App v2's "Exercise book": the cover is the subject's colour with an ink
+ * spine, and a school-book label sheet printed on it — the subject's mark and BELL · A LEVEL, then
+ * SUBJECT, CODE and BOOK rows — with the page count at the foot. A notebook with no subject keeps
+ * the cover colour its author picked and is labelled General. Colours are literal because a cover is
+ * an object and a real notebook does not change colour with the lights.
  */
-type Shape = [left: string, top: string, width: string, height: string, radius: string, clip: string, colour: string];
 
-const Y = 'var(--sk-yellow)';
-const R = 'var(--sk-red)';
-const B = 'var(--sk-blue)';
-const K = 'var(--sk-black)';
-const C = 'var(--sk-cream)';
+/** A notebook's subject, as `NbAuthored.subject` stores it. */
+export type CoverSubject = { code: string; name: string } | null;
 
-const COMPOSITIONS: Record<CoverId, Shape[]> = {
-  1: [['55%', '45%', '150px', '150px', '50%', 'none', Y], ['0', '60%', '90px', '90px', '0 90px 0 0', 'none', R], ['30%', '10%', '60px', '10px', '0', 'none', K]],
-  2: [['20%', '-20%', '140px', '140px', '0 0 140px 0', 'none', K], ['55%', '50%', '80px', '80px', '0', 'none', C], ['62%', '58%', '40px', '40px', '50%', 'none', B]],
-  3: [['15%', '30%', '170px', '85px', '170px 170px 0 0', 'none', B], ['60%', '8%', '50px', '50px', '50%', 'none', R], ['10%', '80%', '200px', '10px', '0', 'none', K]],
-  4: [['10%', '15%', '120px', '120px', '50%', 'none', R], ['45%', '40%', '130px', '120px', '0', 'polygon(50% 0,100% 100%,0 100%)', Y]],
-  5: [['50%', '0', '110px', '110px', '0 0 0 110px', 'none', B], ['12%', '55%', '70px', '70px', '50%', 'none', K], ['40%', '70%', '100px', '12px', '0', 'none', R]],
-  6: [['30%', '20%', '120px', '120px', '50%', 'none', C], ['52%', '42%', '60px', '60px', '50%', 'none', K], ['0', '82%', '100%', '10px', '0', 'none', B]],
-  7: [['8%', '8%', '90px', '90px', '0', 'polygon(50% 0,100% 50%,50% 100%,0 50%)', C], ['50%', '45%', '140px', '70px', '140px 140px 0 0', 'none', R]],
-  8: [['-10%', '50%', '160px', '160px', '50%', 'none', Y], ['60%', '10%', '70px', '70px', '0', 'none', K], ['66%', '16%', '28px', '28px', '50%', 'none', C]],
-};
-
-const CODE_FOR_GLYPH: Record<string, string> = {};
-for (const [code, glyph] of Object.entries(SUBJECT_GLYPH_BY_CODE)) CODE_FOR_GLYPH[glyph] ??= code;
-
-export function StickerGlyph({ id, size = 28 }: { id: StickerId; size?: number }) {
-  if (!id) return null;
-  if (id === 'bell') return <OwlMark size={size} />;
-  return <SubjectIcon code={CODE_FOR_GLYPH[id] ?? id} size={size} />;
+/**
+ * The cover colour and the ink printed on it. The three flagship subjects keep the design's
+ * pairings (Physics blue, Mathematics red, Computer Science yellow), Chemistry is green, and every
+ * other subject is an ink book. Codes at any level go through their subject family.
+ */
+export function coverColours(subject: CoverSubject, cover: CoverId): { bg: string; fg: string } {
+  if (!subject) return { bg: `var(--cover-${cover})`, fg: 'var(--cover-label, var(--sk-black))' };
+  const glyph = SUBJECT_GLYPH_BY_CODE[subject.code.trim().padStart(4, '0')];
+  switch (glyph) {
+    case 'physics':
+      return { bg: 'var(--sk-blue)', fg: 'var(--sk-cream)' };
+    case 'maths':
+    case 'further-maths':
+    case 'add-maths':
+      return { bg: 'var(--sk-red)', fg: 'var(--sk-cream)' };
+    case 'computing':
+      return { bg: 'var(--sk-yellow)', fg: 'var(--sk-black)' };
+    case 'chemistry':
+      return { bg: 'var(--sk-green)', fg: 'var(--sk-cream)' };
+    default:
+      return { bg: 'var(--sk-black)', fg: 'var(--sk-cream)' };
+  }
 }
 
-/** The composition alone, for anywhere a notebook needs its face (the new-notebook preview). */
-export function CoverArt({ cover, className, style }: { cover: CoverId; className?: string; style?: CSSProperties }) {
+/** The level a syllabus code belongs to, for the label's masthead. */
+function levelOf(code: string): string {
+  const c = code.trim().padStart(4, '0');
+  if (c.startsWith('9')) return 'A LEVEL';
+  if (c.startsWith('0')) return 'IGCSE';
+  return 'O LEVEL';
+}
+
+export interface ExerciseBookProps {
+  subject: CoverSubject;
+  cover: CoverId;
+  /** "No. 2" — this notebook's place among the ones for the same subject. */
+  bookNo?: number;
+  pages?: number;
+  /** Printed on a General book's label in place of a subject mark. */
+  sticker?: ReactNode;
+  style?: CSSProperties;
+}
+
+/** The cover face alone: fills its box, drawn for a 240 × 196 shelf card. */
+export function ExerciseBook({ subject, cover, bookNo, pages, sticker, style }: ExerciseBookProps) {
+  const { bg, fg } = coverColours(subject, cover);
   return (
-    <span className={className ? `nbc-art ${className}` : 'nbc-art'} style={{ background: `var(--cover-${cover})`, ...style }} aria-hidden="true">
-      {COMPOSITIONS[cover].map(([left, top, width, height, borderRadius, clipPath, background], i) => (
-        <i key={i} style={{ left, top, width, height, borderRadius, clipPath, background }} />
-      ))}
-      <b className="nbc-spine" />
+    <span className="nbc-book" style={{ background: bg, color: fg, ...style }} aria-hidden="true">
+      <b className="nbc-book__spine" />
+      <span className="nbc-book__label">
+        <span className="nbc-book__mast">
+          {subject ? <SubjectIcon code={subject.code} size={16} /> : sticker ?? <OwlMark size={16} />}
+          <span>BELL · {subject ? levelOf(subject.code) : 'NOTEBOOK'}</span>
+        </span>
+        <span className="nbc-book__rows">
+          <span className="nbc-book__key">SUBJECT</span>
+          <span className="nbc-book__val">{subject ? subject.name : 'General'}</span>
+          <span className="nbc-book__key">CODE</span>
+          <span className="nbc-book__val nbc-book__val--mono">{subject ? subject.code : '—'}</span>
+          <span className="nbc-book__key">BOOK</span>
+          <span className="nbc-book__val">{bookNo ? `No. ${bookNo}` : 'New'}</span>
+        </span>
+      </span>
+      {pages != null && <span className="nbc-book__pp">{pages} pp</span>}
     </span>
   );
 }
 
-/** The shelf's art box is this wide; the compositions are drawn in its pixels. */
+/** The shelf card's cover is this wide; the label is laid out in its pixels. */
 const ART_W = 240;
 
 /**
- * `CoverArt` for a box of any size: the composition is laid out at shelf width and scaled down to
- * fit, so a small cover shows the same picture rather than a crop of the big one's shapes.
+ * `ExerciseBook` for a box of any size: laid out at shelf width and scaled to fit, so a small cover
+ * shows the same book rather than a crop of the big one's label.
  */
-export function ScaledCoverArt({ cover, className }: { cover: CoverId; className?: string }) {
+export function ScaledExerciseBook({ className, ...book }: ExerciseBookProps & { className?: string }) {
   const box = useRef<HTMLSpanElement>(null);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   useLayoutEffect(() => {
@@ -72,8 +105,8 @@ export function ScaledCoverArt({ cover, className }: { cover: CoverId; className
   return (
     <span ref={box} className={className ? `nbc-scaled ${className}` : 'nbc-scaled'} aria-hidden="true">
       {k > 0 && size && (
-        <CoverArt
-          cover={cover}
+        <ExerciseBook
+          {...book}
           style={{ inset: 'auto', width: ART_W, height: size.h / k, transform: `scale(${k})`, transformOrigin: '0 0' }}
         />
       )}
@@ -81,8 +114,20 @@ export function ScaledCoverArt({ cover, className }: { cover: CoverId; className
   );
 }
 
+const CODE_FOR_GLYPH: Record<string, string> = {};
+for (const [code, glyph] of Object.entries(SUBJECT_GLYPH_BY_CODE)) CODE_FOR_GLYPH[glyph] ??= code;
+
+export function StickerGlyph({ id, size = 28 }: { id: StickerId; size?: number }) {
+  if (!id) return null;
+  if (id === 'bell') return <OwlMark size={size} />;
+  return <SubjectIcon code={CODE_FOR_GLYPH[id] ?? id} size={size} />;
+}
+
 export interface NotebookCoverProps {
   cover: CoverId;
+  subject: CoverSubject;
+  bookNo?: number;
+  pages?: number;
   name: string;
   meta?: string;
   edited?: string;
@@ -101,6 +146,9 @@ export interface NotebookCoverProps {
 
 export default function NotebookCover({
   cover,
+  subject,
+  bookNo,
+  pages,
   name,
   meta,
   edited,
@@ -115,8 +163,13 @@ export default function NotebookCover({
   const body = (
     <>
       <span className="nbc-face">
-        <CoverArt cover={cover} />
-        {showSticker && sticker && <span className="nbc-sticker">{sticker}</span>}
+        <ExerciseBook
+          subject={subject}
+          cover={cover}
+          bookNo={bookNo}
+          pages={pages}
+          sticker={showSticker && sticker ? sticker : undefined}
+        />
       </span>
       <span className="nbc-label">
         <span className="nbc-title">{name}</span>

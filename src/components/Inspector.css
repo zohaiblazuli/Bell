@@ -484,36 +484,6 @@ button.nbi-spread:hover .nbi-ghost {
   box-shadow: var(--shadow-card);
   overflow: hidden;
 }
-.nbi-cover-spine {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 5.6px;
-  background: var(--cover-shade);
-}
-/* Solid rather than a 0.6px ring: at 3.2px a stroked coil is a dot with noise in it. */
-.nbi-cover-coil {
-  position: absolute;
-  left: 1.2px;
-  width: 3.2px;
-  height: 3.2px;
-  border-radius: 50%;
-  background: var(--cover-wire);
-}
-/* §4e's three `--paper` strips at node opacity 1 / 0.70 / 0.45, innermost first — one element with
-   three hard stops, because three 0.8px boxes would land between device pixels. */
-.nbi-cover-edges {
-  position: absolute;
-  top: 6.4px;
-  right: 0;
-  bottom: 6.4px;
-  width: 2.4px;
-  background: linear-gradient(
-    to right,
-    var(--paper) 0 0.8px,
-    color-mix(in srgb, var(--paper) 70%, transparent) 0.8px 1.6px,
-    color-mix(in srgb, var(--paper) 45%, transparent) 1.6px 2.4px
-  );
-}
 
 /* §6c's `linked subject` `Chip`, centred. */
 button.nbi-subject {

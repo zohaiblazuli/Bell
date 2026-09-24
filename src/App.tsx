@@ -952,6 +952,7 @@ export default function App() {
           <CommunityView
             community={community}
             subjects={lib.subjects}
+            mySubjects={onboarding.subjects}
             onOpen={openCommunityAt}
           />
         )}

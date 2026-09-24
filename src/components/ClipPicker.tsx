@@ -13,6 +13,7 @@
 import './ClipPicker.css';
 import { useEffect, useRef } from 'react';
 import type { NbEntry } from '@/lib/notebooks';
+import { coverColours } from '@ui/NotebookCover';
 
 export interface Props {
   open: boolean;
@@ -72,7 +73,7 @@ export default function ClipPicker({ open, notebooks, loading, onPick, onClose, 
               <button type="button" className="clipp-row" onClick={() => onPick(n)}>
                 <span
                   className="clipp-swatch"
-                  style={{ background: `var(--cover-${n.cover})` }}
+                  style={{ background: coverColours(n.subject, n.cover).bg }}
                   aria-hidden="true"
                 />
                 <span className="clipp-text">

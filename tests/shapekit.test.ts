@@ -103,3 +103,38 @@ describe('Shape Kit chrome', () => {
     }
   });
 });
+
+describe('Exercise book covers and subject marks (Bell App v2)', async () => {
+  const { bookNumbers } = await import('@/lib/notebooks');
+  const { subjectMark } = await import('@ui/icons/SubjectIcon');
+
+  test('books are numbered per subject, oldest first', () => {
+    const phys = { code: '9702', name: 'Physics' };
+    const maths = { code: '9709', name: 'Mathematics' };
+    const n = bookNumbers([
+      { id: 'b', createdAt: 20, subject: phys },
+      { id: 'a', createdAt: 10, subject: phys },
+      { id: 'm', createdAt: 5, subject: maths },
+      { id: 'g', createdAt: 1, subject: null },
+      { id: 'h', createdAt: 2, subject: null },
+    ]);
+    assert.deepEqual(
+      ['a', 'b', 'm', 'g', 'h'].map((id) => n.get(id)),
+      [1, 2, 1, 1, 2],
+    );
+  });
+
+  test('every A Level subject in the design has its own mark', () => {
+    const codes = ['9618', '9709', '9231', '9702', '9701', '9700', '9693', '9626', '9705', '9708', '9609', '9706', '9084', '9990', '9699', '9489', '9696', '9239', '9395', '9093', '9695', '9898', '9488', '9479', '9483', '9607', '9396'];
+    const marks = codes.map((c) => subjectMark(c));
+    assert.ok(marks.every((m) => m && m.length > 0), 'no A Level code falls back to the page');
+    assert.equal(new Set(marks).size, codes.length, 'no two A Level subjects share a mark');
+  });
+
+  test('other levels borrow their subject’s A Level mark; unknown codes get none', () => {
+    assert.equal(subjectMark('0580'), subjectMark('9709'), 'IGCSE Maths draws the maths mark');
+    assert.equal(subjectMark('580'), subjectMark('9709'), 'a lost leading zero is restored');
+    assert.equal(subjectMark('5054'), subjectMark('9702'), 'O Level Physics draws the physics mark');
+    assert.equal(subjectMark('1234'), null);
+  });
+});
