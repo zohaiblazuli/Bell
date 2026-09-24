@@ -75,6 +75,11 @@ export default function PaperCanvas({
   const draft = useRef<Mark | null>(null);
   const [size, setSize] = useState({ cssWidth: width, cssHeight: Math.round(width * 1.414) });
   const [rendering, setRendering] = useState(true);
+  // True once this page has been painted at least once. The "rendering" dim (opacity .4) is worth
+  // showing while the canvas is still blank on first load, but not on a zoom re-render: `renderPage`
+  // now double-buffers, so the old page stays fully painted until the new raster lands, and dimming
+  // it in between is exactly the flash the double-buffer removed.
+  const painted = useRef(false);
   /** The live marquee, in fractions of the page box. Null when no drag is in flight. */
   const [marquee, setMarquee] = useState<ClipRect | null>(null);
   const clipStart = useRef<Point | null>(null);
@@ -98,6 +103,7 @@ export default function PaperCanvas({
         const next = await renderPage(doc, page, canvas, width);
         if (!cancelled) {
           setSize(next);
+          painted.current = true;
           setRendering(false);
           rendered.current?.();
         }
@@ -230,7 +236,7 @@ export default function PaperCanvas({
     <div
       className="rd-paper"
       style={{ width: size.cssWidth, height: size.cssHeight }}
-      data-rendering={rendering ? 'true' : undefined}
+      data-rendering={rendering && !painted.current ? 'true' : undefined}
     >
       <canvas ref={pageCanvas} className="rd-paper-page" />
       <canvas

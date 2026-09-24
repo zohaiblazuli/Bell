@@ -73,6 +73,9 @@ const SHOW_CLIP_TOOL = true;
 const BASE_WIDTH = 720;
 const ZOOMS = [0.7, 0.85, 1, 1.2, 1.45, 1.75, 2.1];
 
+/** The mark scheme's starting pane width in px, and its double-click reset — inside the CSS clamp. */
+const DEFAULT_MS_WIDTH = 460;
+
 /**
  * How far outside the well a page stays rasterised. Roughly one screen of slack each way: a page is
  * drawn just before it scrolls into view and released again once it is this far past, so the reader
@@ -327,6 +330,16 @@ export default function WorkspaceView({
    */
   const [zoom, setZoom] = useState(2);
   const [msOpen, setMsOpen] = useState(false);
+  /**
+   * The mark scheme's pane width in px. It overrides the CSS `--ms-w` clamp once the student drags
+   * the sheet's inner edge, and is remembered across papers. `SideResizeHandle` inside the sheet
+   * drives `setMsWidth` live; `msResizing` kills the pane's slide transition during a drag so it
+   * tracks the pointer instead of easing behind it.
+   */
+  const [msWidth, setMsWidth] = useState<number>(() =>
+    loadPref<number>('pref.viewer.ms-width', DEFAULT_MS_WIDTH),
+  );
+  const [msResizing, setMsResizing] = useState(false);
   /** How this paper felt, kept per paper so reopening it remembers. */
   const [feel, setFeel] = useState<string | null>(() => loadPref<string | null>(`feel.${id}`, null));
   const pickFeel = (next: string) => {
@@ -807,7 +820,12 @@ export default function WorkspaceView({
         </div>
       </div>
 
-      <section className="view rd" data-ms={msOpen ? 'open' : undefined}>
+      <section
+        className="view rd"
+        data-ms={msOpen ? 'open' : undefined}
+        data-resizing={msResizing ? 'true' : undefined}
+        style={{ ['--ms-w' as string]: `${msWidth}px` }}
+      >
         {/* §5 page rail `194:732`. The eyebrow is pinned and the thumbs scroll: the file draws five
             pages, the real index hands us as many as the paper has. */}
         <nav className="rd-rail" aria-label="Pages">
@@ -1109,6 +1127,14 @@ export default function WorkspaceView({
           marks={inks.ms}
           onCommit={(n, mark) => commit('ms', n, mark)}
           onPage={setMsPage}
+          paneWidth={msWidth}
+          onResize={setMsWidth}
+          onResizeStart={() => setMsResizing(true)}
+          onResizeEnd={(w) => {
+            setMsResizing(false);
+            setMsWidth(w);
+            savePref('pref.viewer.ms-width', w);
+          }}
           footer={
             <div className="rd-feel">
               <div className="rd-feel-head">

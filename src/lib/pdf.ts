@@ -52,13 +52,16 @@ export interface RenderedSize {
 }
 
 /**
- * The render in flight for each canvas, so a second render on the same one cancels the first.
+ * The render in flight for each *visible* canvas, keyed by that target element, so a newer render
+ * for the same target supersedes and cancels the older one.
  *
- * pdf.js refuses to draw two pages into one canvas at once — *"Cannot use the same canvas during
- * multiple render() operations"* — and every caller here legitimately re-renders the same element:
- * the reader on zoom, a thumbnail when it scrolls back into reach, the mark-scheme sheet whenever
- * React re-runs an effect (which StrictMode does deliberately, twice, in development). Handling it
- * once here beats asking four call sites to remember.
+ * Every caller here legitimately re-renders the same element — the reader on zoom, a thumbnail when
+ * it scrolls back into reach, the mark-scheme sheet whenever React re-runs an effect (which
+ * StrictMode does deliberately, twice, in development). Each render now draws into its own detached
+ * scratch canvas and only blits into the visible one once it finishes (see `renderPage`), so two
+ * renders can no longer fight over a single surface — pdf.js's *"Cannot use the same canvas during
+ * multiple render() operations"* can't arise. This map is what still makes the *last* render win: a
+ * superseded one is cancelled rather than left to blit stale pixels over the newer page.
  *
  * A `WeakMap`, so an unmounted canvas takes its entry with it.
  */
@@ -67,6 +70,13 @@ const inFlight = new WeakMap<HTMLCanvasElement, RenderTask>();
 /**
  * Draw one page into `canvas` at `targetCssWidth` logical pixels wide, backed at the display's
  * real pixel density so text stays crisp when zoomed.
+ *
+ * Double-buffered: the page is rasterised into a detached scratch canvas and blitted onto the
+ * visible one in a single synchronous step at the end. Reassigning `canvas.width` blanks a canvas
+ * the instant it happens, so rendering straight into the visible element left it empty for the whole
+ * length of the render — and on a zoom, where the same page is re-rasterised in place, that blank
+ * read as a flash. Touching the visible canvas only once, with the finished bitmap, keeps the old
+ * page on screen until the new one is ready.
  */
 export async function renderPage(
   doc: PDFDocumentProxy,
@@ -82,29 +92,42 @@ export async function renderPage(
 
   const cssWidth = Math.round(base.width * scale);
   const cssHeight = Math.round(base.height * scale);
-  canvas.width = Math.round(viewport.width);
-  canvas.height = Math.round(viewport.height);
-  canvas.style.width = `${cssWidth}px`;
-  canvas.style.height = `${cssHeight}px`;
+  const pxWidth = Math.round(viewport.width);
+  const pxHeight = Math.round(viewport.height);
 
-  // Cancel whatever was being drawn here and wait for it to actually stop: `cancel()` only asks,
-  // and starting a second render before the first has unwound is precisely what pdf.js rejects.
+  // Cancel whatever was being drawn for this target and wait for it to actually stop: `cancel()`
+  // only asks, and letting a superseded render run on would waste the worker and could blit a stale
+  // page over a newer one.
   const previous = inFlight.get(canvas);
   if (previous) {
     previous.cancel();
     await previous.promise.catch(() => {});
   }
 
-  const task = page.render({ canvas, viewport });
+  // The back buffer — detached, so it is never on screen while it fills.
+  const scratch = document.createElement('canvas');
+  scratch.width = pxWidth;
+  scratch.height = pxHeight;
+
+  const task = page.render({ canvas: scratch, viewport });
   inFlight.set(canvas, task);
   try {
     await task.promise;
+    // Only now touch the visible canvas — sized and painted in one step, so it never shows blank.
+    canvas.width = pxWidth;
+    canvas.height = pxHeight;
+    canvas.style.width = `${cssWidth}px`;
+    canvas.style.height = `${cssHeight}px`;
+    canvas.getContext('2d')?.drawImage(scratch, 0, 0);
   } catch (error) {
     // A cancelled render is the expected outcome of a newer one starting, not a failure worth
     // showing anybody: the render that replaced it is about to paint the same box.
     if ((error as { name?: string })?.name !== 'RenderingCancelledException') throw error;
   } finally {
     if (inFlight.get(canvas) === task) inFlight.delete(canvas);
+    // Release the back buffer's bitmap now rather than waiting for GC.
+    scratch.width = 0;
+    scratch.height = 0;
   }
   page.cleanup();
   return { cssWidth, cssHeight };

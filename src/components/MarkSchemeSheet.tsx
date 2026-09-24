@@ -30,6 +30,7 @@ import Notice from '@ui/Notice';
 import IconButton from '@ui/IconButton';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import PaperCanvas from './PaperCanvas';
+import SideResizeHandle from './SideResizeHandle';
 import { useNearViewport } from './useNearViewport';
 import { openPdf } from '../lib/pdf';
 import type { InkSettings, Mark, PageInk, Tool } from '../lib/annotations';
@@ -147,6 +148,18 @@ export interface Props {
   footer?: ReactNode;
   /** The page spanning the pane's midpoint, so undo and redo act on what is on screen. */
   onPage: (page: number) => void;
+  /**
+   * The pane's current width in px. Purely for the resize handle's readout and reset — the pages
+   * themselves size off the measured `.rd-ms-body`, which already tracks whatever `--ms-w` is set to.
+   */
+  paneWidth?: number;
+  /**
+   * Drag-to-resize wiring. When `onResize` is supplied a `SideResizeHandle` appears on the sheet's
+   * inner edge; the parent owns `--ms-w` and persists the settled width. Absent → a fixed-width sheet.
+   */
+  onResize?: (width: number) => void;
+  onResizeStart?: () => void;
+  onResizeEnd?: (width: number) => void;
 }
 
 export default function MarkSchemeSheet({
@@ -161,6 +174,10 @@ export default function MarkSchemeSheet({
   marks,
   onCommit,
   onPage,
+  paneWidth,
+  onResize,
+  onResizeStart,
+  onResizeEnd,
   footer,
 }: Props) {
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
@@ -271,6 +288,17 @@ export default function MarkSchemeSheet({
     // state is `visibility: hidden` in CSS — which is what takes the close button out of the tab
     // order. `aria-hidden` alone would leave a focusable control parked off-screen.
     <aside className="rd-ms" data-open={open ? 'true' : undefined} aria-hidden={!open}>
+      {open && onResize && (
+        <SideResizeHandle
+          currentWidth={paneWidth ?? 460}
+          minWidth={340}
+          defaultWidth={460}
+          onResize={onResize}
+          onResizeStart={onResizeStart}
+          onResizeEnd={onResizeEnd}
+          label="Resize the mark scheme"
+        />
+      )}
       <div className="rd-ms-head">
         <b className="rd-ms-title">Mark scheme</b>
         <span className="rd-ms-tag t-mono-small">{label}</span>
