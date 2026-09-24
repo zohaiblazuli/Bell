@@ -29,7 +29,7 @@ import Field from '@ui/Field';
 import Kbd from '@ui/Kbd';
 import Notice from '@ui/Notice';
 import Rail from '@ui/Rail';
-import type { BellMood } from '@ui/brand/MrBell';
+import type { HushPose } from '@ui/shapekit/Hush';
 import SeasonIcon, { seasonKeyOf } from '@ui/icons/SeasonIcon';
 import SubjectIcon from '@ui/icons/SubjectIcon';
 import Icon from '@/components/Icon';
@@ -121,13 +121,13 @@ const SEASON_PALETTE = { s: 'may-june', w: 'oct-nov', m: 'feb-march' } as const;
  * (periscope), puts his reading glasses on for the densest screen (lens draw-on), catches the light
  * as the plan lands (glint), scurries off to do the work (scuttle), and hops when it is done.
  */
-const MOODS: Record<number, BellMood> = {
-  1: 'specs-push-up',
-  2: 'periscope',
-  3: 'lens-draw-on',
-  4: 'glint',
-  5: 'scuttle',
-  6: 'hop',
+const MOODS: Record<number, HushPose> = {
+  1: 'hello',
+  2: 'idle',
+  3: 'watch',
+  4: 'proud',
+  5: 'download',
+  6: 'done',
 };
 
 /** 4 columns x 3 rows — the measured grid (§5.3). Also what "Showing 12 of 34" counts. */
@@ -907,7 +907,6 @@ export default function OnboardingView({
         {/* Azure stays beside the task sheet, never on top of a first-run control. */}
         <Mascot
           size={160}
-          petSize="clamp(420px, 50vh, 520px)"
           mood={MOODS[step]}
           className="onb__bell"
         />

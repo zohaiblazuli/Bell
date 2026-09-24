@@ -3,7 +3,7 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import Mascot from '@/components/Mascot';
 import Button from '@ui/Button';
 import WindowLights from '@/components/WindowLights';
-import type { BellMood } from '@ui/brand/MrBell';
+import type { HushPose } from '@ui/shapekit/Hush';
 import { checkGitHubStar } from '@/lib/api';
 import './StarGateView.css';
 
@@ -22,13 +22,13 @@ export default function StarGateView({ onComplete, userName }: StarGateViewProps
     type: 'success' | 'error' | 'info';
     text: string;
   } | null>(null);
-  const [mood, setMood] = useState<BellMood>('glint');
+  const [mood, setMood] = useState<HushPose>('proud');
 
   const handleOpenRepo = useCallback(async () => {
     try {
       await openUrl(REPO_URL);
       setOpenedRepo(true);
-      setMood('glint');
+      setMood('proud');
       setFeedback({
         type: 'info',
         text: 'GitHub opened in your browser. Click the Star (★) button at the top right, then verify below!',
@@ -53,12 +53,12 @@ export default function StarGateView({ onComplete, userName }: StarGateViewProps
 
     setChecking(true);
     setFeedback(null);
-    setMood('specs-push-up');
+    setMood('idle');
 
     try {
       const isStarred = await checkGitHubStar(cleanUser);
       if (isStarred) {
-        setMood('hop');
+        setMood('done');
         setFeedback({
           type: 'success',
           text: `Star verified! Thank you for supporting Bell, @${cleanUser}. Enjoy studying! 🌟`,
@@ -67,14 +67,14 @@ export default function StarGateView({ onComplete, userName }: StarGateViewProps
           onComplete();
         }, 1200);
       } else {
-        setMood('double-take');
+        setMood('hello');
         setFeedback({
           type: 'error',
           text: `We couldn't find Bell in @${cleanUser}'s starred repositories yet. Make sure you clicked the Star button on GitHub, then try again!`,
         });
       }
     } catch (err: unknown) {
-      setMood('specs-push-up');
+      setMood('idle');
       const msg = typeof err === 'string' ? err : 'Could not verify star. Please check your connection and try again.';
       setFeedback({
         type: 'error',

@@ -1,0 +1,17 @@
+.nav-glyph {
+  position: relative;
+  display: block;
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+.nav-glyph > i {
+  position: absolute;
+  display: block;
+}
+/* Settings' slider knobs are open rings: they punch through the rails in the row's own colour. */
+.nav-glyph__knob {
+  border-radius: 50%;
+  background: var(--nav-glyph-bg, var(--ground));
+  box-shadow: inset 0 0 0 2px currentColor;
+}

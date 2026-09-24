@@ -1,0 +1,60 @@
+/* Shape Kit faces — Jost for UI, Azeret Mono for codes and numbers, Nanum Pen Script for the
+ * handwritten notebook samples. Vendored from @fontsource (latin subset, SIL OFL 1.1) so the app
+ * keeps its no-network-at-runtime rule. Hand-written, unlike fonts.css: the PowerShell fetcher
+ * still owns the SF Pro / Geist faces, which remain as fallbacks in the stacks. */
+
+@font-face {
+  font-family: 'Jost';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/jost-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Jost';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../assets/fonts/jost-latin-500-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Jost';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../assets/fonts/jost-latin-600-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Jost';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../assets/fonts/jost-latin-700-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Azeret Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/azeret-mono-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Azeret Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../assets/fonts/azeret-mono-latin-500-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Nanum Pen Script';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/nanum-pen-script-latin-400-normal.woff2') format('woff2');
+}

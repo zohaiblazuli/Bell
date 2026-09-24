@@ -1,0 +1,156 @@
+/* Hush — every part absolutely placed on the 180×180 stage, as the behaviour sheet draws him. */
+.hush {
+  position: relative;
+  flex: none;
+}
+.hush__stage {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 180px;
+  height: 180px;
+  transform-origin: 0 0;
+}
+.hush__stage i,
+.hush__stage span {
+  position: absolute;
+  display: block;
+  font-style: normal;
+}
+.hush__floor {
+  left: 45px;
+  top: 166px;
+  width: 90px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(var(--ink-rgb), .16);
+}
+.hush__body {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 180px;
+  height: 180px;
+  transform-origin: 90px 162px;
+}
+.hush__wing {
+  top: 92px;
+  width: 22px;
+  height: 52px;
+  background: var(--sk-navy);
+}
+.hush__wing--l { left: 20px; border-radius: 22px 0 0 22px; transform-origin: 100% 0; }
+.hush__wing--r { left: 138px; border-radius: 0 22px 22px 0; transform-origin: 0 0; }
+.hush__ear {
+  top: 28px;
+  width: 32px;
+  height: 32px;
+  background: var(--sk-black);
+}
+.hush__ear--l { left: 40px; clip-path: polygon(0 0, 100% 100%, 0 100%); transform-origin: 100% 100%; }
+.hush__ear--r { left: 108px; clip-path: polygon(100% 0, 100% 100%, 0 100%); transform-origin: 0 100%; }
+.hush__torso {
+  left: 40px;
+  top: 56px;
+  width: 100px;
+  height: 102px;
+  background: var(--sk-blue);
+  transform-origin: 50% 100%;
+}
+.hush__chev {
+  width: 12px;
+  height: 7px;
+  background: var(--sk-cream);
+  clip-path: polygon(0 0, 50% 100%, 100% 0, 78% 0, 50% 55%, 22% 0);
+}
+.hush__eye {
+  top: 66px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--sk-cream);
+  overflow: hidden;
+}
+.hush__eye--l { left: 44px; }
+.hush__eye--r { left: 96px; }
+.hush__pupil { left: 12px; top: 12px; width: 16px; height: 16px; }
+.hush__pupil > i { left: 0; top: 0; width: 16px; height: 16px; border-radius: 50%; background: var(--sk-black); }
+.hush__lid {
+  left: 0;
+  top: 0;
+  width: 40px;
+  background: var(--sk-blue);
+  box-shadow: inset 0 -3px 0 var(--sk-black);
+}
+.hush__beak {
+  left: 81px;
+  top: 110px;
+  width: 18px;
+  height: 14px;
+  background: var(--sk-red);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.hush__foot { top: 158px; width: 16px; height: 6px; background: var(--sk-yellow); }
+.hush__foot--l { left: 62px; }
+.hush__foot--r { left: 102px; }
+
+/* props */
+.hush__page {
+  left: 64px;
+  top: 118px;
+  width: 52px;
+  height: 40px;
+  background: #fffefb;
+  box-shadow: inset 0 0 0 2px var(--sk-black);
+}
+.hush__page > i { left: 8px; height: 2px; background: #bdb6a8; }
+.hush__bar { left: 40px; top: 172px; width: 100px; height: 6px; background: #ddd5c4; }
+.hush__bar > i {
+  left: 0;
+  top: 0;
+  width: 100px;
+  height: 6px;
+  background: var(--sk-black);
+  transform-origin: 0 50%;
+  animation: sk-fill 2.4s ease-in-out both;
+}
+.hush__star {
+  background: var(--sk-yellow);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  animation: sk-sparkle 1.6s ease-in-out infinite;
+}
+.hush__star--a { left: 128px; top: 14px; width: 22px; height: 22px; }
+.hush__star--b { left: 26px; top: 34px; width: 14px; height: 14px; background: var(--sk-red); animation-delay: .8s; }
+.hush__z { background: var(--sk-yellow); animation: sk-z-rise 2.4s ease-out infinite; }
+.hush__z--a { left: 140px; top: 40px; width: 10px; height: 10px; }
+.hush__z--b { left: 146px; top: 48px; width: 7px; height: 7px; animation-delay: 1.2s; }
+.hush__burst { left: 84px; top: 80px; width: 12px; height: 12px; }
+.hush__burst--1 { width: 14px; height: 14px; border-radius: 50%; background: var(--sk-red); animation: sk-burst-1 1.2s ease-out infinite; }
+.hush__burst--2 { width: 14px; background: var(--sk-blue); clip-path: polygon(50% 0, 100% 100%, 0 100%); animation: sk-burst-2 1.2s ease-out infinite; }
+.hush__burst--3 { background: var(--sk-yellow); animation: sk-burst-3 1.2s ease-out infinite; }
+.hush__burst--4 { background: var(--sk-black); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); animation: sk-burst-4 1.2s ease-out infinite; }
+
+/* shared motion */
+.hush__pupil.is-looking { animation: sk-look-lr 3s ease-in-out infinite; }
+.hush__lid.is-blinking { animation: sk-lid-blink 3.6s infinite; }
+
+/* poses */
+.hush--idle .hush__body { animation: sk-owl-tilt 3s ease-in-out infinite; }
+.hush--watch .hush__pupil.is-looking { animation-duration: 4s; }
+.hush--watch .hush__lid.is-blinking { animation-duration: 5s; }
+.hush--empty .hush__body { animation: sk-sigh 3s ease-in-out infinite; }
+.hush--empty .hush__ear--l { transform: rotate(-38deg); }
+.hush--empty .hush__ear--r { transform: rotate(38deg); }
+.hush--proud .hush__body { animation: sk-puff 1.6s ease-in-out infinite; }
+.hush--hello .hush__wing--r { animation: sk-wave-wing .8s ease-in-out infinite; }
+.hush--download .hush__wing--l { transform: rotate(-30deg); }
+.hush--download .hush__wing--r { transform: rotate(30deg); }
+.hush--done .hush__body { animation: sk-jump 1.2s cubic-bezier(.3, 0, .3, 1) infinite; }
+.hush--done .hush__wing--l { animation: sk-wing-up-l 1.2s cubic-bezier(.3, 0, .3, 1) infinite; }
+.hush--done .hush__wing--r { animation: sk-wing-up-r 1.2s cubic-bezier(.3, 0, .3, 1) infinite; }
+.hush--asleep .hush__ear--l { transform: rotate(-14deg); }
+.hush--asleep .hush__ear--r { transform: rotate(14deg); }
+.hush--asleep .hush__torso { animation: sk-breathe 3.4s ease-in-out infinite; }
+.hush--alarm .hush__body { animation: sk-jump .9s cubic-bezier(.3, 0, .3, 1) infinite; }
+.hush--alarm .hush__ear--l { animation: sk-ear-flap-l .3s ease-in-out infinite; }
+.hush--alarm .hush__ear--r { animation: sk-ear-flap-r .3s ease-in-out infinite; }

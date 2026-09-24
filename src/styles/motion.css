@@ -1,0 +1,167 @@
+/* Shape Kit motion — the keyframes of the Bell App v2 design, prefixed `sk-` so they cannot collide
+ * with the older view-local ones. Every animated element rests in its FINAL state in its base
+ * style, so switching motion off (OS reduce-motion, or Settings → Reduce motion, which sets
+ * data-motion='off' on .app) simply shows the finished frame. */
+
+@keyframes sk-iris { from { clip-path: circle(0% at 0 0); } to { clip-path: circle(142% at 0 0); } }
+@keyframes sk-deal {
+  0% { opacity: 0; transform: translate(-40px, -30px) rotate(-7deg); }
+  55% { opacity: 1; transform: translate(2px, 3px) rotate(1.2deg); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes sk-tumble { 0% { transform: rotate(-200deg) scale(0); } 70% { transform: rotate(12deg) scale(1.15); } 100% { transform: none; } }
+@keyframes sk-tile { 0% { transform: scale(0) rotate(45deg); } 65% { transform: scale(1.3) rotate(0); } 100% { transform: none; } }
+@keyframes sk-bell {
+  0%, 100% { transform: rotate(0); }
+  10% { transform: rotate(-14deg); }
+  22% { transform: rotate(10deg); }
+  34% { transform: rotate(-6deg); }
+  46% { transform: rotate(3deg); }
+  58% { transform: rotate(0); }
+}
+@keyframes sk-orbit {
+  from { transform: rotate(0) translateX(6px) rotate(0); }
+  to { transform: rotate(360deg) translateX(6px) rotate(-360deg); }
+}
+@keyframes sk-grow-xo { 0% { transform: scaleX(0); } 70% { transform: scaleX(1.035); } 100% { transform: scaleX(1); } }
+@keyframes sk-hop {
+  0% { transform: none; }
+  35% { transform: translateY(-5px) rotate(-10deg); }
+  65% { transform: translateY(0) scale(1.15, .85); }
+  100% { transform: none; }
+}
+@keyframes sk-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes sk-stamp { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes sk-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sk-grow-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes sk-pop { 0% { transform: scale(0); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }
+@keyframes sk-slide-in { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes sk-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes sk-open-l {
+  from { opacity: .2; transform: perspective(1600px) rotateY(70deg); }
+  to { opacity: 1; transform: perspective(1600px) rotateY(0); }
+}
+@keyframes sk-open-r {
+  from { opacity: .2; transform: perspective(1600px) rotateY(-70deg); }
+  to { opacity: 1; transform: perspective(1600px) rotateY(0); }
+}
+@keyframes sk-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+
+/* reaction faces + streak flame */
+@keyframes sk-face-bounce {
+  0%, 100% { transform: none; }
+  30% { transform: translateY(-8px) scale(.94, 1.07); }
+  55% { transform: translateY(0) scale(1.12, .88); }
+  75% { transform: translateY(-2px); }
+}
+@keyframes sk-face-wow {
+  0%, 100% { transform: none; }
+  20% { transform: scale(1.18); }
+  40% { transform: scale(1.18) rotate(-9deg); }
+  60% { transform: scale(1.18) rotate(9deg); }
+  80% { transform: scale(1.08); }
+}
+@keyframes sk-face-tilt { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-14deg); } 75% { transform: rotate(14deg); } }
+@keyframes sk-face-spin { 0% { transform: rotate(0); } 70%, 100% { transform: rotate(360deg); } }
+@keyframes sk-face-joy {
+  0% { transform: scale(1); }
+  30% { transform: scale(.78); }
+  60% { transform: scale(1.28) rotate(-6deg); }
+  100% { transform: none; }
+}
+@keyframes sk-blink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
+@keyframes sk-flick {
+  0%, 100% { transform: scale(1, 1) skewX(0); }
+  25% { transform: scale(.96, 1.06) skewX(-3deg); }
+  50% { transform: scale(1.03, .96) skewX(2deg); }
+  75% { transform: scale(.98, 1.04) skewX(-1deg); }
+}
+@keyframes sk-roar {
+  0%, 100% { transform: scale(1.15, 1.2) skewX(-4deg); }
+  50% { transform: scale(1.22, 1.1) skewX(4deg); }
+}
+@keyframes sk-ember {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx, 6px), -30px) rotate(90deg); }
+}
+
+/* Hush */
+@keyframes sk-owl-tilt { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(7deg); } }
+@keyframes sk-look-lr {
+  0%, 20% { transform: translateX(-5px); }
+  40%, 60% { transform: translateX(5px); }
+  80%, 100% { transform: translateX(-5px); }
+}
+@keyframes sk-lid-blink { 0%, 90%, 100% { height: 0; } 94% { height: 23px; } }
+@keyframes sk-z-rise {
+  0% { opacity: 0; transform: translate(0, 0) scale(.6); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translate(18px, -46px) scale(1.1); }
+}
+@keyframes sk-wave-wing { 0%, 100% { transform: rotate(-115deg); } 50% { transform: rotate(-155deg); } }
+@keyframes sk-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes sk-wing-up-l { 0%, 100% { transform: rotate(0); } 45% { transform: rotate(125deg); } }
+@keyframes sk-wing-up-r { 0%, 100% { transform: rotate(0); } 45% { transform: rotate(-125deg); } }
+@keyframes sk-jump {
+  0%, 100% { transform: translateY(0) scale(1); }
+  10% { transform: translateY(0) scale(1.08, .92); }
+  45% { transform: translateY(-40px) scale(.96, 1.04); }
+}
+@keyframes sk-burst-1 {
+  0% { opacity: 0; transform: translate(0, 0) scale(.3); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-70px, -60px) rotate(-120deg); }
+}
+@keyframes sk-burst-2 {
+  0% { opacity: 0; transform: translate(0, 0) scale(.3); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(70px, -64px) rotate(140deg); }
+}
+@keyframes sk-burst-3 {
+  0% { opacity: 0; transform: translate(0, 0) scale(.3); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-30px, -90px) rotate(90deg); }
+}
+@keyframes sk-burst-4 {
+  0% { opacity: 0; transform: translate(0, 0) scale(.3); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(36px, -96px) rotate(-90deg); }
+}
+@keyframes sk-sigh { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.95) translateY(4px); } }
+@keyframes sk-puff { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+@keyframes sk-breathe { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.97); } }
+@keyframes sk-sparkle {
+  0%, 100% { transform: scale(.4) rotate(0); opacity: .3; }
+  50% { transform: scale(1) rotate(45deg); opacity: 1; }
+}
+@keyframes sk-ear-flap-l { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-24deg); } }
+@keyframes sk-ear-flap-r { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(24deg); } }
+
+/* Theme switch — a circle reveal from the pressed sun/moon, run through the View Transitions API
+ * (see state/themeTransition.ts). Default cross-fade off; the growing/shrinking layer is on top. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) { z-index: 1; }
+::view-transition-new(root) { z-index: 2; }
+html.sk-to-day::view-transition-old(root) { z-index: 2; }
+html.sk-to-day::view-transition-new(root) { z-index: 1; }
+
+/* Motion off: every Shape Kit animation and transition collapses to its end frame. */
+@media (prefers-reduced-motion: reduce) {
+  .app *,
+  .app *::before,
+  .app *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+[data-motion='off'] *,
+[data-motion='off'] *::before,
+[data-motion='off'] *::after {
+  animation: none !important;
+  transition: none !important;
+}

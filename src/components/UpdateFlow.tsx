@@ -35,7 +35,7 @@ import Dialog from '@ui/Dialog';
 import Button from '@ui/Button';
 import Notice from '@ui/Notice';
 import Meter from '@ui/Meter';
-import type { BellMood } from '@ui/brand/MrBell';
+import type { HushPose } from '@ui/shapekit/Hush';
 import Mascot from './Mascot';
 
 /* ── the state machine ─────────────────────────────────────────────────────────────────────── */
@@ -224,7 +224,7 @@ interface Face {
   dismiss: string;
   /** The Primary action, where the face has one. A `label` with no `onClick` is one in flight. */
   primary?: { label: string; onClick?: () => void };
-  mood: BellMood;
+  mood: HushPose;
 }
 
 /**
@@ -300,7 +300,7 @@ function faceFor(state: UpdateState, on: Record<UpdateStep, () => void>): Face |
         title: 'Checking for updates',
         body: 'Bell is asking the update server for a newer build.',
         dismiss: 'Close',
-        mood: 'scuttle',
+        mood: 'download',
       };
 
     /**
@@ -316,7 +316,7 @@ function faceFor(state: UpdateState, on: Record<UpdateStep, () => void>): Face |
         title: 'Bell is up to date',
         body: `You are running v${state.version}, which is the newest build.`,
         dismiss: 'Close',
-        mood: 'specs-push-up',
+        mood: 'hello',
       };
 
     case 'available':
@@ -335,7 +335,7 @@ function faceFor(state: UpdateState, on: Record<UpdateStep, () => void>): Face |
         /* "Later" would read as "cancel" here. Closing the panel abandons nothing: the download
            carries on and the pill keeps counting it. */
         dismiss: 'Close',
-        mood: 'scuttle',
+        mood: 'download',
       };
 
     /* The measured face: title `437:105`, body `437:106`, Later + Restart now `437:107`. */
@@ -345,7 +345,7 @@ function faceFor(state: UpdateState, on: Record<UpdateStep, () => void>): Face |
         body: RESTART_BODY,
         dismiss: 'Later',
         primary: { label: 'Restart now', onClick: on.install },
-        mood: 'specs-push-up',
+        mood: 'hello',
       };
 
     /* Every pixel of the ready face, because the question has been answered rather than replaced —
@@ -356,7 +356,7 @@ function faceFor(state: UpdateState, on: Record<UpdateStep, () => void>): Face |
         body: RESTART_BODY,
         dismiss: 'Close',
         primary: { label: 'Restarting…' },
-        mood: 'scuttle',
+        mood: 'download',
       };
 
     case 'error':
@@ -366,7 +366,7 @@ function faceFor(state: UpdateState, on: Record<UpdateStep, () => void>): Face |
         dismiss: 'Close',
         /* The retry is whatever failed, which is the whole reason `during` is in the state. */
         primary: { label: 'Try again', onClick: on[state.during] },
-        mood: 'slump',
+        mood: 'empty',
       };
   }
 }

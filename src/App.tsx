@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Sprite from './components/Sprite';
-import AppBackground from './components/AppBackground';
 import Sidebar, { type View } from './components/Sidebar';
 import TopBar from './components/TopBar';
 import TabBar from './components/TabBar';
@@ -34,7 +33,8 @@ import { useTabs } from './state/useTabs';
 import { useWorkspace } from './state/useWorkspace';
 import { UPDATES_CONFIGURED } from './lib/updates';
 import { windowsBetween } from './lib/sessions';
-import { loadRecent, type MarkFilter } from './lib/store';
+import { loadRecent, todayFocusMinutes, type MarkFilter } from './lib/store';
+import { hushLine } from './lib/hushLines';
 import type { PaperRow } from './lib/types';
 import type { CommunityResource } from './lib/community';
 import { readWorkspaceDocument, recordWorkspaceOpen, workspaceReaderResource, type WorkspaceDocument } from './lib/workspace';
@@ -385,13 +385,13 @@ export default function App() {
    */
   useEffect(() => {
     if (splash === 'done') return;
-    const ms = startupWatchdogMs(splash, settings.pet, settings.reduceMotion);
+    const ms = startupWatchdogMs(splash, settings.reduceMotion);
     const timer = window.setTimeout(
       () => setSplash((p) => (p === 'splash' ? 'handoff' : 'done')),
       ms,
     );
     return () => window.clearTimeout(timer);
-  }, [settings.pet, settings.reduceMotion, splash]);
+  }, [settings.reduceMotion, splash]);
 
   /* ---- derived ------------------------------------------------------------ */
 
@@ -503,7 +503,6 @@ export default function App() {
       <>
         <Sprite />
         <div className="app app-bare" data-startup={splash} data-view="onboarding" data-tone={tone} data-motion={motion}>
-          <AppBackground />
           <OnboardingView
             answers={onboarding}
             onAnswer={prefs.answerOnboarding}
@@ -537,7 +536,6 @@ export default function App() {
       <>
         <Sprite />
         <div className="app app-bare" data-startup={splash} data-view="stargate" data-tone={tone} data-motion={motion}>
-          <AppBackground />
           <StarGateView
             userName={onboarding.name}
             onComplete={() => {
@@ -562,7 +560,31 @@ export default function App() {
         data-motion={motion}
         data-focus={focusMode && (inReader || inCommunityReader || inNotebook) ? 'on' : 'off'}
       >
-        <AppBackground />
+
+        {!isBare && (
+          <Sidebar
+            view={currentView}
+            onView={go}
+            version={APP_VERSION}
+            build={APP_BUILD}
+            subjects={mySubjects}
+            activeSubject={lib.subjectId}
+            onSubject={pickSubject}
+            paperCount={lib.stats ? visiblePapers : null}
+            bookmarkCount={study.marks.bookmarks.size}
+            recentCount={loadRecent().length}
+            notebookCount={notebooks.list?.length ?? null}
+            todayMinutes={todayFocusMinutes()}
+            goalMinutes={settings.goalMinutes}
+            line={hushLine(currentView, {
+              papers: lib.stats?.papers ?? null,
+              recentCount: loadRecent().length,
+              bookmarks: study.marks.bookmarks.size,
+            })}
+            mascot={mascot.mood}
+            onPokeMascot={mascot.poke}
+          />
+        )}
 
         <TabBar
           tabs={tabsMgr.tabs}
@@ -577,24 +599,6 @@ export default function App() {
         />
 
         <div className={`app-stage ${isBare ? 'app-stage-bare' : ''}`}>
-          {!isBare && (
-            <Sidebar
-              view={currentView}
-              onView={go}
-              version={APP_VERSION}
-              build={APP_BUILD}
-              subjects={mySubjects}
-              activeSubject={lib.subjectId}
-              onSubject={pickSubject}
-              paperCount={lib.stats ? visiblePapers : null}
-              bookmarkCount={study.marks.bookmarks.size}
-              recentCount={loadRecent().length}
-              notebookCount={notebooks.list?.length ?? null}
-              mascot={mascot.mood}
-              studying={mascot.studying}
-              onPokeMascot={mascot.poke}
-            />
-          )}
 
           {renderTabPanes()}
         </div>
@@ -827,7 +831,7 @@ export default function App() {
 
             {isSelected && (
               <div className="notebook-mascot" aria-hidden="true" onPointerDown={mascot.poke}>
-                <Mascot size={160} petSize="clamp(260px, 34vh, 400px)" mood={mascot.mood} studying={true} />
+                <Mascot size={96} mood={mascot.mood} />
               </div>
             )}
           </div>

@@ -1,39 +1,33 @@
 /**
- * Startup timing shared by the splash renderer and App's fail-safe clock.
+ * Startup timing — the "Full stop" launch (Bell App v2 · Startup v2).
  *
- * The CSS animation is the normal completion signal. These values keep its custom properties and
- * the watchdog on the same clock, so a longer authored mascot sequence cannot be cut short by an
- * older hard-coded timeout.
+ * Two phases, each reported by the splash and each backed by a watchdog in App so a lost timer can
+ * never strand the user behind it:
+ *
+ *   splash   0 – 4.5s  on the transparent window, the logo builds itself: a blue square drops and
+ *                      squashes, grows into the owl head, ears and eyes pop, the lockup slides over as
+ *                      "Bell" sweeps in, and the full stop lands and rings twice.
+ *   handoff  4.5 – 5.7s the window opens behind it, the lockup flies into the sidebar, Home rises.
+ *
+ * Reduced motion collapses both to a short hold and a quick fade.
  */
-
-export type StartupPet = 'msbell' | 'azure' | null;
 export type StartupPhase = 'splash' | 'handoff';
 
-const DEFAULT_HOLD_MS = 2000;
-const MS_BELL_HOLD_MS = 8480;
-const REDUCED_HOLD_MS = 700;
-const HANDOFF_MS = 900;
-const REDUCED_HANDOFF_MS = 320;
+const HOLD_MS = 4500;
+const HANDOFF_MS = 1200;
+const REDUCED_HOLD_MS = 500;
+const REDUCED_HANDOFF_MS = 250;
 
-export function startupHoldDurationMs(pet: StartupPet, reduceMotion: boolean): number {
-  if (pet === 'msbell') return MS_BELL_HOLD_MS;
-  if (reduceMotion) return REDUCED_HOLD_MS;
-  return DEFAULT_HOLD_MS;
+export function startupHoldDurationMs(reduceMotion: boolean): number {
+  return reduceMotion ? REDUCED_HOLD_MS : HOLD_MS;
 }
 
 export function startupHandoffDurationMs(reduceMotion: boolean): number {
   return reduceMotion ? REDUCED_HANDOFF_MS : HANDOFF_MS;
 }
 
-/** Margin is deliberately generous: this clock is recovery for a lost `animationend`, not pacing. */
-export function startupWatchdogMs(
-  phase: StartupPhase,
-  pet: StartupPet,
-  reduceMotion: boolean,
-): number {
-  const duration =
-    phase === 'splash'
-      ? startupHoldDurationMs(pet, reduceMotion)
-      : startupHandoffDurationMs(reduceMotion);
+/** The phase's own length plus a recovery margin: only a stalled splash ever reaches it. */
+export function startupWatchdogMs(phase: StartupPhase, reduceMotion: boolean): number {
+  const duration = phase === 'splash' ? startupHoldDurationMs(reduceMotion) : startupHandoffDurationMs(reduceMotion);
   return duration + (phase === 'splash' ? 1200 : 900);
 }

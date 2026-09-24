@@ -1,131 +1,70 @@
-/* TabBar.css — Browser-style tabs for Bell study desk.
- *
- * Sits at the top of the application window (height 42px).
- * Frameless window controls at far left, followed by the tab strip, new tab button,
- * draggable window region, and quick utility controls.
- */
-
+/* The tab strip — Shape Kit: square tabs divided by 2px ink rules, the open one lifted onto the card
+   colour with a blue bar along its top. Day/Night and the window controls sit at the right edge. */
 .tabbar {
   position: relative;
   z-index: 10;
-  height: 42px;
+  height: var(--tabbar-h, 42px);
   flex: none;
   display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 12px 0 0;
-  background: var(--glass);
-  -webkit-backdrop-filter: blur(26px) saturate(165%);
-  backdrop-filter: blur(26px) saturate(165%);
-  border-bottom: 1px solid var(--hair);
-  box-shadow: inset 0 1px 0 var(--glass-hi);
+  align-items: stretch;
+  gap: 0;
+  padding: 0 4px 0 0;
+  background: var(--ground);
+  border-bottom: 2px solid var(--line);
   user-select: none;
-  transition: var(--tone-chrome);
 }
 
-/* Frameless window controls slot */
-.tabbar-lights {
-  flex: none;
-  display: flex;
-  align-items: center;
-  height: 100%;
-  padding-left: 14px;
-  padding-right: 10px;
-}
-
-/* The tab strip — scrolls horizontally if there are many tabs */
 .tabbar-strip {
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
   height: 100%;
-  gap: 3px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
   min-width: 0;
-  padding-top: 5px;
 }
-
 .tabbar-strip::-webkit-scrollbar {
   display: none;
 }
 
-/* Individual tab item */
 .tab-item {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 7px;
-  height: 34px;
+  gap: 8px;
   min-width: 120px;
-  max-width: 210px;
+  max-width: 220px;
   flex: 1 1 170px;
-  padding: 0 8px 0 10px;
-  border-radius: 9px 9px 0 0;
-  border: 1px solid transparent;
-  border-bottom: none;
+  padding: 0 8px 0 12px;
+  border-right: 2px solid var(--line);
   background: transparent;
-  color: var(--ink-2);
+  color: var(--ink);
   font-family: var(--font-ui);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+  transition: background-color .16s, color .16s;
 }
-
 .tab-item:hover {
-  background: var(--glass-strong);
-  color: var(--ink);
+  background: var(--pale2);
 }
-
-/* Separator between adjacent inactive tabs */
-.tab-item::after {
-  content: '';
-  position: absolute;
-  right: -2px;
-  top: 9px;
-  bottom: 9px;
-  width: 1px;
-  background: var(--hair);
-  opacity: 0.8;
-  pointer-events: none;
-}
-
-.tab-item:hover::after,
-.tab-item[data-active='true']::after,
-.tab-item:has(+ .tab-item[data-active='true'])::after {
-  opacity: 0;
-}
-
-/* Active tab state */
 .tab-item[data-active='true'] {
   background: var(--card);
-  color: var(--ink);
   font-weight: 600;
-  border-color: var(--card-brd);
-  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.04), inset 0 2px 0 var(--accent);
-  z-index: 2;
+  box-shadow: inset 0 3px 0 var(--blue);
+  animation: sk-draw .26s cubic-bezier(.2, .8, .2, 1) both;
 }
-
-/* Exam context is the one title that must not collapse to an ambiguous code. */
 .tab-item[data-kind='paper'][data-active='true'] {
   min-width: 0;
   max-width: none;
   flex: 0 0 auto;
 }
-
 .tab-item[data-kind='paper'][data-active='true'] .tab-title {
   flex: none;
   overflow: visible;
   text-overflow: clip;
 }
 
-.app[data-tone='night'] .tab-item[data-active='true'] {
-  background: var(--card);
-  box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.25), inset 0 2px 0 var(--accent);
-}
-
-/* Tab icon */
 .tab-icon {
   flex: none;
   display: flex;
@@ -133,174 +72,109 @@
   justify-content: center;
   width: 15px;
   height: 15px;
-  opacity: 0.75;
 }
-
-.tab-item[data-active='true'] .tab-icon {
-  opacity: 1;
-  color: var(--accent);
-}
-
 .tab-icon svg {
   width: 15px;
   height: 15px;
+  stroke-width: 2;
 }
-
-/* Tab title text */
 .tab-title {
   flex: 1;
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  letter-spacing: -0.01em;
 }
-
-/* Tab badge / subtitle (session, subject code) */
 .tab-sub {
   flex: none;
   font-family: var(--font-mono);
   font-size: 10px;
-  padding: 1px 4px;
-  border-radius: 4px;
-  background: var(--hair-2);
-  color: var(--ink-3);
-  max-width: 54px;
+  padding: 2px 5px;
+  box-shadow: inset 0 0 0 1.5px var(--line);
+  max-width: 60px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.tab-item[data-active='true'] .tab-sub {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-/* Live focus timer pulsing dot */
+/* A running focus timer: a small red square that pulses like the bell. */
 .tab-timer-dot {
   flex: none;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 6px var(--accent);
+  width: 7px;
+  height: 7px;
+  background: var(--red);
   animation: tab-pulse 1.8s ease-in-out infinite;
 }
-
 @keyframes tab-pulse {
-  0%, 100% {
-    opacity: 0.4;
-    transform: scale(0.9);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.15);
-  }
+  0%, 100% { opacity: .45; transform: scale(.9); }
+  50% { opacity: 1; transform: scale(1.15); }
 }
 
-/* Tab close button */
 .tab-close {
   flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   margin-left: 2px;
-  border-radius: var(--r-pill);
-  border: none;
   background: transparent;
-  color: var(--ink-3);
+  color: var(--ink);
   cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 0.14s ease, background 0.14s ease, color 0.14s ease;
+  opacity: .55;
+  transition: opacity .14s, background-color .14s, color .14s;
 }
-
 .tab-item:hover .tab-close,
 .tab-item[data-active='true'] .tab-close {
-  opacity: 0.85;
+  opacity: .9;
 }
-
 .tab-close:hover {
   opacity: 1 !important;
-  background: var(--hair);
-  color: var(--ink);
+  background: var(--ink);
+  color: var(--ground);
 }
-
 .tab-close svg {
   width: 10px;
   height: 10px;
+  stroke-width: 2.4;
 }
 
-/* New tab button (+) */
 .tab-new {
   flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  margin-left: 4px;
-  align-self: center;
-  border-radius: var(--r-btn);
-  border: none;
+  width: 42px;
   background: transparent;
-  color: var(--ink-3);
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.tab-new:hover {
-  background: var(--glass-strong);
   color: var(--ink);
+  cursor: pointer;
+  transition: background-color .15s, color .15s;
 }
-
+.tab-new:hover {
+  background: var(--ink);
+  color: var(--ground);
+}
 .tab-new svg {
   width: 14px;
   height: 14px;
+  stroke-width: 2.4;
 }
 
-/* Draggable window area between tab strip and right actions */
 .tabbar-drag {
   flex: 1;
-  height: 100%;
   min-width: 24px;
 }
-
-/* Right-side quick controls */
 .tabbar-actions {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
-.tabbar-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--r-btn);
-  border: 1px solid var(--hair);
-  background: var(--glass-strong);
-  color: var(--ink-2);
-  cursor: pointer;
-  transition: 0.16s ease;
-}
-
-.tabbar-btn:hover {
-  color: var(--ink);
-  border-color: var(--accent);
-}
-
-.tabbar-btn svg {
-  width: 14px;
-  height: 14px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tab-timer-dot {
-    animation: none;
-  }
+.tab-item:focus-visible,
+.tab-new:focus-visible,
+.tab-close:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: -3px;
+  border-radius: 0;
 }

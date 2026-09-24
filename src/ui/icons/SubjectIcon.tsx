@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 /**
  * The CAIE subject glyphs — Figma set `47:81`, geometry from `design/specs/icons-paths.md`.
  *
@@ -202,6 +203,33 @@ const GLYPHS: Readonly<Record<SubjectGlyph | 'doc', readonly Vector[]>> = {
   ],
 };
 
+/** The Shape Kit subject marks, keyed by glyph. Solid ink; `currentColor` so they follow the tone. */
+const KIT: Partial<Record<SubjectGlyph | 'doc', ReactElement>> = {
+  maths: (
+    <>
+      <rect x="2" y="11" width="22" height="4" />
+      <circle cx="13" cy="5" r="3" />
+      <circle cx="13" cy="21" r="3" />
+    </>
+  ),
+  physics: (
+    <>
+      <ellipse cx="13" cy="13" rx="11.75" ry="3.75" transform="rotate(-35 13 13)" fill="none" stroke="currentColor" strokeWidth="2.5" />
+      <ellipse cx="13" cy="13" rx="11.75" ry="3.75" transform="rotate(35 13 13)" fill="none" stroke="currentColor" strokeWidth="2.5" />
+      <circle cx="13" cy="13" r="3" />
+    </>
+  ),
+  computing: (
+    <>
+      <rect x="2.25" y="2.25" width="21.5" height="21.5" fill="none" stroke="currentColor" strokeWidth="2.5" />
+      <polygon points="6,8 13,13 6,18 6,15.2 10.06,13 6,10.8" />
+      <rect x="14" y="15" width="7" height="3" />
+    </>
+  ),
+};
+KIT['further-maths'] = KIT.maths;
+KIT['add-maths'] = KIT.maths;
+
 export interface SubjectIconProps {
   /** Cambridge syllabus code as the index carries it — `9709`, `0580`, `2058`. */
   code: string;
@@ -215,6 +243,25 @@ export default function SubjectIcon({ code, size = 16, className }: SubjectIconP
      IGCSE syllabus. Pad anyway: a three-character code means a zero was lost to a numeric
      round-trip somewhere upstream, and `580` should still draw the compass, not the page. */
   const glyph = SUBJECT_GLYPH_BY_CODE[code.trim().padStart(4, '0')] ?? 'doc';
+
+  /* Shape Kit (Bell App v2): the three flagship subjects get solid geometric marks — a ÷ sign,
+     crossed orbits, a terminal prompt — drawn on the design's 26-unit grid. Everything else keeps
+     its line glyph from set 47:81, which reads as the same ink family at these sizes. */
+  const kit = KIT[glyph];
+  if (kit) {
+    return (
+      <svg
+        className={className}
+        viewBox="0 0 26 26"
+        width={size}
+        height={size}
+        style={{ width: size, height: size, fill: 'currentColor', stroke: 'none' }}
+        aria-hidden="true"
+      >
+        {kit}
+      </svg>
+    );
+  }
 
   return (
     <svg

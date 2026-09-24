@@ -10,11 +10,13 @@ import { loadPet } from './state/usePet';
 // supersedes while the port is in flight.
 import './styles/index.css';
 import './styles/fonts.css';
+import './styles/shapekit-fonts.css';
 import './styles/tokens.css';
 import './styles/type.css';
 import './styles/background.css';
 import './styles/chrome.css';
 import './styles/app.css';
+import './styles/motion.css';
 import './ui/styles';
 // App comes AFTER the sheets above, and that is load-bearing rather than tidy: each view imports
 // its own stylesheet, and ES modules evaluate in import order — so importing App first would put

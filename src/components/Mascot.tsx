@@ -1,47 +1,17 @@
-/**
- * Mascot — Ms. Bell is the sole mascot across all new and existing users.
- *
- * Every call site that renders the mascot mounts `<Mascot />`.
- * Ms. Bell is unconditionally rendered with her rich animated WebP states,
- * custom idle routines, sleep cycle, interactive pokes, and study mode animations.
- */
-import type { BellMood } from '@ui/brand/MrBell';
-import MsBell from '@ui/MsBell';
-import { loadSettings } from '@/lib/store';
+import Hush, { type HushPose } from '@ui/shapekit/Hush';
 
+/**
+ * The app's mascot slot. It used to switch between Mr. Bell's rig and the Ms. Bell pet; Bell App v2
+ * settles on Hush, the Shape Kit owl, as the one companion — so this is a thin, stable seam over him
+ * that every placement (sidebar, notebook corner, dialogs) keeps calling.
+ */
 export interface MascotProps {
-  /** Box size in px — 160 in every sidebar and onboarding slot, 96 in a dialog. */
+  /** Rendered edge in px. */
   size?: number;
-  /** Optional pet-only size; lets non-square art use space. */
-  petSize?: number | string;
-  /** What the app just did, in Mr. Bell's vocabulary. Translated for Ms. Bell. */
-  mood?: BellMood;
-  /** Whether currently in a study area (PDF viewer / notebook). */
-  studying?: boolean;
-  /** Playback multiplier. */
-  playbackRate?: number;
+  mood?: HushPose;
   className?: string;
-  /** Whether currently running in the startup splash sequence. */
-  isSplash?: boolean;
 }
 
-export default function Mascot({
-  size = 160,
-  petSize,
-  mood = 'idle',
-  studying = false,
-  className,
-  isSplash = false,
-}: MascotProps) {
-  const settings = loadSettings();
-  return (
-    <MsBell
-      size={petSize ?? size}
-      mood={mood}
-      studying={studying}
-      isSplash={isSplash}
-      className={className}
-      reduceMotion={settings.reduceMotion}
-    />
-  );
+export default function Mascot({ size = 86, mood = 'idle', className }: MascotProps) {
+  return <Hush pose={mood} size={size} className={className} />;
 }

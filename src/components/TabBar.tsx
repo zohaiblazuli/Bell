@@ -14,7 +14,8 @@ interface TabBarProps {
   onReorderTabs?: (fromIndex: number, toIndex: number) => void;
   tone: Tone;
   onTone: () => void;
-  onSearch: () => void;
+  /** Kept for callers; search lives in each screen's top bar now. */
+  onSearch?: () => void;
 }
 
 export default function TabBar({
@@ -26,7 +27,6 @@ export default function TabBar({
   onReorderTabs,
   tone,
   onTone,
-  onSearch,
 }: TabBarProps) {
   const stripRef = useRef<HTMLDivElement>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -39,11 +39,6 @@ export default function TabBar({
 
   return (
     <header className="tabbar" data-tauri-drag-region>
-      {/* Traffic lights anchored at top-left of the entire window */}
-      <div className="tabbar-lights">
-        <WindowLights />
-      </div>
-
       {/* The tab strip */}
       <div className="tabbar-strip" ref={stripRef} onWheel={onWheel}>
         {tabs.map((tab, index) => {
@@ -128,19 +123,10 @@ export default function TabBar({
       {/* Draggable empty region */}
       <div className="tabbar-drag" data-tauri-drag-region />
 
-      {/* Right-side quick controls */}
+      {/* Right: Day/Night, then the window controls — Bell App v2 keeps both at the window's edge. */}
       <div className="tabbar-actions">
-        <button
-          type="button"
-          className="tabbar-btn"
-          onClick={onSearch}
-          title="Search catalogue & commands (Ctrl+K)"
-          aria-label="Search"
-        >
-          <Icon name="search" />
-        </button>
-
         <TonePill tone={tone} onToggle={onTone} />
+        <WindowLights />
       </div>
     </header>
   );
