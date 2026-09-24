@@ -23,7 +23,7 @@ const appBuild = `v${appVersion}`;
 export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
 
-  // public/msbell is a local artwork junction that also contains originals and backups.
+  // public/ can hold local artwork junctions with originals and backups (public/msbell, retired).
   // Copy only runtime assets after Vite finishes (scripts/copy-public.mjs).
   build: { copyPublicDir: false },
 

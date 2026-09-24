@@ -147,7 +147,7 @@ export function addFocusSeconds(paper: string, seconds: number) {
   const log = loadFocus();
   // Local parts, deliberately NOT `toISOString()` — that goes through UTC and, near midnight in a
   // non-UTC zone, files the minutes under tomorrow or yesterday. Every reader of this log keys it by
-  // local day and warns about exactly this (DashboardView, LibraryView, ActivityGrid), so the writer
+  // local day and warns about exactly this (DashboardView, LibraryView, Heatmap), so the writer
   // has to agree or a late-night session lands in the wrong day, skewing the week total and streak.
   const today = localDayKey();
   const days = { ...log.days, [today]: (log.days[today] ?? 0) + seconds / 60 };
@@ -264,8 +264,6 @@ export interface Settings {
    * user can turn it off in Settings. The Figma file also draws this switch On (`536:451`).
    */
   updateAuto: boolean;
-  /** Azure's bundled pet id, or null for the built-in Mr. Bell rig. */
-  pet: 'msbell' | 'azure' | null;
   /** Focused minutes a day the sidebar's TODAY block counts towards (Bell App v2 shows 45). */
   goalMinutes: number;
 }
@@ -278,7 +276,6 @@ export const SETTINGS_DEFAULTS: Settings = {
   focusAutostart: true,
   streakMinutes: 10,
   updateAuto: true,
-  pet: 'msbell',
   goalMinutes: 45,
 };
 
@@ -287,14 +284,14 @@ export function loadSettings(): Settings {
   // Before Settings existed the tone lived alone under `tone`, and that key survived the Foolscap
   // migration — so seed from it rather than resetting a real preference to Day.
   const seed = stored ?? { tone: read<ToneChoice>('tone', SETTINGS_DEFAULTS.tone) };
-  const merged = { ...SETTINGS_DEFAULTS, ...seed };
-  // Ms. Bell is the sole mascot across all new & existing users.
-  // Any legacy or previously saved pet value (e.g. azure or null) strictly normalizes to 'msbell'.
-  return { ...merged, pet: 'msbell' };
+  // `pet` belonged to the retired mascots (Hush replaced them in Bell App v2); drop it on the way in
+  // so the next save does not carry it forward.
+  const { pet: _retired, ...merged } = { ...SETTINGS_DEFAULTS, ...seed } as Settings & { pet?: unknown };
+  return merged;
 }
 
 export function saveSettings(value: Settings) {
-  write('settings', { ...value, pet: 'msbell' });
+  write('settings', value);
 }
 
 // --- onboarding -------------------------------------------------------------

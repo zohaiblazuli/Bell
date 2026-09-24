@@ -59,7 +59,7 @@ describe('Shape Kit chrome and the Past Papers filters (Bell App v2)', () => {
     assert.ok(lv.includes('className="lv-filters-btn"'), 'a collapsible Filters button');
     assert.ok(lv.includes('className="lv-papers"'), 'a paper-number toggle');
     assert.ok(lv.includes('<SeasonIcon season={s.key}'), 'season chips carry their glyph');
-    assert.ok(!lv.includes('Downloaded'), 'the Downloaded chip is gone — cards say Solve or Download');
+    assert.ok(!/['">]Downloaded['"<]/.test(lv), 'the Downloaded chip is gone — cards say Solve or Download');
     assert.ok(!lv.includes('FilterDropdown'), 'no dropdowns');
   });
 });

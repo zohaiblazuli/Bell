@@ -16,7 +16,7 @@
  *
  * Real `<button>`s in the ARIA tabs pattern: one tab stop for the whole strip, arrows to move.
  * `aria-selected` is also the CSS hook, so the painted state and the announced state cannot drift
- * apart — the same trick `NavItem` plays with `aria-current`. `aria-controls` is deliberately not
+ * apart — the sidebar plays the same trick with `aria-current`. `aria-controls` is deliberately not
  * wired: the panel these tabs switch is the rest of the inspector column, which the call site owns,
  * and it is a recommendation rather than a requirement of the pattern.
  */
@@ -89,7 +89,7 @@ export default function PanelTabs({
           onClick={() => onSelect(i)}
         >
           {/* The label is its own element so it can truncate: `text-overflow` needs a block
-              container, and the button is a flex box to centre it. `NavItem` splits its label the
+              container, and the button is a flex box to centre it. The sidebar rows split their label the
               same way. Body/Nav is named, never re-derived. */}
           <span className="panel-tabs__label t-body-nav">{tab}</span>
         </button>

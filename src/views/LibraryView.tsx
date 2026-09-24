@@ -107,7 +107,7 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
  * A date as the focus log keys it, from LOCAL parts. **Never `toISOString()`** — that goes through
  * UTC and names the day before past UTC+12, which would slide all seven days read below by one and
  * leave this head line disagreeing with the Dashboard's figure over the very same week.
- * `ActivityGrid` and `DashboardView` build the key exactly this way, and one log cannot mean two
+ * `Heatmap` and `DashboardView` build the key exactly this way, and one log cannot mean two
  * things.
  */
 const focusDayKey = (d: Date) =>
@@ -126,7 +126,7 @@ function weekSummary(): { opened: number; minutes: number } {
   let minutes = 0;
   for (let i = 0; i < 7; i += 1) {
     // Local MIDDAY, offset by whole days, so a DST shift cannot slide a date across its own
-    // boundary — the idiom `ActivityGrid` and `DashboardView` both use on this same log.
+    // boundary — the idiom `Heatmap` and `DashboardView` both use on this same log.
     const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i, 12);
     minutes += days[focusDayKey(d)] ?? 0;
   }

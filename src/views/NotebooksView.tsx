@@ -67,7 +67,7 @@ const startOfDay = (at: number) => {
 };
 
 /** Whole calendar days back. `Math.round` absorbs the 23- and 25-hour days either side of a DST
- *  shift — the idiom LibraryView, DashboardView and ActivityGrid all use on the focus log. */
+ *  shift — the idiom LibraryView, DashboardView and Heatmap all use on the focus log. */
 const daysAgo = (at: number) => Math.round((startOfDay(Date.now()) - startOfDay(at)) / DAY_MS);
 
 /**

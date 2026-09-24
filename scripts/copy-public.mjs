@@ -1,26 +1,13 @@
-// Release builds must include the local mascot animations, but never artwork backups,
-// credentials, or other scratch files reachable through the public/msbell junction.
+// Release builds copy only the runtime assets they need (pdf.js cmaps and fonts), never artwork
+// backups, credentials, or other scratch files that may sit in public/ — a local public/msbell
+// junction from the retired Ms. Bell mascot, for one. Hush (Bell App v2) is drawn in CSS and needs
+// no artwork.
 import { copyFileSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const mascotFiles = [
-  'msbell_idle.webp',
-  'msbell_idle_2.webp',
-  'msbell_idle_3.webp',
-  'msbell_idle_4.webp',
-  'msbell_idle_5.webp',
-  'msbell_interact_1.webp',
-  'msbell_interact_2.webp',
-  'msbell_interact_3.webp',
-  'msbell_sleeping.webp',
-  'msbell_study_start.webp',
-  'msbell_study_loop.webp',
-  'startup_splash.webp',
-];
-
-const assets = mascotFiles.map((name) => `msbell/${name}`);
+const assets = [];
 for (const [folder, allowed] of [
   ['pdfjs/cmaps', /^(?:LICENSE|[^/]+\.bcmap)$/],
   ['pdfjs/standard_fonts', /^(?:LICENSE(?:_[A-Z]+)?|[^/]+\.(?:pfb|ttf))$/],
@@ -30,8 +17,7 @@ for (const [folder, allowed] of [
   }
 }
 
-// Validate every input before copying. A clean checkout without the local runtime
-// artwork must fail visibly instead of publishing a build with missing animations.
+// Validate every input before copying: a missing runtime asset must fail visibly.
 for (const asset of assets) {
   const source = join(root, 'public', asset);
   let isFile = false;

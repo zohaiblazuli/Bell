@@ -179,7 +179,7 @@ export function daysUntil(from: Date, w: ExamWindow): number {
 
 /**
  * The window a given day falls inside, or null — "is a sitting under way", and which series a date
- * belongs to. Not the grid's band path: `ActivityGrid` takes whole `from`/`to` bands built from
+ * belongs to. Not the grid's band path: the Home `Heatmap` takes whole `from`/`to` bands built from
  * `windowsBetween`, so nothing has to ask this 368 times. Only the day's own year is checked: no
  * series crosses New Year.
  */

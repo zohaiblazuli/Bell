@@ -1,9 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { hydrate, loadSettings } from './lib/store';
+import { hydrate } from './lib/store';
 // Type-only inside, so this pulls in no stylesheet and cannot disturb the order below.
-import { loadPet } from './state/usePet';
 // Stylesheet order is explicit, and each file is a real module so Vite invalidates it on change.
 // Tailwind + @theme first, then the generated foundations, then the hand-written layers, then the
 // component layer — which must come last so a primitive's rules win over the app.css block it
@@ -38,14 +37,7 @@ for (const type of ['dragover', 'drop'] as const) {
 
 // Study state is read synchronously all over the app, so it is loaded from disk before the
 // first render rather than threaded through as a loading state.
-void hydrate().then(async () => {
-  // The mascot's spritesheet is read before the first frame too, and for a reason the splash makes
-  // sharp: it hides the sidebar's mascot slot and travels its own crab into it, so if the pet arrived
-  // one render later the handoff would land on a different animal than it started with. A failure here
-  // is not one — `usePet` falls back to Mr. Bell, exactly as it does when no pet is selected.
-  const { pet } = loadSettings();
-  if (pet) await loadPet(pet).catch(() => {});
-
+void hydrate().then(() => {
   ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <React.StrictMode>
       <App />
