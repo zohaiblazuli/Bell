@@ -58,6 +58,7 @@ import {
   type Tool,
 } from '../lib/annotations';
 import { sessionLabel } from '../lib/difficulty';
+import { pickLine, feelSayKey } from '../lib/hushLines';
 import type { DocKind } from '../lib/types';
 import { openPdf, renderPage } from '../lib/pdf';
 import { loadInk, loadPref, paperKey, saveInk, savePref, saveReaderPos } from '../lib/store';
@@ -103,12 +104,14 @@ function ToolGlyph({ tool }: { tool: Tool }) {
   return <SkToolGlyph kind={tool === 'hl' ? 'marker' : tool === 'er' ? 'er' : 'pen'} />;
 }
 
-/** "How did this one feel?" — the four faces under the mark scheme, and what Hush says back. */
+/** "How did this one feel?" — the four faces under the mark scheme. What Hush says back is a pool
+ *  in `hushLines.ts` (`feel-<id>`), picked when a face is tapped, so the reply is not the same string
+ *  every time. */
 const FEELINGS = [
-  { id: 'easy', label: 'Easy', kind: 'sun' as const, line: 'Easy? Try a Hard one next.' },
-  { id: 'okay', label: 'Okay', kind: 'box' as const, line: 'Okay counts. Keep going.' },
-  { id: 'tough', label: 'Tough', kind: 'blob' as const, line: 'Tough is where marks hide.' },
-  { id: 'lost', label: 'Lost', kind: 'tri' as const, line: 'Mark scheme. Line by line.' },
+  { id: 'easy', label: 'Easy', kind: 'sun' as const },
+  { id: 'okay', label: 'Okay', kind: 'box' as const },
+  { id: 'tough', label: 'Tough', kind: 'blob' as const },
+  { id: 'lost', label: 'Lost', kind: 'tri' as const },
 ];
 
 export interface Props {
@@ -329,11 +332,20 @@ export default function WorkspaceView({
   const [msResizing, setMsResizing] = useState(false);
   /** How this paper felt, kept per paper so reopening it remembers. */
   const [feel, setFeel] = useState<string | null>(() => loadPref<string | null>(`feel.${id}`, null));
+  /** The last feelings line Hush gave, so tapping again does not repeat it verbatim. */
+  const lastFeelLine = useRef<string | null>(null);
   const pickFeel = (next: string) => {
     const value = feel === next ? null : next;
     setFeel(value);
     savePref(`feel.${id}`, value);
-    onFeel?.(FEELINGS.find((f) => f.id === value)?.line ?? null);
+    if (!value) {
+      lastFeelLine.current = null;
+      onFeel?.(null);
+      return;
+    }
+    const line = pickLine(feelSayKey(value), { avoid: lastFeelLine.current });
+    lastFeelLine.current = line;
+    onFeel?.(line);
   };
   /** Set while this reader is fetching its own question paper. */
   const [fetching, setFetching] = useState(false);

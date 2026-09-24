@@ -34,7 +34,7 @@ import { useWorkspace } from './state/useWorkspace';
 import { UPDATES_CONFIGURED } from './lib/updates';
 import { nextWindow, windowsBetween } from './lib/sessions';
 import { loadRecent, todayFocusMinutes, type MarkFilter, type SeasonChoice } from './lib/store';
-import { hushLine } from './lib/hushLines';
+import { routeSayKey, pickLine, fillTemplate, type HushFacts, type HushSayKey } from './lib/hushLines';
 import type { PaperRow } from './lib/types';
 import type { CommunityResource } from './lib/community';
 import { readWorkspaceDocument, recordWorkspaceOpen, workspaceReaderResource, type WorkspaceDocument } from './lib/workspace';
@@ -72,6 +72,9 @@ const TITLES: Record<View, string> = {
  * which is as far ahead as anyone plans a syllabus.
  */
 const PLAN_HORIZON_DAYS = 730;
+
+/** How long a poke line lingers in Hush's bubble — the length of the wave (useMascot's `hello` pulse). */
+const HUSH_POKE_MS = 2400;
 
 export default function App() {
   const prefs = usePrefs();
@@ -242,6 +245,45 @@ export default function App() {
     mascotWorking,
     inStudyArea,
   );
+
+  /**
+   * What Hush says. Three layers, most transient first:
+   *  - a POKE speaks for the length of the wave, then clears. Wrapping the poke here rather than in
+   *    useMascot is what tells it apart from the tone-change wave, which stays silent.
+   *  - a DOZE gets one sleepy line, chosen as he nods off and cleared when he wakes.
+   *  - otherwise the ROUTE line: picked once per pool key and HELD (a re-pick every render would
+   *    retype the bubble), with the count tokens filled fresh so the number stays current. The
+   *    reader's feelings reply still wins over the route line while its paper is the open tab.
+   */
+  const hushFacts: HushFacts = {
+    papers: lib.stats?.papers ?? null,
+    recentCount: loadRecent().length,
+    bookmarks: study.marks.bookmarks.size,
+  };
+  const routeKey = routeSayKey(currentView, hushFacts, new Date().getHours());
+  const routeHeld = useRef<{ key: HushSayKey; line: string } | null>(null);
+  if (!routeHeld.current || routeHeld.current.key !== routeKey) {
+    routeHeld.current = { key: routeKey, line: pickLine(routeKey, { avoid: routeHeld.current?.line }) };
+  }
+  const routeLine = fillTemplate(routeHeld.current.line, hushFacts);
+
+  const [pokeLine, setPokeLine] = useState<string | null>(null);
+  const pokeTimer = useRef<number | undefined>(undefined);
+  const pokeHush = useCallback(() => {
+    mascot.poke();
+    setPokeLine((prev) => pickLine('poke', { avoid: prev }));
+    window.clearTimeout(pokeTimer.current);
+    pokeTimer.current = window.setTimeout(() => setPokeLine(null), HUSH_POKE_MS);
+  }, [mascot]);
+  useEffect(() => () => window.clearTimeout(pokeTimer.current), []);
+
+  const asleep = mascot.mood === 'asleep';
+  const [sleepLine, setSleepLine] = useState<string | null>(null);
+  useEffect(() => {
+    setSleepLine(asleep ? pickLine('asleep') : null);
+  }, [asleep]);
+
+  const hushSpoken = pokeLine ?? sleepLine ?? (feelLine && inReader ? feelLine : routeLine);
 
   /* ---- routing ----------------------------------------------------------- */
 
@@ -640,14 +682,10 @@ export default function App() {
             notebookCount={notebooks.list?.length ?? null}
             todayMinutes={todayFocusMinutes()}
             goalMinutes={settings.goalMinutes}
-            line={feelLine && inReader ? feelLine : hushLine(currentView, {
-              papers: lib.stats?.papers ?? null,
-              recentCount: loadRecent().length,
-              bookmarks: study.marks.bookmarks.size,
-            })}
+            line={hushSpoken}
             startup={motion === 'on' ? splash : 'done'}
             mascot={mascot.mood}
-            onPokeMascot={mascot.poke}
+            onPokeMascot={pokeHush}
           />
         )}
 

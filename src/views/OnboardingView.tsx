@@ -122,7 +122,7 @@ const SEASON_PALETTE = { s: 'may-june', w: 'oct-nov', m: 'feb-march' } as const;
  * pile of exam papers, except the two that are not, which is the joke.
  */
 const CHATTER = [
-  'Scuttling…',
+  'Swooping in…',
   'Rifling the filing cabinet…',
   'Uncrumpling…',
   'Collating…',
@@ -137,7 +137,7 @@ const CHATTER = [
   'Unstapling…',
   'Nibbling a corner…',
   'Sorting by hardness…',
-  'Consulting the crab…',
+  'Consulting the owl…',
 ] as const;
 
 /** How often the chatter changes and the estimate is recomputed. */
