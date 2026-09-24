@@ -1,47 +1,7 @@
-/**
- * Paper Card — the unit of the library grid. Spec: `design/specs/components-data.md` §2
- * (COMPONENT_SET `66:359`), placed in `screen-library-settings.md` §5.3-5.4 and
- * `screen-bookmarks-recent.md` §5a.
- *
- * FLUID BY CONSTRUCTION. The master is 280 x 128 and `layoutSizingHorizontal: FIXED`, but every
- * instance in a grid row is FILL, so a column resolves to (1020 - 2x14) / 3 = 330.667 — +50.67px,
- * +18.1% over the master. Neither number appears here: the card never states a width, the grid owns
- * the track (`repeat(3, minmax(0, 1fr))`, gap 14), and the height HUGs — which is why both widths
- * measure 128 tall. Nothing inside grows with width.
- *
- * TWO DELIBERATE DEVIATIONS FROM FIGMA, both to protect shipped behaviour:
- *
- *   1. THREE mark toggles, not one. The file draws a single 16x16 bookmark (`66:242`). The app has
- *      marked papers bookmarked / done / flagged-for-revision since Phase 3, all three writing
- *      through `store.ts`, so shipping Figma's lone control would delete two live features. The
- *      bookmark is always visible — it *is* the file's `Bookmarked` variant — while done and
- *      revision fade in on hover or focus. A toggle that is ON stays visible at rest: a mark you
- *      cannot see is not a mark. So an unmarked, un-hovered card still matches the file exactly.
- *   2. NO score. The nested meter runs `Show Score = false` on all nine cards of both screens
- *      (§3.1, TRAP 4), so the numeral belongs to the standalone meter only. This card passes
- *      `showScore={false}` and deliberately has no `score` prop to pass.
- *
- * THE BODY IS THE BUTTON. The shipped card was a `<div class="card">` wrapping a
- * `<button class="card-open">`, so the hover lift and the elevation swap sat on a non-interactive
- * element and only the middle third of the card answered the keyboard. Here the shell is a plain
- * `<div>` that owns fill / stroke / radius / shadow, the body — every row the spec lists — is one
- * `<button>`, and the mark toggles are absolutely positioned SIBLINGS of that button, because a
- * button may not nest inside a button.
- *
- * Figma's `subject row` (`66:233`, SPACE_BETWEEN) and `subject label` (`66:234`, FILL) collapse into
- * one row here. Those two frames exist in the file only so the bookmark can be pushed to the far
- * end, and our bookmark is not in that row at all; the gutter it left behind is `padding-right`.
- */
-
-import { memo, type ReactNode } from 'react';
-import Icon, { type IconName } from '../components/Icon';
-import DifficultyBadge from './DifficultyBadge';
+import { memo, type CSSProperties, type ReactNode } from 'react';
+import SeasonIcon, { seasonKeyOf } from './icons/SeasonIcon';
 import type { DifficultyBand } from '../lib/difficulty';
 
-/**
- * The three toggles. `bookmarked` is this component's name for the store's `bookmarks` set: the card
- * speaks the Figma variant's word, the store keeps its own key, and the call site maps between them.
- */
 export type MarkName = 'bookmarked' | 'done' | 'revision';
 
 export interface PaperCardMarks {
@@ -50,145 +10,143 @@ export interface PaperCardMarks {
   revision: boolean;
 }
 
-/**
- * Left to right, so the bookmark keeps Figma's slot hard against the inner right edge and the two
- * app-only toggles queue up to its left, sliding out from under it. Labels are LibraryView's own
- * strings, verbatim, so the wording does not fork; glyphs are the shipped sprite's.
- */
-const MARKS: { name: MarkName; icon: IconName; on: string; off: string }[] = [
-  { name: 'revision', icon: 'sync', on: 'Clear revision flag', off: 'Flag for revision' },
-  { name: 'done', icon: 'checkc', on: 'Mark as not done', off: 'Mark as done' },
-  { name: 'bookmarked', icon: 'bm', on: 'Remove bookmark', off: 'Bookmark this paper' },
-];
-
-/** The four brand tints a subject can wear. Mode-invariant — `--iris-*` never retones. */
-const TINTS = ['var(--iris-1)', 'var(--iris-2)', 'var(--iris-3)', 'var(--iris-4)'];
-
-/**
- * Subject glyphs are tinted by a hash of the subject, on the card and in the sidebar alike
- * (`screen-bookmarks-recent.md` note 7). This is the sidebar's shipped hash (`Sidebar.tsx`
- * `dotFor`), and it reproduces the measured value: the char codes of `9706` sum to 214, and
- * 214 % 4 = 2 -> `--iris-3`, exactly the `#1436C8` pixel-sampled off Accounting's glyph in the
- * Night render. One function, so a subject wears one colour everywhere.
- */
-export function subjectTint(subjectCode: string): string {
-  return TINTS[[...subjectCode].reduce((sum, c) => sum + c.charCodeAt(0), 0) % TINTS.length];
-}
-
 export interface PaperCardProps {
-  /** Subject name — `Accounting`. One line, ellipsised: `66:241` is FILL, 1 line, ellipsis. */
   subject: string;
-  /** Syllabus code — `9706`. Also hashes the subject glyph's tint. */
   subjectCode: string;
-  /**
-   * Paper and variant digits WITHOUT the slash — `12`. Figma's TEXT default is the string `/12`,
-   * but the app's `PaperRow.variant` is `12`, so the slash is drawn here; a leading one that slips
-   * through is dropped rather than rendered twice.
-   */
   variant?: string | null;
-  /** The rendered session — `May/June 2015`, i.e. `sessionLabel(scode)`, never the raw `s15`. */
+  /** `s25` — drives the season glyph. */
+  scode?: string;
   session: string;
-  /** The extra documents as one string — `mark scheme · report`. */
   documents?: string;
-  /** Figma's `Show Documents`. False hides the separator AND the documents — `66:249` and `66:250`. */
-  showDocuments?: boolean;
-  /**
-   * Figma's `Bookmarked` variant. Optional, and it OVERRIDES `marks.bookmarked` when given, for a
-   * surface that already knows the answer without consulting the live set — the Bookmarks screen
-   * renders nine cards, all Yes. Pass one or the other, not both, unless the override is the point.
-   */
-  bookmarked?: boolean;
-  /** Which rating the badge shows, from `bandFor(difficulty)`. Owned by `src/lib/difficulty.ts`. */
   band: DifficultyBand;
+  /** Lit steps of the three-step difficulty meter (0 = unrated). */
+  steps: number;
   marks: PaperCardMarks;
   onMark: (mark: MarkName) => void;
   onOpen: () => void;
-  /**
-   * The 18x18 subject glyph (`66:235`, INSTANCE_SWAP -> `Subject Icon` `47:81`) — a slot, not a
-   * name, so the card never owns the code-to-glyph lookup. The slot collapses when empty, and
-   * whatever lands in it inherits the hashed tint through `color`.
-   */
+  /** On disk: the card ends in Solve. Otherwise Download. */
+  downloaded: boolean;
+  downloading?: boolean;
+  onDownload?: () => void;
   icon?: ReactNode;
+  /** Position in its grid, for the dealt-in stagger. */
+  index?: number;
   className?: string;
 }
 
+/**
+ * Paper Card — Bell App v2. A card on the card colour in a 2px ink frame, dealt onto the table one
+ * after another; on hover it lifts and tilts with a hard ink shadow, and presses down when clicked.
+ *
+ *   corner      a folded bookmark corner (ink when saved)
+ *   identity    the subject mark tumbling in, subject name, `9709 /32`
+ *   meta        season glyph + session · documents, then the ✓ done / ↻ revise tags
+ *   foot        the 1/2/3-step difficulty meter + word, and Solve (on disk) or Download
+ *
+ * The done and revise tags are toggles: shown when set, and offered as outlines on hover/focus.
+ */
 function PaperCard({
   subject,
   subjectCode,
   variant,
+  scode,
   session,
   documents,
-  showDocuments = true,
-  bookmarked,
   band,
+  steps,
   marks,
   onMark,
   onOpen,
+  downloaded,
+  downloading = false,
+  onDownload,
   icon,
+  index = 0,
   className,
 }: PaperCardProps) {
-  const on: PaperCardMarks = { ...marks, bookmarked: bookmarked ?? marks.bookmarked };
   const paper = variant ? variant.replace(/^\//, '') : '';
-  /** Show Documents gates the separator and the text together; an empty string is the same case. */
-  const docs = showDocuments && documents ? documents : null;
+  const season = seasonKeyOf(scode);
+  const delay = Math.min(index, 14) * 45;
 
   return (
-    <div className={className ? `paper-card ${className}` : 'paper-card'}>
-      <button type="button" className="pc-body" onClick={onOpen}>
-        <span className="pc-id">
-          <span className="pc-subject">
-            {icon && (
-              <span className="pc-icon" style={{ color: subjectTint(subjectCode) }}>
-                {icon}
-              </span>
-            )}
-            <span className="pc-title t-title-card">{subject}</span>
-          </span>
+    <div
+      className={className ? `paper-card ${className}` : 'paper-card'}
+      style={{ '--deal': `${delay}ms`, '--tumble': `${delay + 220}ms` } as CSSProperties}
+      data-downloaded={downloaded ? 'true' : undefined}
+    >
+      <button type="button" className="pc-open" onClick={downloaded ? onOpen : onDownload ?? onOpen} aria-label={`${downloaded ? 'Open' : 'Download'} ${subject} ${subjectCode}/${paper}, ${session}`} />
 
-          {/* Mono/Meta 12 for both halves, NOT the 15px `.t-mono-paper-code` whose name predates
-              this measurement. `66:245` is --ink-2, `66:246` is --ink-3. */}
+      <button
+        type="button"
+        className="pc-corner"
+        aria-pressed={marks.bookmarked}
+        title={marks.bookmarked ? 'Remove bookmark' : 'Bookmark this paper'}
+        aria-label={marks.bookmarked ? 'Remove bookmark' : 'Bookmark this paper'}
+        onClick={() => onMark('bookmarked')}
+      />
+
+      <div className="pc-id">
+        {icon && <span className="pc-icon">{icon}</span>}
+        <span className="pc-name">
+          <span className="pc-title">{subject}</span>
           <span className="pc-code">
-            <span className="pc-code-num t-mono-meta">{subjectCode}</span>
-            {paper && <span className="pc-code-var t-mono-meta">/{paper}</span>}
+            {subjectCode}
+            {paper && <span> /{paper}</span>}
           </span>
         </span>
+      </div>
 
-        <span className="pc-meta t-body-meta">
-          <span className="pc-session">{session}</span>
-          {docs && (
-            <>
-              <span className="pc-sep" aria-hidden="true">
-                ·
-              </span>
-              <span className="pc-docs">{docs}</span>
-            </>
-          )}
+      <div className="pc-meta">
+        <span className="pc-session">
+          {season && <SeasonIcon season={season} size={14} />}
+          {session}
         </span>
-
-        {/* `foot` `66:251`: one hairline, then the rating. */}
-        <span className="pc-foot">
-          <DifficultyBadge band={band} size="sm" />
-        </span>
-      </button>
-
-      {/* Siblings, not children: a nested button is invalid and unreachable. Positioned back into
-          the subject row's right end — the arithmetic is in PaperCard.css. */}
-      <span className="pc-marks">
-        {MARKS.map((m) => (
-          <button
-            key={m.name}
-            type="button"
-            className="pc-mark"
-            data-mark={m.name}
-            aria-pressed={on[m.name]}
-            aria-label={on[m.name] ? m.on : m.off}
-            title={on[m.name] ? m.on : m.off}
-            onClick={() => onMark(m.name)}
-          >
-            <Icon name={m.icon} />
+        {documents && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span className="pc-docs" data-strong={documents === 'mark scheme' ? 'true' : undefined}>
+              {documents}
+            </span>
+          </>
+        )}
+        <span className="pc-tags">
+          <button type="button" className="pc-tag pc-tag--done" aria-pressed={marks.done} title={marks.done ? 'Mark as not done' : 'Mark as done'} onClick={() => onMark('done')}>
+            ✓ done
           </button>
-        ))}
-      </span>
+          <button type="button" className="pc-tag pc-tag--rev" aria-pressed={marks.revision} title={marks.revision ? 'Clear revision flag' : 'Flag for revision'} onClick={() => onMark('revision')}>
+            ↻ revise
+          </button>
+        </span>
+      </div>
+
+      <div className="pc-foot">
+        <span className="pc-band" title={band.rated ? `${band.label} paper` : 'Not rated'}>
+          <span className="pc-steps" aria-hidden="true">
+            {[1, 2, 3].map((n) => (
+              <i key={n} style={{ background: n <= steps ? band.color : undefined }} />
+            ))}
+          </span>
+          <span>{band.label}</span>
+        </span>
+        {downloaded ? (
+          <button type="button" className="pc-solve" title="Open in the reader" onClick={onOpen}>
+            Solve
+            <i aria-hidden="true" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="pc-download"
+            title="Download this paper to your machine"
+            disabled={downloading}
+            aria-busy={downloading || undefined}
+            onClick={onDownload ?? onOpen}
+          >
+            {downloading ? 'Fetching…' : 'Download'}
+            <i aria-hidden="true" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

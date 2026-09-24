@@ -1,301 +1,331 @@
-/* Library, Bookmarks and Recent — the content region only. Specs:
-   `design/specs/screen-library-settings.md` §5 (`lib` `45:65`, 1020 x 592 at 269,82) and
-   `design/specs/screen-bookmarks-recent.md` §5 (Bookmarks) / §6 (Recent).
-
-   Supersedes `.lib`, `.filters`, `.sec-label`, `.sec-label::after`, `.grid` and `.lib-error` in
-   app.css. Deliberately renamed rather than reused: this stylesheet is imported from the view, so it
-   lands in the bundle BEFORE app.css (main.tsx's order — app.css, then the component layer), and a
-   same-named rule would lose the tie on source order. The old names stay inert until app.css is
-   pruned; `.card*`, `.chip*`, `.meter`, `.diff-*` and `.docs` are the primitives' business.
-
-   Nothing here moves. The only transition is `background-color` on a Recent row, which is colour
-   rather than motion and which `prefers-reduced-motion` therefore keeps — the same call PaperCard.css
-   makes at the end of its own file. */
-
-/* The page-recess inset. `lib` is 1020 wide at x 269 inside a recess that starts at x 238, so the
-   gutter is 31 either side and 26 above; 1020 + 2 x 31 = 1082, which is exactly the main column at
-   the design width, so the max-width only ever bites on a wider window.
-
-   THE SIDE GUTTER IS ALSO THE SHADOW GUTTER. `.view` is the scroll container, so it clips at its own
-   padding box — 31px outboard of every card. A Paper Card's rest shadow reaches ~8px and its hover
-   shadow ~14px, both of which land inside this padding instead of being sliced. That is the CSS
-   answer to the 8 grid frames, 18 rows and 10 content regions the Figma file had to un-clip by hand.
-   The bottom is 60 rather than the file's leftover 186: 34 of it is the last grid's own authored
-   trailing rhythm, the rest is scroll comfort. */
+/* Past Papers / Bookmarks / Recent — Bell App v2. A 1082px column; every control is a 2px-framed
+   block, selection is a solid ink fill, and groups sit on a big title and a 2px rule. */
 .lv {
   max-width: 1082px;
   margin: 0 auto;
-  padding: 26px 31px 60px;
-}
-
-/* Notice brings no outer margin of its own, on purpose. In the file's terms this sits above
-   `filters`, so it owns the gap down to it. */
-.lv-error {
-  margin: 0 0 18px;
-}
-
-/* `lib` itself: VERTICAL, `gap: 0`, `fills: []`, `clipsContent: false`. The zero gap is TRAP 5 —
-   every vertical measurement on this screen is a child's own padding, and a parent gap would be
-   added four times over. */
-.lv-body {
+  padding: 26px 24px 60px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 0;
+}
+.lv-error {
+  margin-bottom: 16px;
+}
+.lv-status {
+  margin: 0 0 20px;
+  font-size: 13px;
+  color: var(--mute);
 }
 
-/* Recent is the one composition whose content frame is authored with a real gap (§6: VERTICAL,
-   gap 16), which is also exactly SectionLabel's own 5/0 padding budget — so its headers need no
-   correction at all, unlike the two grid screens below. */
-.lv-body[data-mode='recent'] {
-  gap: 16px;
-}
-
-/* ---------- the chip row (§5.1) ---------- */
-
-/* `filters` 1020 x 58: HORIZONTAL, gap 8, align CENTER, `padding-bottom: 26`, `fills: []`.
-   The 27 is that 26 plus the header frame's own `padding-top: 6`, less the 5 SectionLabel already
-   carries — the chips' bottom edge has to sit 32px above the year text, and this is the whole of it.
-
-   `flex-wrap` is an app addition; the file's row is a single clipped line 1020 wide. Eight chips fit
-   that comfortably, but the window is resizable and a clipped filter is a filter you cannot clear. */
-.lv-filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding-bottom: 27px;
-}
-
-/* The hidden 8 x 1 strut (`45:89`). With the row's own 8px gap either side it opens the
-   level-to-season break to 24px — TRAP 6, and the reason this is an element rather than a margin. */
-.lv-chip-strut {
-  flex: none;
-  width: 8px;
-  height: 1px;
-}
-
-/* One semantic group inside the wrapping filter rail. It keeps the paper options together when
-   there is room, but can wrap internally at the minimum window instead of pushing P5/P6 off-screen. */
-.lv-paper-filters {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-/* ---------- Recent's head (§6) ---------- */
-
-/* `head` 1020 x 36: HORIZONTAL, gap 12, align CENTER. The 36 comes from the segmented control, so
-   nothing here states a height. */
+/* Recent's head */
 .lv-head {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding-bottom: 24px;
+  font-size: 14px;
+}
+.lv-strut {
+  flex: 1;
+}
+.lv-toggle {
+  display: flex;
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+.lv-toggle button {
+  width: 40px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color .16s, color .16s;
+}
+.lv-toggle button[aria-pressed='true'] {
+  background: var(--inkbg);
+  color: var(--onink);
+}
+.lv-toggle-cards {
+  display: block;
+  width: 14px;
+  height: 14px;
+  background: currentColor;
+  clip-path: polygon(0 0, 43% 0, 43% 43%, 0 43%, 0 57%, 43% 57%, 43% 100%, 0 100%, 0 0, 57% 0, 100% 0, 100% 43%, 57% 43%, 57% 57%, 100% 57%, 100% 100%, 57% 100%);
+}
+.lv-toggle-list {
+  display: block;
+  width: 14px;
+  height: 12px;
+  background: repeating-linear-gradient(180deg, currentColor 0 2px, transparent 2px 5px);
 }
 
-.lv-head-stat {
-  margin: 0;
-  color: var(--ink-3);
-}
-
-/* `192:74` — a 1px-tall FILL strut, the same idiom as the top bar's `spacer`, not a margin. */
-.lv-head-strut {
-  flex: 1 0 0;
-  height: 1px;
-}
-
-/* ---------- a headed group ---------- */
-
-.lv-group {
+/* the Filters bar */
+.lv-filters {
   display: flex;
   flex-direction: column;
-}
-
-/* The two grid screens author `sec-label` as `padding-top: 6 / padding-bottom: 14` and `grid` as
-   `padding-bottom: 34`, only because their parent has `gap: 0`. SectionLabel.css asks callers to pay
-   for that with a real gap rather than fork the component, so both numbers are net of the 5px it
-   already carries: 14 − 5 = 9 below the header, and 34 + 6 − 5 = 35 between one group and the next. */
-.lv-body:not([data-mode='recent']) .lv-group {
-  gap: 9px;
-}
-.lv-body:not([data-mode='recent']) .lv-group + .lv-group {
-  padding-top: 35px;
-}
-
-/* Recent's own rhythm is uniform, so the group gap is the frame gap. */
-.lv-body[data-mode='recent'] .lv-group {
-  gap: 16px;
-}
-
-/* ---------- the Paper Card grid (§5.3) ---------- */
-
-/* `grid` is VERTICAL gap 14 holding `row`s that are HORIZONTAL gap 14 with three cards at
-   `layoutGrow: 1`. One CSS grid is both: a column resolves to (1020 − 2 x 14) / 3 = 330.667 at the
-   design width, +18.1 % over the card's 280 master. `minmax(0, 1fr)` and not `auto`, so a long
-   subject name ellipsises inside its column instead of widening it, and neither 280 nor 330.667 is
-   written down anywhere.
-
-   No `overflow` — see the shadow note on `.lv` above. This is the frame Figma had to un-clip. */
-.lv-grid {
-  /* FIXED-SIZE CARDS THAT REFLOW (Zohaib's instruction — a deliberate deviation from the fluid
-     Figma design described above, whose `layoutGrow: 1` columns stretched the card with the window).
-     The card is a fixed 330px — its design-rendered width, so the 1320 window still shows three — and
-     the grid fits as many columns as the width allows: more when wider, fewer when narrower, never
-     resizing the card itself. `auto-fit` (not `auto-fill`) collapses the empty tail tracks so
-     `justify-content` can centre the block the way the old `1fr` columns filled it edge to edge. */
-  display: grid;
-  grid-template-columns: repeat(auto-fit, 330px);
-  justify-content: center;
   gap: 14px;
+  padding-bottom: 28px;
 }
-
-/* ---------- Recent's row list (§6) ---------- */
-
-/* There is no `.lv-list`. §6's `list <BUCKET>` is the §6.2 grouped-list card — `--card` on a 1px
-   `--card-brd` at radius 13, padding 0, gap 0, `clipsContent: true` — which is exactly `<Card rows>`,
-   so the view renders the primitive and this file states none of that surface. `min-width: 0` and
-   `box-shadow: none` come with it, both of which this list wants: a content card's elevation here is
-   the recess behind it, never a cast. */
-
-/* `row`: HORIZONTAL, gap 14, padding 14/16, align CENTER, FILL — 14 + 20 + 14 = 48 tall, with the
-   20px subject glyph setting the height. */
-.lv-row {
+.lv-filterbar {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 14px 16px;
-  text-align: left; /* a button centres its content by default */
-  transition: background-color 0.16s;
+}
+.lv-filters-btn {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  background: var(--inkbg);
+  color: var(--onink);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.lv-filters-count {
+  padding: 1px 6px;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.lv-chev {
+  display: block;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-right: 2px solid var(--onink);
+  border-bottom: 2px solid var(--onink);
+  transform: rotate(45deg);
+  transition: transform .25s cubic-bezier(.2, .8, .2, 1), margin-top .25s;
+}
+.lv-chev[data-open] {
+  margin-top: 4px;
+  transform: rotate(225deg);
+}
+.lv-summary {
+  font-size: 13.5px;
+}
+.lv-clear {
+  padding: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.lv-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  animation: sk-rise .26s cubic-bezier(.2, .8, .2, 1) both;
+}
+.lv-gap {
+  width: 8px;
+}
+.lv-chip,
+.lv-subject {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color .16s, color .16s, transform .16s, box-shadow .16s;
+}
+.lv-chip {
+  color: var(--ink);
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+.lv-chip:hover:not([aria-pressed='true']) {
+  background: var(--pale2);
+}
+.lv-chip[aria-pressed='true'] {
+  background: var(--inkbg);
+  color: var(--onink);
+}
+.lv-chip--season {
+  padding-left: 10px;
+}
+.lv-chip-count,
+.lv-subject-code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.lv-papers {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+.lv-papers > span {
+  padding: 0 10px 0 12px;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.lv-papers button {
+  min-width: 38px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 2px 0 0 var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color .16s, color .16s;
+}
+.lv-papers button[aria-pressed='true'] {
+  background: var(--inkbg);
+  color: var(--onink);
+}
+.lv-subject {
+  padding: 0 10px 0 12px;
+  background: var(--inkbg);
+  color: var(--onink);
+}
+.lv-subject > span:last-child {
+  font-size: 12px;
 }
 
-/* Figma models the separators as 1px `--hair-2` rects between the rows, which is what makes them
-   full-bleed. An adjacent-sibling border-top is the same picture with no extra elements and no
-   last-row special case, and it keeps the file's arithmetic: 48 + 49 + 49 = 146 for three rows. */
-.lv-row + .lv-row {
-  border-top: 1px solid var(--hair-2);
-}
-
-/* App addition — the file gives these rows no hover state, and a row that opens a paper has to say
-   which one the pointer is on. Same wash the card's mark toggles use. */
-.lv-row:hover {
-  background-color: var(--hair-2);
-}
-
-/* Inset, because the list clips: an `outline-offset: 2px` ring would be cut off on three sides by
-   the card's own `overflow: hidden`. Drawn just inside the row instead, where all four edges show.
-   index.css's `:focus-visible` also sets `border-radius: 6px`, which would round the row's own box —
-   visible at both ends of a full-bleed row, and a gap between the wash and the card's edge. Square
-   it, and let the end rows follow the card's own corners, exactly as CardRow.css does in the same
-   idiom. */
-.lv-row:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -3px;
-  border-radius: 0;
-}
-.lv-row:first-child:focus-visible {
-  border-radius: var(--r-card) var(--r-card) 0 0;
-}
-.lv-row:last-child:focus-visible {
-  border-radius: 0 0 var(--r-card) var(--r-card);
-}
-
-/* The eight slots, at the widths §6 measures: 20 / 124 / 76 / 112 / FILL / 60 / 56 / 16. The subject
-   glyph is plain `--ink-2` here — the sidebar rows and the Paper Card tint the same component with
-   the subject's hashed iris instead (note 7). */
-.lv-row-glyph {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 20px;
-  height: 20px;
-  color: var(--ink-2);
-}
-
-/* Note 13: the design does not truncate these fixed slots, it simply lets a long name overflow.
-   Ellipsising is a deliberate deviation — "Further Mathematics" is 19 characters and the slot holds
-   about 15, and an overlapping name is worse than a clipped one. */
-.lv-row-subject {
-  flex: 0 0 124px;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  color: var(--ink-2);
-}
-
-.lv-row-code {
-  flex: 0 0 76px;
-  white-space: nowrap;
-  color: var(--ink-2);
-}
-
-.lv-row-session {
-  flex: 0 0 112px;
-  white-space: nowrap;
-  color: var(--ink-3);
-}
-
-/* `192:76` and its twins — another 1px FILL strut, not a margin. */
-.lv-row-strut {
-  flex: 1 0 0;
-  height: 1px;
-}
-
-/* The band word alone: §6 draws no meter pips and no bookmark anywhere in this list, so the colour
-   is the only thing carrying the heat scale. It arrives as `band.color` — `var(--d1..--d5)`, or
-   `var(--ink-3)` on Unrated, which needs no special case here. */
-.lv-row-band {
-  flex: 0 0 60px;
-  white-space: nowrap;
-}
-
-.lv-row-elapsed {
-  flex: 0 0 56px;
-  white-space: nowrap;
-  color: var(--ink-3);
-}
-
-/* `Icon=chev` at 16, rotated −90°: the sprite's chevron points down, and a quarter turn
-   anticlockwise lands it pointing right, at the open affordance. A static transform, not a motion. */
-.lv-row-chev {
-  flex: none;
-  width: 16px;
-  height: 16px;
-  color: var(--ink-2);
-  transform: rotate(-90deg);
-}
-
-/* ---------- loading and the three empty states ---------- */
-
-/* Not a SectionLabel, which is what the shipped view used for both of these: neither line heads a
-   section, and an eyebrow rule running off to the right of "Loading…" claimed a group that had no
-   content under it. The tail is for the re-query case, where the old rows are still on screen
-   underneath — `App` keeps `papers` until the new page resolves. */
-.lv-status {
-  margin: 0;
-  padding-bottom: 14px;
-  color: var(--ink-3);
-}
-
-/* Rule 5 licenses a lush render in an empty state, and there is no measured art for one — so this is
-   the calm version: two lines of real text, centred in the room the missing grid leaves. */
+/* empty state: Hush, sighing */
 .lv-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   padding: 64px 24px 72px;
   text-align: center;
 }
-
+.lv-empty .hush {
+  margin-bottom: 4px;
+}
 .lv-empty-head {
-  margin: 0;
-  color: var(--ink);
+  font-size: 19px;
+  font-weight: 600;
+}
+.lv-empty-detail {
+  max-width: 46ch;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
-/* A measure, not a font size: about 46 characters is where a centred sentence stops needing the
-   reader to track back across the whole 1020. */
-.lv-empty-detail {
-  margin: 0;
-  max-width: 46ch;
-  color: var(--ink-3);
+/* groups */
+.lv-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 36px;
+}
+.lv-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.lv-group-label {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1;
+}
+.lv-group-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.lv-group-head > i {
+  flex: 1;
+  height: 2px;
+  align-self: center;
+  background: var(--line);
+}
+.lv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 14px;
+}
+
+/* Recent as a list */
+.lv-list {
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+.lv-row {
+  height: 48px;
+  display: grid;
+  grid-template-columns: 28px 124px 76px 112px minmax(0, 1fr) 110px 60px 16px;
+  align-items: center;
+  gap: 14px;
+  padding: 0 16px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.lv-row + .lv-row {
+  border-top: 1px solid rgba(var(--ink-rgb), .18);
+}
+.lv-row:hover {
+  background: var(--ground);
+}
+.lv-row > svg {
+  justify-self: center;
+}
+.lv-row-subject {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lv-row-code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.lv-row-session,
+.lv-row-elapsed {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.lv-row-band {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.lv-steps {
+  display: flex;
+  gap: 2px;
+}
+.lv-steps i {
+  display: block;
+  width: 7px;
+  height: 10px;
+  background: var(--pale);
+}
+
+.lv-filters-btn:focus-visible,
+.lv-clear:focus-visible,
+.lv-chip:focus-visible,
+.lv-subject:focus-visible,
+.lv-papers button:focus-visible,
+.lv-toggle button:focus-visible,
+.lv-row:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  border-radius: 0;
 }

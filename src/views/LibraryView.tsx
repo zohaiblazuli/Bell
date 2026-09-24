@@ -1,67 +1,43 @@
 /**
- * Library, Bookmarks and Recent — one component, three compositions.
+ * Past Papers, Bookmarks and Recent — one component, three compositions (Bell App v2).
  *
- * Specs: `design/specs/screen-library-settings.md` §5 (the Library content region `45:65`) and
- * `design/specs/screen-bookmarks-recent.md` §5 (Bookmarks `181:512`) / §6 (Recent `181:868`).
- * That second spec opens by saying the two new screens are "Library variants" — same window,
- * background, sidebar and top bar, differing only in this 1020-wide region and in which nav row is
- * lit. So `mode` is a prop and there is one file, not three.
+ *   library    Filters bar · year headers ("2025  36 papers") · Paper Card grid
+ *   bookmarks  Filters bar · subject headers ("Physics  6 saved") · the same grid
+ *   recent     week summary + cards/list toggle · day-bucket headers · a ruled row list, or the grid
  *
- *   library    filter chips · year headers ("2015 · 6 papers") · 3-up Paper Card grid
- *   bookmarks  filter chips · subject headers ("ACCOUNTING · 6 saved") · the same grid
- *   recent     head line + view toggle · day-bucket headers · a row list (§6), or that same grid
- *              when the toggle says cards
+ * The Filters bar collapses: a solid Filters button with the active count, a one-line summary while
+ * collapsed ("A Level · May/June · P3") and Clear all. Open, it shows the level chips, the season
+ * chips with their glyphs, a P1–P6 toggle for the paper number, the subject chip, and chips for the
+ * Done / Revision lists. There is no Downloaded chip any more — every card says Solve or Download.
  *
  * THE DATA PATH IS UNCHANGED. `papers` still arrives already resolved by `App`: for a marked list
- * that is the store's row snapshots (`loadRows()`), never the live query, because a paper marked
- * two sessions ago is not in whatever 600 rows `listPapers` last returned. Nothing here re-reads
- * it. The only store reads below are Recent's open timestamps and the focus log — measurements
- * `App` does not forward, and the same two calls `DashboardView` already makes.
- *
- * The Paper Card is FLUID. Its master is 280 wide and the grid stretches every instance to 330.667
- * (§5.3), so neither number appears anywhere: the track is `repeat(3, minmax(0, 1fr))` and the card
- * lays out from its own content. Nor is anything clipped — the file had to switch `clipsContent`
- * off on 8 grids, 18 rows and 10 content regions to stop the card shadows being sliced, and the CSS
- * equivalent is to leave the gutter wide enough and set no `overflow` at all.
+ * that is the store's row snapshots (`loadRows()`), never the live query. The only store reads here
+ * are Recent's open timestamps and the focus log.
  */
 import './LibraryView.css';
 import { useMemo, useState } from 'react';
-import Card from '@ui/Card';
-import Chip, { type ChipPalette } from '@ui/Chip';
-import FilterDropdown from '@ui/FilterDropdown';
 import Notice from '@ui/Notice';
 import PaperCard from '@ui/PaperCard';
-import SectionLabel from '@ui/SectionLabel';
-import SegmentedControl from '@ui/SegmentedControl';
-import SeasonIcon, { seasonKeyOf } from '@ui/icons/SeasonIcon';
+import SeasonIcon from '@ui/icons/SeasonIcon';
 import SubjectIcon from '@ui/icons/SubjectIcon';
-import Icon, { type IconName } from '@/components/Icon';
-import { bandFor, sessionLabel } from '@/lib/difficulty';
+import Mascot from '@/components/Mascot';
+import { bandFor, bandSteps, sessionLabel } from '@/lib/difficulty';
 import { availablePaperNumbers, filterByPaperNumber } from '@/lib/libraryFilters';
 import { loadFocus, loadRecent, paperKey, type MarkFilter, type SetName } from '@/lib/store';
 import type { PaperRow, Subject } from '@/lib/types';
 
-/** Which composition this render is. Bookmarks and Recent are Library with a different middle. */
 export type LibraryMode = 'library' | 'bookmarks' | 'recent';
 
-/** `PaperRow.level` carries these strings verbatim, so they double as the chip labels. */
 const LEVELS = ['A Level', 'IGCSE', 'O Level'] as const;
 
-/** Figma's `Palette` axis only surfaces on a selected chip — an unselected one ignores it. */
-const LEVEL_PALETTE: Record<(typeof LEVELS)[number], ChipPalette> = {
-  'A Level': 'a-level',
-  IGCSE: 'igcse',
-  'O Level': 'o-level',
-};
-
-/** In the file's order. `key` is the session-code letter the rows carry: `s15` → `s`. */
 const SEASONS = [
-  { key: 's', label: 'May/June', palette: 'may-june' },
-  { key: 'w', label: 'Oct/Nov', palette: 'oct-nov' },
-  { key: 'm', label: 'Feb/Mar', palette: 'feb-march' },
+  { key: 's', label: 'May/June' },
+  { key: 'w', label: 'Oct/Nov' },
+  { key: 'm', label: 'Feb/Mar' },
 ] as const;
 
-/** Wording for the escape-hatch chip that stands in for a marked list's filter row. */
+const SEASON_TINT: Record<string, string> = { s: 'var(--t-gold)', w: 'var(--t-blue)', m: 'var(--t-red)' };
+
 const FILTER_LABEL: Record<Exclude<MarkFilter, null>, string> = {
   bookmarks: 'Bookmarked',
   done: 'Done',
@@ -69,32 +45,11 @@ const FILTER_LABEL: Record<Exclude<MarkFilter, null>, string> = {
   recent: 'Recently opened',
 };
 
-/**
- * APP ADDITION, and the same call `PaperCard.tsx` makes about its three mark toggles: the file draws
- * eight chips here and not one of them is a mark, but Bookmarks and Recent are the only two mark sets
- * with a screen and a sidebar row. Done has no other route into it anywhere in the app, and
- * Flagged-for-revision has only a ⌘K entry — dropping these would make a live feature unreachable.
- * So they stay, after the seasons and behind a second strut. Actions rather than toggles, so no
- * `filled` and no `aria-pressed`; hidden while the set is empty, because a chip that leads to an
- * empty list is a dead end.
- */
-const MARK_CHIPS: { name: SetName; icon: IconName; label: string }[] = [
-  { name: 'done', icon: 'checkc', label: 'Done' },
-  { name: 'revision', icon: 'sync', label: 'Revision' },
+const MARK_CHIPS: { name: SetName; glyph: string; label: string }[] = [
+  { name: 'done', glyph: '✓', label: 'Done' },
+  { name: 'revision', glyph: '↻', label: 'Revision' },
 ];
 
-/** §6's toggle. Both glyphs are the segmented control's own (`grid`, `list`); the labels are ours,
- *  because the segments are icon-only and that name is all a screen reader gets. */
-const RECENT_VIEWS = [
-  { icon: 'grid', label: 'Show recent papers as cards' },
-  { icon: 'list', label: 'Show recent papers as a list' },
-] as const;
-
-/**
- * Recent's day buckets. §6 draws three because its sample data stops five days back; `Older` is
- * ours, and it has to exist — `loadRecent()` keeps 40 entries with no time window, so a real
- * install will have papers older than a week in it and they cannot go unheaded.
- */
 const BUCKETS = [
   { label: 'Today', within: 0 },
   { label: 'Yesterday', within: 1 },
@@ -216,7 +171,7 @@ function emptyCopy(state: {
   }
   return {
     head: 'No papers match these filters',
-    detail: 'Clear a level, session, paper, subject or the Downloaded chip to widen the search.',
+    detail: 'Clear a level, session, paper or subject to widen the search.',
   };
 }
 
@@ -229,11 +184,7 @@ interface Group {
 }
 
 export interface Props {
-  /**
-   * Which of the three compositions to draw. Optional, and the fallback is what the shipped `App`
-   * already does: it reaches Bookmarks and Recent by setting `markFilter` while staying on the
-   * library route, so deriving the mode from it keeps this correct before and after that is rewired.
-   */
+  /** Which composition to draw; derived from `markFilter` when absent. */
   mode?: LibraryMode;
   /** Already resolved by `App` — the live query, or the store's row snapshots for a marked list. */
   papers: PaperRow[];
@@ -250,15 +201,16 @@ export interface Props {
   onPaperNumber: (paper: number | null) => void;
   subjectId: number | null;
   onSubject: (id: number | null) => void;
-  /** Narrow to papers already on this machine. */
-  downloadedOnly: boolean;
-  onDownloadedOnly: (v: boolean) => void;
   marks: Record<SetName, Set<string>>;
   /** `key` is `paperKey(...)`; `paper` is passed so the store can snapshot the row it marked. */
   onMark: (name: SetName, key: string, paper: PaperRow) => void;
   markFilter: MarkFilter;
   onMarkFilter: (m: MarkFilter) => void;
   onOpen: (p: PaperRow) => void;
+  /** Fetch a paper that is not on disk yet. */
+  onDownload: (p: PaperRow) => void;
+  /** Paper ids with a download in flight. */
+  downloading: Set<number>;
   error: string | null;
 }
 
@@ -275,17 +227,17 @@ export default function LibraryView({
   onPaperNumber,
   subjectId,
   onSubject,
-  downloadedOnly,
-  onDownloadedOnly,
   marks,
   onMark,
   markFilter,
   onMarkFilter,
   onOpen,
+  onDownload,
+  downloading,
   error,
 }: Props) {
-  /** Figma has Recent selected on `list`; the toggle is view state, so it resets with the screen. */
   const [asCards, setAsCards] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(true);
 
   const mode: LibraryMode =
     modeProp ??
@@ -404,7 +356,6 @@ export default function LibraryView({
     (level !== null ||
       season !== null ||
       (mode === 'library' && paperNumber !== null) ||
-      downloadedOnly ||
       (mode === 'library' && subjectId !== null));
 
   /**
@@ -423,7 +374,7 @@ export default function LibraryView({
    */
   const showChips = filterable && (papers.length > 0 || narrowed);
 
-  const cardFor = (paper: PaperRow) => {
+  const cardFor = (paper: PaperRow, index: number) => {
     const key = paperKey(paper.subjectCode, paper.scode, paper.component);
     return (
       <PaperCard
@@ -431,30 +382,31 @@ export default function LibraryView({
         subject={paper.subjectName}
         subjectCode={paper.subjectCode}
         variant={paper.component}
+        scode={paper.scode}
         session={sessionLabel(paper.scode)}
         documents={documentsOf(paper)}
         band={bandFor(paper.difficulty)}
-        icon={<SubjectIcon code={paper.subjectCode} size={18} />}
+        steps={bandSteps(paper.difficulty)}
+        icon={<SubjectIcon code={paper.subjectCode} size={26} />}
+        index={index}
         marks={{
           bookmarked: marks.bookmarks.has(key),
           done: marks.done.has(key),
           revision: marks.revision.has(key),
         }}
-        // The card speaks Figma's word, `Bookmarked`; the store keeps its own set name.
         onMark={(m) => onMark(m === 'bookmarked' ? 'bookmarks' : m, key, paper)}
         onOpen={() => onOpen(paper)}
+        downloaded={Boolean(paper.qpPath)}
+        downloading={downloading.has(paper.id)}
+        onDownload={() => onDownload(paper)}
       />
     );
   };
 
-  /**
-   * A Recent row (§6): eight fixed slots, no card and no bookmark — "difficulty is the word
-   * alone", which the badge now says literally. The whole row is the button; the chevron is
-   * decoration on it.
-   */
   const rowFor = (paper: PaperRow) => {
     const key = paperKey(paper.subjectCode, paper.scode, paper.component);
     const band = bandFor(paper.difficulty);
+    const steps = bandSteps(paper.difficulty);
     const at = openedAt.get(key);
     return (
       <button
@@ -464,25 +416,42 @@ export default function LibraryView({
         title={`Open ${paper.subjectName} ${paper.subjectCode}/${paper.component}`}
         onClick={() => onOpen(paper)}
       >
-        <span className="lv-row-glyph">
-          <SubjectIcon code={paper.subjectCode} size={20} />
+        <SubjectIcon code={paper.subjectCode} size={18} />
+        <span className="lv-row-subject">{paper.subjectName}</span>
+        <span className="lv-row-code">
+          {paper.subjectCode} /{paper.component}
         </span>
-        <span className="lv-row-subject t-body-nav">{paper.subjectName}</span>
-        {/* One string, as the file writes it: `9706 /12`. */}
-        <span className="lv-row-code t-mono-meta">
-          {paper.subjectCode}
-          {` /${paper.component}`}
-        </span>
-        <span className="lv-row-session t-mono-small">{sessionLabel(paper.scode)}</span>
-        <span className="lv-row-strut" aria-hidden="true" />
-        <span className="lv-row-band t-label-difficulty" style={{ color: band.color }}>
+        <span className="lv-row-session">{sessionLabel(paper.scode)}</span>
+        <span />
+        <span className="lv-row-band">
+          <span className="lv-steps" aria-hidden="true">
+            {[1, 2, 3].map((n) => (
+              <i key={n} style={{ background: n <= steps ? band.color : undefined }} />
+            ))}
+          </span>
           {band.label}
         </span>
-        {/* Blank rather than guessed, for the undated snapshot the last bucket also allows for. */}
-        <span className="lv-row-elapsed t-mono-small">{at == null ? '' : elapsedLabel(at)}</span>
-        <Icon name="chev" className="lv-row-chev" />
+        <span className="lv-row-elapsed">{at == null ? '' : elapsedLabel(at)}</span>
+        <span aria-hidden="true">→</span>
       </button>
     );
+  };
+
+  const activeCount =
+    [level, season, mode === 'library' ? paperNumber : null, mode === 'library' ? activeSubject : null].filter((v) => v != null).length;
+  const summary = [
+    level,
+    season ? SEASONS.find((s) => s.key === season)?.label : null,
+    mode === 'library' && paperNumber != null ? `P${paperNumber}` : null,
+    mode === 'library' ? activeSubject?.name : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const clearAll = () => {
+    onLevel(null);
+    onSeason(null);
+    onPaperNumber(null);
+    onSubject(null);
   };
 
   return (
@@ -490,160 +459,145 @@ export default function LibraryView({
       <div className="lv">
         {error && <Notice className="lv-error">{error}</Notice>}
 
-        {/* `lib` is authored `gap: 0` and pays for all of its vertical rhythm in per-child padding
-            (TRAP 5). Recent is the exception — its own content frame carries `gap: 16`. */}
-        <div className="lv-body" data-mode={mode}>
-          {week && papers.length > 0 && (
-            <div className="lv-head">
-              <span className="lv-head-stat t-body-small">
-                {plural(week.opened, 'paper')} opened in the last 7 days
-                {' · '}
-                {focusLabel(week.minutes)} focused
-              </span>
-              <span className="lv-head-strut" aria-hidden="true" />
-              <SegmentedControl
-                items={RECENT_VIEWS}
-                value={asCards ? 0 : 1}
-                onChange={(v) => setAsCards(v === 0)}
-                label="Recent layout"
-              />
+        {week && papers.length > 0 && (
+          <div className="lv-head">
+            <span>
+              {plural(week.opened, 'paper')} opened in the last 7 days · {focusLabel(week.minutes)} focused
+            </span>
+            <span className="lv-strut" />
+            <div className="lv-toggle" role="group" aria-label="Recent layout">
+              <button type="button" aria-pressed={asCards} title="Show as cards" onClick={() => setAsCards(true)}>
+                <i className="lv-toggle-cards" />
+              </button>
+              <button type="button" aria-pressed={!asCards} title="Show as a list" onClick={() => setAsCards(false)}>
+                <i className="lv-toggle-list" />
+              </button>
             </div>
-          )}
+          </div>
+        )}
 
-          {showChips && (
-            <div className="lv-filters">
-              <FilterDropdown
-                label="Level"
-                value={level}
-                valueLabel={level ?? 'All levels'}
-                palette={level && level in LEVEL_PALETTE ? LEVEL_PALETTE[level as keyof typeof LEVEL_PALETTE] : undefined}
-                items={[
-                  { value: null, label: 'All levels' },
-                  ...LEVELS.map((l) => ({ value: l, label: l, palette: LEVEL_PALETTE[l] })),
-                ]}
-                onChange={onLevel}
-              />
-
-              <span className="lv-chip-strut" aria-hidden="true" />
-
-              <FilterDropdown
-                label="Season"
-                value={season}
-                valueLabel={SEASONS.find((s) => s.key === season)?.label ?? 'All seasons'}
-                palette={SEASONS.find((s) => s.key === season)?.palette}
-                icon={seasonKeyOf(season) ? <SeasonIcon season={seasonKeyOf(season)!} /> : undefined}
-                items={[
-                  { value: null, label: 'All seasons' },
-                  ...SEASONS.map((s) => ({
-                    value: s.key,
-                    label: s.label,
-                    palette: s.palette,
-                    icon: <SeasonIcon season={s.key} />,
-                  })),
-                ]}
-                onChange={onSeason}
-              />
-
-              {mode === 'library' && paperNumbers.length > 0 && (
-                <>
-                  <span className="lv-chip-strut" aria-hidden="true" />
-                  <FilterDropdown
-                    label="Paper"
-                    value={paperNumber}
-                    valueLabel={paperNumber !== null ? `P${paperNumber}` : 'All papers'}
-                    items={[
-                      { value: null, label: 'All papers' },
-                      ...paperNumbers.map((p) => ({ value: p, label: `Paper ${p} (P${p})` })),
-                    ]}
-                    onChange={onPaperNumber}
-                  />
-                </>
+        {showChips && (
+          <div className="lv-filters">
+            <div className="lv-filterbar">
+              <button type="button" className="lv-filters-btn" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((o) => !o)}>
+                Filters
+                {activeCount > 0 && <span className="lv-filters-count">{activeCount}</span>}
+                <i className="lv-chev" data-open={filtersOpen ? 'true' : undefined} />
+              </button>
+              {!filtersOpen && <span className="lv-summary">{summary || 'All papers'}</span>}
+              {activeCount > 0 && (
+                <button type="button" className="lv-clear" onClick={clearAll}>
+                  Clear all
+                </button>
               )}
+            </div>
 
-              {/* Bookmarks heads its groups by subject, so a subject chip there would only repeat
-                  what the headers say — and `App` never narrows a snapshot list by it. */}
-              {mode === 'library' && activeSubject && (
-                <Chip
-                  label={activeSubject.name}
-                  code={activeSubject.code}
-                  filled
-                  onClose={() => onSubject(null)}
-                />
-              )}
-
-              {/* The catalogue lists every paper Cambridge has published for these subjects,
-                  most of which are not on this machine. This chip is how you get back to the
-                  much smaller set you actually have — the nearest thing to what the whole
-                  library used to be before it came from the network. */}
-              {mode === 'library' && (
-                <Chip
-                  label="Downloaded"
-                  icon={<Icon name="folder" />}
-                  filled={downloadedOnly}
-                  onClick={() => onDownloadedOnly(!downloadedOnly)}
-                />
-              )}
-
-              {mode === 'library' &&
-                MARK_CHIPS.some((m) => marks[m.name].size > 0) && (
-                  <span className="lv-chip-strut" aria-hidden="true" />
-                )}
-              {mode === 'library' &&
-                MARK_CHIPS.filter((m) => marks[m.name].size > 0).map((m) => (
-                  <Chip
-                    key={m.name}
-                    label={m.label}
-                    code={String(marks[m.name].size)}
-                    icon={<Icon name={m.icon} />}
-                    onClick={() => onMarkFilter(m.name)}
-                  />
+            {filtersOpen && (
+              <div className="lv-chips">
+                <button type="button" className="lv-chip" aria-pressed={level == null} onClick={() => onLevel(null)}>
+                  All levels
+                </button>
+                {LEVELS.map((l) => (
+                  <button key={l} type="button" className="lv-chip" aria-pressed={level === l} onClick={() => onLevel(level === l ? null : l)}>
+                    {l}
+                  </button>
                 ))}
+                <span className="lv-gap" />
+                {SEASONS.map((s) => (
+                  <button
+                    key={s.key}
+                    type="button"
+                    className="lv-chip lv-chip--season"
+                    aria-pressed={season === s.key}
+                    style={season === s.key ? { background: SEASON_TINT[s.key], color: 'var(--ink)' } : undefined}
+                    onClick={() => onSeason(season === s.key ? null : s.key)}
+                  >
+                    <SeasonIcon season={s.key} size={18} />
+                    {s.label}
+                  </button>
+                ))}
+                {mode === 'library' && paperNumbers.length > 0 && (
+                  <>
+                    <span className="lv-gap" />
+                    <div className="lv-papers" role="group" aria-label="Paper number">
+                      <span>Paper</span>
+                      {paperNumbers.map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          aria-pressed={paperNumber === n}
+                          title={`Paper ${n} (P${n})`}
+                          onClick={() => onPaperNumber(paperNumber === n ? null : n)}
+                        >
+                          P{n}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {mode === 'library' && activeSubject && (
+                  <button type="button" className="lv-subject" onClick={() => onSubject(null)} title="Clear the subject">
+                    {activeSubject.name}
+                    <span className="lv-subject-code">{activeSubject.code}</span>
+                    <span aria-hidden="true">✕</span>
+                  </button>
+                )}
+                {mode === 'library' && MARK_CHIPS.some((m) => marks[m.name].size > 0) && <span className="lv-gap" />}
+                {mode === 'library' &&
+                  MARK_CHIPS.filter((m) => marks[m.name].size > 0).map((m) => (
+                    <button key={m.name} type="button" className="lv-chip" onClick={() => onMarkFilter(m.name)}>
+                      {m.glyph} {m.label}
+                      <span className="lv-chip-count">{marks[m.name].size}</span>
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {bareMark && (
+          <div className="lv-filters">
+            <div className="lv-filterbar">
+              <button type="button" className="lv-chip" onClick={() => onMarkFilter(null)}>
+                ← All papers
+              </button>
+              <button type="button" className="lv-subject" onClick={() => onMarkFilter(null)}>
+                {FILTER_LABEL[bareMark]}
+                <span className="lv-subject-code">{total}</span>
+                <span aria-hidden="true">✕</span>
+              </button>
             </div>
-          )}
+          </div>
+        )}
 
-          {bareMark && (
-            <div className="lv-filters">
-              <Chip
-                label="All papers"
-                icon={<Icon name="left" />}
-                onClick={() => onMarkFilter(null)}
-              />
-              <Chip
-                label={FILTER_LABEL[bareMark]}
-                code={String(total)}
-                filled
-                onClose={() => onMarkFilter(null)}
-              />
+        {loading && (
+          <p className="lv-status" role="status">
+            Reading the index…
+          </p>
+        )}
+
+        {!loading && total === 0 && (
+          <div className="lv-empty">
+            <Mascot size={108} mood="empty" />
+            <span className="lv-empty-head">{empty.head}</span>
+            <span className="lv-empty-detail">{empty.detail}</span>
+          </div>
+        )}
+
+        {groups.map((group) => (
+          <section className="lv-group" key={group.id} aria-label={group.label}>
+            <div className="lv-group-head">
+              <span className="lv-group-label">{group.label}</span>
+              <span className="lv-group-meta">{group.meta}</span>
+              <i />
             </div>
-          )}
-
-          {loading && (
-            <p className="lv-status t-body-meta" role="status">
-              Reading the index…
-            </p>
-          )}
-
-          {!loading && total === 0 && (
-            <div className="lv-empty">
-              <p className="lv-empty-head t-body-strong">{empty.head}</p>
-              <p className="lv-empty-detail t-body-meta">{empty.detail}</p>
-            </div>
-          )}
-
-          {groups.map((group) => (
-            <section className="lv-group" key={group.id} aria-label={group.label}>
-              <SectionLabel label={group.label} meta={group.meta} />
-              {mode === 'recent' && !asCards ? (
-                /* §6's `list <BUCKET>` IS the grouped-list card of §6.2 — `--card` on a 1px
-                   `--card-brd` at radius 13, zero padding, zero gap, clipped so the end rows
-                   corner-clip. That recipe is `<Card rows>`; restating it here would fork it. */
-                <Card rows>{group.rows.map(rowFor)}</Card>
-              ) : (
-                <div className="lv-grid">{group.rows.map(cardFor)}</div>
-              )}
-            </section>
-          ))}
-        </div>
+            {mode === 'recent' && !asCards ? (
+              <div className="lv-list">{group.rows.map(rowFor)}</div>
+            ) : (
+              <div className="lv-grid">{group.rows.map(cardFor)}</div>
+            )}
+          </section>
+        ))}
       </div>
     </div>
   );

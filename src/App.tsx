@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Sprite from './components/Sprite';
 import Sidebar, { type View } from './components/Sidebar';
 import TopBar from './components/TopBar';
@@ -158,6 +158,28 @@ export default function App() {
   const [resetting, setResetting] = useState(false);
 
   const [splash, setSplash] = useState<SplashPhase>('splash');
+
+  /**
+   * The download toast (Bell App v2): Hush carries the paper home while the bar fills, then celebrates
+   * "On your disk." A failure clears it and leaves the library's own error notice to explain.
+   */
+  const [toast, setToast] = useState<{ phase: 'dl' | 'done'; label: string } | null>(null);
+  const toastTimer = useRef<number | undefined>(undefined);
+  const fetchPaper = useCallback(
+    async (paper: PaperRow) => {
+      window.clearTimeout(toastTimer.current);
+      setToast({ phase: 'dl', label: `${paper.subjectName} ${paper.subjectCode} /${paper.component}` });
+      const path = await lib.download(paper.id, 'qp');
+      if (!path) return setToast(null);
+      setToast({ phase: 'done', label: 'Works offline now. Solve when ready.' });
+      toastTimer.current = window.setTimeout(() => setToast(null), 2800);
+    },
+    [lib],
+  );
+  const downloadingIds = useMemo(
+    () => new Set(Object.values(lib.downloading).filter((d) => d.kind === 'qp').map((d) => d.paperId)),
+    [lib.downloading],
+  );
 
   /**
    * The sidebar mascot's mood. Failures, tone changes, direct interaction, active work, successful
@@ -599,6 +621,16 @@ export default function App() {
           commands={commands}
         />
 
+        {toast && (
+          <div className="sk-toast" role="status" key={toast.phase}>
+            <Mascot size={76} mood={toast.phase === 'dl' ? 'download' : 'done'} />
+            <div className="sk-toast__text">
+              <b>{toast.phase === 'dl' ? 'Carrying it home…' : 'On your disk.'}</b>
+              <span>{toast.label}</span>
+            </div>
+          </div>
+        )}
+
         <UpdateCorner
           state={up.state}
           onDownload={() => void up.download()}
@@ -895,8 +927,8 @@ export default function App() {
             onPaperNumber={lib.setPaperNumber}
             subjectId={lib.subjectId}
             onSubject={lib.setSubjectId}
-            downloadedOnly={lib.downloadedOnly}
-            onDownloadedOnly={lib.setDownloadedOnly}
+            onDownload={(paper) => void fetchPaper(paper)}
+            downloading={downloadingIds}
             marks={study.marks}
             onMark={study.toggleMark}
             markFilter={study.markFilter}
