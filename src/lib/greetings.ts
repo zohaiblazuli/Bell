@@ -31,15 +31,12 @@ const SUN = 0, MON = 1, TUE = 2, WED = 3, THU = 4, FRI = 5, SAT = 6;
 const ANY: readonly number[] = [];
 const WEEKEND = [SAT, SUN];
 
-const CLAUDE_PRODUCT = 'Names Claude — it is claude.ai talking about itself.';
-const CHAT_PROMPT = 'An invitation to reply — natural in a chatbot, but Bell has nowhere to answer.';
-
 export const GREETINGS: readonly Greeting[] = [
   // Morning, 06–12.
   { text: 'Good morning, {name}', bare: 'Good morning', slot: 'morning', days: ANY },
   { text: 'Welcome, {name}', bare: 'Welcome', slot: 'morning', days: ANY },
   { text: 'Hey there, {name}', bare: 'Hey there', slot: 'morning', days: ANY },
-  { text: 'Coffee and Claude time?', slot: 'morning', days: ANY, flag: { kind: 'hold', why: CLAUDE_PRODUCT } },
+  { text: 'Coffee & past paper time?', slot: 'morning', days: ANY },
   { text: 'Happy Monday, {name}', bare: 'Happy Monday', slot: 'morning', days: [MON] },
   { text: 'Happy Tuesday, {name}', bare: 'Happy Tuesday', slot: 'morning', days: [TUE] },
   { text: 'Happy Wednesday, {name}', bare: 'Happy Wednesday', slot: 'morning', days: [WED] },
@@ -47,7 +44,7 @@ export const GREETINGS: readonly Greeting[] = [
   { text: 'Happy Friday, {name}', bare: 'Happy Friday', slot: 'morning', days: [FRI] },
   { text: 'That Friday feeling, {name}', bare: 'That Friday feeling', slot: 'morning', days: [FRI] },
   { text: 'Welcome to the weekend, {name}', bare: 'Welcome to the weekend', slot: 'morning', days: WEEKEND },
-  { text: 'What’s on your mind, {name}?', bare: 'What’s on your mind?', slot: 'morning', days: WEEKEND, flag: { kind: 'note', why: CHAT_PROMPT } },
+  { text: 'Which paper first, {name}?', bare: 'Which paper first?', slot: 'morning', days: WEEKEND },
   { text: 'Happy Saturday, {name}', bare: 'Happy Saturday!', slot: 'morning', days: [SAT] },
   { text: 'Sunday session, {name}?', bare: 'Sunday session?', slot: 'morning', days: [SUN] },
   { text: 'Happy Sunday, {name}', bare: 'Happy Sunday', slot: 'morning', days: [SUN] },
@@ -55,19 +52,19 @@ export const GREETINGS: readonly Greeting[] = [
   // Afternoon, 12–17.
   { text: 'Good afternoon, {name}', bare: 'Good afternoon', slot: 'afternoon', days: ANY },
   { text: 'Afternoon, {name}', bare: 'Afternoon', slot: 'afternoon', days: ANY },
-  { text: 'Hi {name}, how are you?', bare: 'Hi, how are you?', slot: 'afternoon', days: ANY, flag: { kind: 'note', why: CHAT_PROMPT } },
-  { text: 'What’s new, {name}?', bare: 'What’s new?', slot: 'afternoon', days: ANY, flag: { kind: 'note', why: CHAT_PROMPT } },
+  { text: 'Hi {name}, how are you?', bare: 'Hi, how are you?', slot: 'afternoon', days: ANY },
+  { text: 'What’s on the list today, {name}?', bare: 'What’s on the list today?', slot: 'afternoon', days: ANY },
   { text: 'Back at it, {name}', bare: 'Back at it!', slot: 'afternoon', days: ANY },
 
   // Evening, 17–21.
   { text: '{name} returns!', bare: 'Back at it!', slot: 'evening', days: ANY },
   { text: 'Good evening, {name}', bare: 'Good evening', slot: 'evening', days: ANY },
   { text: 'Evening, {name}', bare: 'Evening', slot: 'evening', days: ANY },
-  { text: 'How was your day, {name}?', bare: 'How was your day?', slot: 'evening', days: ANY, flag: { kind: 'note', why: CHAT_PROMPT } },
+  { text: 'How was your day, {name}?', bare: 'How was your day?', slot: 'evening', days: ANY },
 
   // Night, 21–06.
-  { text: 'How’s it going, {name}?', bare: 'How’s it going?', slot: 'night', days: ANY, flag: { kind: 'note', why: CHAT_PROMPT } },
-  { text: 'What’s on your mind tonight?', slot: 'night', days: ANY, flag: { kind: 'note', why: CHAT_PROMPT } },
+  { text: 'How’s it going, {name}?', bare: 'How’s it going?', slot: 'night', days: ANY },
+  { text: 'One more paper tonight?', slot: 'night', days: ANY },
   { text: 'Hello, night owl', slot: 'night', days: ANY },
 ];
 

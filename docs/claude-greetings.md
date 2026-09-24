@@ -76,4 +76,12 @@ Bell's home page greeting uses this table. The code is in `src/lib/greetings.ts`
 - The name comes from onboarding and is used exactly as typed.
 - Hours are start-inclusive and end-exclusive.
 - A new greeting is drawn when the slot, the weekday or the name changes. It avoids the greeting shown last time.
-- The incognito greetings are left out because Bell has no incognito mode.
+- The incognito greetings ("Greetings, whoever you are", "Let's chat incognito") are dropped because Bell has no incognito mode.
+- Some greetings are reworded for studying:
+
+| claude.ai | Bell |
+|---|---|
+| Coffee and Claude time? | Coffee & past paper time? |
+| What's on your mind, {name}? | Which paper first, {name}? |
+| What's new, {name}? | What's on the list today, {name}? |
+| What's on your mind tonight? | One more paper tonight? |

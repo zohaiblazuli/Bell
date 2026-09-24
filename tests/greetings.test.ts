@@ -39,11 +39,11 @@ describe('greetingsFor — slot, weekday, and holds', () => {
     assert.ok(!texts(at(MON, 14)).includes('Happy Monday, {name}'));
   });
 
-  test('held greetings never enter the draw', () => {
+  test('held greetings never enter the draw; the rest do', () => {
     for (let h = 0; h < 24; h++) {
       assert.ok(greetingsFor(at(MON, h)).every((g) => g.flag?.kind !== 'hold'));
     }
-    assert.ok(!texts(at(MON, 9)).includes('Coffee and Claude time?'));
+    assert.ok(texts(at(MON, 9)).includes('Coffee & past paper time?'));
   });
 
   test('every hour of every day has something to say', () => {
