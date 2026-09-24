@@ -20,9 +20,16 @@
 }
 @keyframes splash-ring { 0% { opacity: 0; transform: scale(1); } 15% { opacity: 1; } 100% { opacity: 0; transform: scale(4); } }
 @keyframes splash-look { 0%, 100% { transform: none; } 20%, 70% { transform: translateX(.04em); } }
-@keyframes splash-fly { from { transform: none; } to { transform: var(--fly, scale(.283)); } }
+@keyframes splash-flood { 0% { opacity: 0; } 1% { opacity: 1; transform: scale(1); } 100% { opacity: 1; transform: scale(var(--flood, 160)); } }
 @keyframes splash-out { from { opacity: 1; } to { opacity: 0; visibility: hidden; } }
-@keyframes splash-win-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes splash-hush-up { 0% { transform: translateY(90px); } 70% { transform: translateY(-6px); } 100% { transform: none; } }
+@keyframes splash-bubble {
+  0% { opacity: 0; transform: scale(.2) rotate(-10deg); }
+  60% { opacity: 1; transform: scale(1.08) rotate(2deg); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes splash-dot-hop { 0%, 60%, 100% { transform: none; } 30% { transform: translateY(-4px); } }
+@keyframes splash-bob { 0%, 100% { transform: none; } 50% { transform: translateY(-3px) rotate(-1deg); } }
 
 .splash {
   position: fixed;
@@ -31,20 +38,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   background: transparent;
   cursor: default;
 }
+/* Handoff times below are seconds from 4.9s, when the flood starts. The blue lifts away 0.5–0.9s, over
+   an app that opened under it at 0.4s. */
 .splash[data-phase='handoff'] {
   pointer-events: none;
-  /* The splash lockup lands at 0.8+0.3s and hands over to the sidebar's own logo at 1.1s. */
-  animation: splash-out .02s 1.1s both;
-}
-
-.splash__flight {
-  transform-origin: 50% 50%;
-}
-.splash[data-phase='handoff'] .splash__flight {
-  animation: splash-fly .8s cubic-bezier(.6, 0, .2, 1) .3s both;
+  animation: splash-out .4s ease .5s both;
 }
 
 .splash__lockup {
@@ -169,36 +171,77 @@
   background: var(--sk-blue);
   animation: splash-dot-tap .56s cubic-bezier(.3, .7, .3, 1) 3.6s both;
 }
+/* A second full stop over the first, which grows until the window is blue. `--flood` is measured in
+   Splash.tsx off the window's size. */
+.splash__flood {
+  background: var(--sk-blue);
+  opacity: 0;
+}
+.splash[data-phase='handoff'] .splash__flood {
+  animation: splash-flood .5s cubic-bezier(.7, 0, .9, .6) both;
+}
 
-/* The app, held out during the splash and opened behind it at the handoff. The sidebar's own logo
-   appears the frame the flying one lands, Home rises, and Hush's bubble pops once it is all over. */
+/* The app, held out during the splash and opened under the blue at the handoff. The sidebar's logo
+   appears as the blue thins, the nav and Home rise, then Hush comes up into his corner and his bubble
+   pops, shows typing dots and types the greeting (the typing itself is `useTyped` in Sidebar). Every
+   fill is `backwards`: each ends on its natural frame, and the handoff runs on for ~2s after, which a
+   held transform would spend trapping any dialog raised inside the stage (DESIGN.md). */
 .app[data-startup='splash'] {
   opacity: 0;
   pointer-events: none;
 }
 .app[data-startup='handoff'] {
-  animation: splash-win-in .5s cubic-bezier(.2, .8, .2, 1) both;
-}
-.app[data-startup='splash'] .sk-side__lockup,
-.app[data-startup='handoff'] .sk-side__lockup {
-  opacity: 0;
+  animation: sk-fade .02s .4s backwards;
 }
 .app[data-startup='handoff'] .sk-side__lockup {
-  animation: sk-fade .02s 1.02s both;
+  animation: sk-fade .02s .62s backwards;
+}
+.app[data-startup='handoff'] .sk-side > :not(.sk-side__brand, .sk-side__foot),
+.app[data-startup='handoff'] .sk-side__foot > :not(.sk-hush) {
+  animation: sk-rise .64s cubic-bezier(.2, .8, .2, 1) .46s backwards;
 }
 .app[data-startup='handoff'] .app-stage {
-  animation: sk-rise .72s cubic-bezier(.2, .8, .2, 1) .94s both;
+  animation: sk-rise .72s cubic-bezier(.2, .8, .2, 1) .54s backwards;
 }
-.app:not([data-startup='done']) .sk-hush__bubble {
-  opacity: 0;
+/* He rises from behind the bottom edge of his own row, so nothing below it is drawn over. */
+.app[data-startup='handoff'] .sk-hush {
+  clip-path: inset(-200px -200px 0 -200px);
 }
-.app[data-startup='done'] .sk-hush__bubble {
-  transform-origin: 0 100%;
-  animation: sk-pop .48s cubic-bezier(.2, .8, .2, 1) .5s both;
+.app[data-startup='handoff'] .sk-hush > .hush {
+  animation: splash-hush-up .8s cubic-bezier(.2, .8, .2, 1) 1.02s backwards;
+}
+.app[data-startup='handoff'] .sk-hush__bubble {
+  transform-origin: 14px 130%;
+  animation: splash-bubble .5s cubic-bezier(.2, .8, .2, 1) 1.58s backwards;
+}
+.sk-hush__dots {
+  display: none;
+}
+.app[data-startup='handoff'] .sk-hush__dots {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  animation: splash-out .15s 2.25s both;
+}
+.sk-hush__dots > i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: splash-dot-hop .6s ease-in-out 1.8s infinite;
+}
+.sk-hush__dots > i:nth-child(2) { animation-delay: 1.9s; }
+.sk-hush__dots > i:nth-child(3) { animation-delay: 2s; }
+/* Once he has said it, the bubble keeps floating gently. */
+.app[data-startup='done'][data-motion='on'] .sk-hush__bubble {
+  animation: splash-bob 2.8s ease-in-out infinite;
 }
 
-/* Reduced motion (OS or Settings): no build, no flight — the finished lockup shows briefly and the
-   app appears. The splash sits outside `.app`, so it carries its own flag. */
+/* Reduced motion (OS or Settings): no build, no flood — the finished lockup shows briefly and the
+   app appears, with Hush and his whole line already in place. The splash sits outside `.app`, so it carries its own flag. */
 .splash[data-reduced] *,
 .splash[data-reduced][data-phase='handoff'] {
   animation: none !important;
@@ -210,8 +253,15 @@
   .app[data-startup] {
     animation: none !important;
   }
+  .app[data-startup] .sk-hush__dots {
+    display: none;
+  }
 }
-.app[data-startup][data-motion='off'] .sk-side__lockup,
-.app[data-startup][data-motion='off'] .sk-hush__bubble {
-  opacity: 1;
+.app:not([data-startup='done'])[data-motion='off'],
+.app:not([data-startup='done'])[data-motion='off'] .sk-side *,
+.app:not([data-startup='done'])[data-motion='off'] .app-stage {
+  animation: none !important;
+}
+.app[data-startup][data-motion='off'] .sk-hush__dots {
+  display: none;
 }
