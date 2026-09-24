@@ -143,6 +143,34 @@
 @keyframes sk-ear-flap-l { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-24deg); } }
 @keyframes sk-ear-flap-r { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(24deg); } }
 
+/* star gate */
+@keyframes sk-twinkle {
+  0%, 100% { transform: scale(.6) rotate(0); opacity: .4; }
+  50% { transform: scale(1.15) rotate(40deg); opacity: 1; }
+}
+@keyframes sk-sg-spin { 0%, 60% { transform: rotate(0); } 100% { transform: rotate(360deg); } }
+@keyframes sk-shake {
+  0%, 100% { transform: none; }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(7px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(2px); }
+}
+/* the same shake under a second name, so a repeated miss restarts it */
+@keyframes sk-shake-b {
+  0%, 100% { transform: none; }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(7px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(2px); }
+}
+@keyframes sk-sg-double { 0%, 100% { transform: none; } 25% { transform: rotate(-8deg); } 45% { transform: rotate(6deg) translateY(-4px); } }
+@keyframes sk-sg-hop {
+  0%, 100% { transform: none; }
+  30% { transform: translateY(-22px) scale(.95, 1.06); }
+  55% { transform: translateY(0) scale(1.08, .92); }
+}
+
 /* Theme switch — a circle reveal from the pressed sun/moon, run through the View Transitions API
  * (see state/themeTransition.ts). Default cross-fade off; the growing/shrinking layer is on top. */
 ::view-transition-old(root),

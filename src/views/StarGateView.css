@@ -1,4 +1,6 @@
-/* StarGateView — One-time GitHub Star verification gate for Bell */
+/* The star gate — Bell App v2. A full-screen paper ground with a rolled-in yellow sun, a blue
+   quarter swinging up from the corner and two twinkling stars; a single framed card (2px rule and
+   an 8px hard ink shadow) holds Hush, the ask, the ink repo button and the verify row. */
 
 .stargate {
   position: absolute;
@@ -9,189 +11,252 @@
   justify-content: center;
   align-items: center;
   padding: 24px;
+  overflow: hidden;
+  background: var(--ground);
+  color: var(--ink);
+  animation: sk-fade .3s ease both;
 }
 
-.stargate::before {
-  content: '';
+.stargate__sun {
   position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: var(--ground-veil);
-  opacity: 0.24;
+  left: -90px;
+  top: -90px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: var(--sk-yellow);
+  animation: sk-roll 1.1s cubic-bezier(.2, .8, .2, 1) both;
+}
+.stargate__quarter {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 200px;
+  height: 200px;
+  border-radius: 200px 0 0 0;
+  background: var(--sk-blue);
+  transform-origin: 100% 100%;
+  animation: sk-swing-up .8s cubic-bezier(.2, .8, .2, 1) .15s both;
+}
+
+.stargate__star {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: currentColor;
+  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+.stargate__twinkle {
+  position: absolute;
+  animation: sk-twinkle 2.4s ease-in-out infinite;
+}
+.stargate__twinkle--red {
+  right: 120px;
+  top: 90px;
+  width: 26px;
+  height: 26px;
+  color: var(--sk-red);
+}
+.stargate__twinkle--ink {
+  left: 150px;
+  bottom: 120px;
+  width: 18px;
+  height: 18px;
+  color: var(--ink);
+  animation-delay: 1.2s;
 }
 
 .stargate__lights {
   position: absolute;
-  left: 12px;
-  top: 14px;
-  z-index: 10;
+  right: 12px;
+  top: 12px;
+  z-index: 2;
 }
 
 .stargate__panel {
   position: relative;
   z-index: 1;
-  width: min(560px, 100%);
-  background: var(--card);
-  border: 1px solid var(--hair);
-  border-radius: 20px;
-  box-shadow: var(--shadow-win);
-  padding: 40px 36px 32px;
+  width: min(520px, 100%);
+  box-sizing: border-box;
+  padding: 30px 36px 28px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 16px;
   text-align: center;
-  box-sizing: border-box;
+  background: var(--card);
+  box-shadow: 0 0 0 2px var(--line), 8px 8px 0 var(--line);
+  animation: sk-stamp .5s cubic-bezier(.2, .8, .2, 1) .1s both;
 }
 
 .stargate__mascot {
-  margin-bottom: 4px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  margin-top: -4px;
   user-select: none;
 }
+.stargate__mascot[data-act='glint'] { animation: sk-hop .6s cubic-bezier(.2, .8, .2, 1) both; }
+.stargate__mascot[data-act='think'] { animation: sk-owl-tilt 1s ease-in-out infinite; }
+.stargate__mascot[data-act='hop'] { animation: sk-sg-hop .7s cubic-bezier(.3, 0, .3, 1) 2; }
+.stargate__mascot[data-act='dt'] { animation: sk-sg-double .6s ease-in-out both; }
 
 .stargate__header {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 24px;
-}
-
-.stargate__title {
-  color: var(--ink);
-  margin: 0;
-}
-
-.stargate__desc {
-  color: var(--ink-2);
-  margin: 0;
-  line-height: 1.5;
-  max-width: 440px;
-}
-
-.stargate__actions {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  align-items: center;
-}
-
-.stargate__star-btn {
-  width: 100%;
-  max-width: 380px;
-  display: flex;
-  justify-content: center;
-}
-
-.stargate__star-btn button {
-  width: 100%;
-  height: 42px;
-  font-size: 14px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   gap: 8px;
+}
+.stargate__title {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -.03em;
+  line-height: 1.1;
+}
+.stargate__desc {
+  margin: 0;
+  max-width: 44ch;
+  font-size: 14.5px;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.stargate__repo {
+  align-self: stretch;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--inkbg);
+  color: var(--onink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color .16s, color .16s, transform .16s;
+}
+.stargate__repo:hover {
+  background: var(--red);
+  color: var(--sk-cream);
+}
+.stargate__repo:active {
+  transform: translate(1px, 1px);
+}
+.stargate__spin {
+  display: block;
+  width: 16px;
+  height: 16px;
+  color: var(--sk-yellow);
+  animation: sk-sg-spin 3s cubic-bezier(.6, 0, .3, 1) infinite;
 }
 
 .stargate__divider {
-  width: 100%;
+  align-self: stretch;
   display: flex;
   align-items: center;
-  gap: 12px;
-  color: var(--ink-3);
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: .14em;
 }
-
-.stargate__divider::before,
-.stargate__divider::after {
-  content: '';
+.stargate__divider i {
   flex: 1;
-  height: 1px;
-  background: var(--hair);
+  height: 2px;
+  background: var(--line);
 }
 
 .stargate__verify-row {
-  width: 100%;
-  max-width: 420px;
+  align-self: stretch;
   display: flex;
   gap: 8px;
-  align-items: center;
 }
+.stargate__verify-row[data-shake='a'] { animation: sk-shake .45s ease both; }
+.stargate__verify-row[data-shake='b'] { animation: sk-shake-b .45s ease both; }
 
 .stargate__input-wrap {
   flex: 1;
-  position: relative;
-}
-
-.stargate__input {
-  width: 100%;
-  height: 40px;
-  box-sizing: border-box;
+  min-width: 0;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
   background: var(--ground);
-  border: 1px solid var(--hair);
-  border-radius: var(--r-btn);
-  padding: 0 12px 0 28px;
-  color: var(--ink);
-  font-family: var(--font-ui);
-  font-size: 13px;
-  outline: none;
-  transition: border-color 0.15s ease;
+  box-shadow: inset 0 0 0 2px var(--line);
+  transition: box-shadow .15s;
 }
-
-.stargate__input:focus {
-  border-color: var(--accent);
+.stargate__input-wrap[data-error='true'] {
+  box-shadow: inset 0 0 0 2px var(--red);
 }
-
+.stargate__input-wrap:focus-within {
+  box-shadow: inset 0 0 0 2px var(--blue);
+}
 .stargate__input-at {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--ink-3);
-  font-size: 13px;
-  pointer-events: none;
   font-family: var(--font-mono);
+  font-size: 14px;
+}
+.stargate__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+}
+.stargate__input::placeholder {
+  color: var(--mute);
 }
 
-.stargate__verify-btn {
-  height: 40px;
+.stargate__verify {
+  height: 44px;
+  min-width: 104px;
+  padding: 0 16px;
+  background: transparent;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--line);
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color .16s, color .16s;
+}
+.stargate__verify:hover:not(:disabled) {
+  background: var(--inkbg);
+  color: var(--onink);
+}
+.stargate__verify:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+.stargate__repo:focus-visible,
+.stargate__verify:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
 }
 
 .stargate__notice {
-  width: 100%;
-  max-width: 420px;
-  box-sizing: border-box;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 12px;
-  line-height: 1.4;
-  text-align: left;
+  align-self: stretch;
   display: flex;
+  gap: 10px;
   align-items: flex-start;
-  gap: 8px;
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.45;
+  box-shadow: inset 0 0 0 2px var(--line);
+  animation: sk-rise .25s cubic-bezier(.2, .8, .2, 1) both;
 }
-
-.stargate__notice--error {
-  background: rgba(220, 38, 38, 0.08);
-  border: 1px solid rgba(220, 38, 38, 0.25);
-  color: #dc2626;
+.stargate__notice i {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  margin-top: 4px;
 }
-
-.stargate__notice--success {
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  color: #16a34a;
-}
-
-.stargate__notice--info {
-  background: rgba(59, 130, 246, 0.08);
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  color: var(--accent);
-}
+.stargate__notice[data-type='success'] { background: var(--t-green); }
+.stargate__notice[data-type='success'] i { background: var(--green); border-radius: 50%; }
+.stargate__notice[data-type='error'] { background: var(--t-red); }
+.stargate__notice[data-type='error'] i { background: var(--red); }
+.stargate__notice[data-type='info'] { background: var(--t-blue); }
+.stargate__notice[data-type='info'] i { background: var(--blue); border-radius: 50%; }
