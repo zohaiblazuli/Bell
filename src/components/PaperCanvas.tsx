@@ -12,7 +12,7 @@
  */
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import { renderPage } from '../lib/pdf';
+import { renderPage, releaseCanvas } from '../lib/pdf';
 import { cropLayers, type ClipRect } from '../lib/clip';
 import {
   drawMarks,
@@ -121,6 +121,22 @@ export default function PaperCanvas({
     if (!canvas) return;
     drawMarks(canvas, draft.current ? [...marks, draft.current] : marks);
   }, [marks, size.cssWidth, size.cssHeight]);
+
+  // Free both backing stores when this page unmounts — it scrolled out of reach, or the tab closed.
+  // React drops the elements either way, but a detached canvas can hold its multi-MB bitmap until
+  // the GC runs; zeroing it (and cancelling any render still in flight) releases that now, which is
+  // what lets the webview shrink as you move through a paper rather than only when you close it.
+  useEffect(() => {
+    const pageEl = pageCanvas.current;
+    const inkEl = inkCanvas.current;
+    return () => {
+      if (pageEl) releaseCanvas(pageEl);
+      if (inkEl) {
+        inkEl.width = 0;
+        inkEl.height = 0;
+      }
+    };
+  }, []);
 
   function pointAt(e: ReactPointerEvent<HTMLCanvasElement>): Point {
     const rect = e.currentTarget.getBoundingClientRect();

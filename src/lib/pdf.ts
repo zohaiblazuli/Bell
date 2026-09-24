@@ -110,6 +110,23 @@ export async function renderPage(
   return { cssWidth, cssHeight };
 }
 
+/**
+ * Free a canvas's backing store now, and stop any render still drawing into it. Called when a page
+ * scrolls out of the reader and its `PaperCanvas` unmounts: React drops the element, but a detached
+ * canvas can keep its multi-megabyte bitmap resident until the GC next runs, and resizing it to 0×0
+ * releases that immediately. It is the difference between the webview shrinking as you scroll past
+ * pages and only shrinking when the tab is closed.
+ */
+export function releaseCanvas(canvas: HTMLCanvasElement): void {
+  const task = inFlight.get(canvas);
+  if (task) {
+    task.cancel();
+    inFlight.delete(canvas);
+  }
+  canvas.width = 0;
+  canvas.height = 0;
+}
+
 /** Extract every page's text as reconstructed lines, top to bottom. */
 export async function pdfTextLines(data: Uint8Array): Promise<string[]> {
   const { doc, close } = await openPdf(data);

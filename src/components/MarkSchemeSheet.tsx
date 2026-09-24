@@ -30,6 +30,7 @@ import Notice from '@ui/Notice';
 import IconButton from '@ui/IconButton';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import PaperCanvas from './PaperCanvas';
+import { useNearViewport } from './useNearViewport';
 import { openPdf } from '../lib/pdf';
 import type { InkSettings, Mark, PageInk, Tool } from '../lib/annotations';
 
@@ -52,19 +53,22 @@ const MIN_PAGE = 200;
  */
 const PANE_STEP = 16;
 
+/** One screen of slack around the pane — the same keep-zone the Reader's well uses. */
+const KEEP_MARGIN = '900px 0px';
+
 /**
- * One page, rasterised when it is close to being looked at.
- *
- * Not on mount: a mark scheme runs to twenty-odd pages and pdf.js has a single worker, so mounting
- * them all used to queue twenty renders at once and make the first page wait behind the twentieth.
- * Until a page is near, a blank `--paper` box of the A4 estimate holds its scroll height so nothing
- * jumps as pages render in — the same arrangement `ReaderPage` uses in the well.
+ * One page, rasterised while it is close to being looked at, and released once it scrolls out —
+ * `useNearViewport` flips both ways, so a long mark scheme holds only the pages around the one on
+ * screen instead of every page it has shown. Until a page is near, a blank `--paper` box of the A4
+ * estimate holds its scroll height so nothing jumps as pages render in — the same arrangement
+ * `ReaderPage` uses in the well. `tabActive` releases the sheet's pages when its tab is not on screen.
  *
  * A failure is reported rather than swallowed. The `.catch(() => {})` this replaces is why a
  * destroyed document showed up as a column of blank sheets instead of an error — see the note on
  * the loader below, and `PaperCanvas`'s `onError`.
  */
 function MarkSchemePage({
+  tabActive,
   doc,
   page,
   width,
@@ -74,6 +78,7 @@ function MarkSchemePage({
   onCommit,
   onError,
 }: {
+  tabActive: boolean;
   doc: PDFDocumentProxy;
   page: number;
   width: number;
@@ -84,23 +89,12 @@ function MarkSchemePage({
   onError: (message: string) => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
-  const [near, setNear] = useState(page <= 2);
-
-  useEffect(() => {
-    if (near) return;
-    const el = box.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (el.closest('.app-tab-pane')?.getAttribute('data-active') === 'false') return;
-        if (entries.some((e) => e.isIntersecting)) setNear(true);
-      },
-      // A screen of slack, so a page is drawn just before it is scrolled to.
-      { root: el.closest('.rd-ms-body'), rootMargin: '600px 0px' },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [near]);
+  const near = useNearViewport(box, {
+    rootSelector: '.rd-ms-body',
+    margin: KEEP_MARGIN,
+    active: tabActive,
+    seed: page <= 2,
+  });
 
   return (
     <div ref={box} className="rd-ms-page" data-page={page}>
@@ -128,6 +122,12 @@ export interface Props {
   /** e.g. `9709/12 · s24` */
   label: string;
   open: boolean;
+  /**
+   * Whether the reader this sheet belongs to is the tab on screen. Passed to each page so a mark
+   * scheme in a background tab releases its canvases while keeping its scroll and state. Defaults to
+   * true. Note this is the tab's active flag, not `open`: a sheet can be open in a backgrounded tab.
+   */
+  tabActive?: boolean;
   onClose: () => void;
   /**
    * Read the bytes at `path`. A prop rather than a direct `readDocument` call because the Reader hands
@@ -153,6 +153,7 @@ export default function MarkSchemeSheet({
   path,
   label,
   open,
+  tabActive = true,
   onClose,
   read,
   tool,
@@ -308,6 +309,7 @@ export default function MarkSchemeSheet({
             Array.from({ length: doc.numPages }, (_, i) => i + 1).map((n) => (
               <MarkSchemePage
                 key={`${path ?? 'none'}-${n}`}
+                tabActive={tabActive}
                 doc={doc}
                 page={n}
                 width={width}

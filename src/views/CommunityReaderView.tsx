@@ -7,6 +7,7 @@ import Slider from '@ui/Slider';
 import type { Tone } from '@ui/TonePill';
 import FocusTimer from '../components/FocusTimer';
 import PaperCanvas from '../components/PaperCanvas';
+import { useNearViewport } from '../components/useNearViewport';
 import ClipPicker from '../components/ClipPicker';
 import TopBar from '../components/TopBar';
 import NotebookSheet from '../components/NotebookSheet';
@@ -38,6 +39,10 @@ const SHOW_CLIP_TOOL = false;
 const BASE_WIDTH = 720;
 const ZOOMS = [0.7, 0.85, 1, 1.2, 1.45, 1.75, 2.1];
 const THUMB_WIDTH = 96;
+
+/** One screen of slack around the well — a page is drawn just before it scrolls in and released
+ *  once it is this far past, so the reader holds only the pages around the one being read. */
+const KEEP_MARGIN = '900px 0px';
 
 const TOOLS: { tool: Tool; icon: IconName; label: string }[] = [
   { tool: 'pen', icon: 'pen', label: 'Pen' },
@@ -117,6 +122,7 @@ function PageThumb({
 }
 
 function ReaderPage({
+  tabActive,
   doc,
   page,
   width,
@@ -128,6 +134,7 @@ function ReaderPage({
   clipping,
   onClip,
 }: {
+  tabActive: boolean;
   doc: PDFDocumentProxy;
   page: number;
   width: number;
@@ -140,23 +147,12 @@ function ReaderPage({
   onClip: (png: Blob) => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
-  const [near, setNear] = useState(page <= 2);
-
-  useEffect(() => {
-    if (near) return;
-    const el = box.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (el.closest('.app-tab-pane')?.getAttribute('data-active') === 'false') return;
-        if (entries.some((e) => e.isIntersecting)) setNear(true);
-      },
-      // A screen of slack, so a page rasterises just before it is scrolled to.
-      { root: el.closest('.rd-well'), rootMargin: '600px 0px' },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [near]);
+  const near = useNearViewport(box, {
+    rootSelector: '.rd-well',
+    margin: KEEP_MARGIN,
+    active: tabActive,
+    seed: page <= 2,
+  });
 
   return (
     <div ref={box} className="rd-page" data-page={page}>
@@ -185,6 +181,8 @@ export interface Props {
   onBack: () => void;
   tone: Tone;
   onTone: () => void;
+  /** Whether this reader is the tab on screen; releases its pages when it is not. Defaults to true. */
+  tabActive?: boolean;
   busy?: boolean;
   onReindex?: () => void;
   onSearch?: () => void;
@@ -206,6 +204,7 @@ export default function CommunityReaderView({
   onBack,
   tone,
   onTone,
+  tabActive = true,
   busy,
   onReindex,
   onSearch,
@@ -647,6 +646,7 @@ export default function CommunityReaderView({
               Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
                 <ReaderPage
                   key={`${id}-${n}`}
+                  tabActive={tabActive}
                   doc={doc}
                   page={n}
                   width={width}

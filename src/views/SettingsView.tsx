@@ -218,6 +218,12 @@ export interface Props {
   settings: Settings;
   /** One key at a time: a row emits only what it changed, and App merges and saves. */
   onChange: (patch: Partial<Settings>) => void;
+  /**
+   * Choose the single series the student sits. Separate from `onChange` because picking a series
+   * also has to move the Dashboard's target sitting, which App owns — a season here is the same one
+   * choice onboarding makes, and the two must not disagree.
+   */
+  onSeries: (season: SeasonChoice) => void;
 
   /* ---- Library. The same props SetupView takes, which this screen retires. ---- */
   /** Where downloads land. Read-only: Rust owns it and it is never chosen from here. */
@@ -287,6 +293,7 @@ export interface Props {
 export default function SettingsView({
   settings,
   onChange,
+  onSeries,
   root,
   stats,
   busy,
@@ -343,17 +350,6 @@ export default function SettingsView({
   );
   /** The build line, wherever it appears. One expression, so the two places cannot disagree. */
   const buildLine = build ? `build ${build}` : null;
-
-  /**
-   * Keep the file's series order rather than the order the chips were pressed, so the Dashboard
-   * reads them the way the library filter row lists them.
-   */
-  const toggleSeries = (value: SeasonChoice) => {
-    const next = settings.seasons.includes(value)
-      ? settings.seasons.filter((s) => s !== value)
-      : [...settings.seasons, value];
-    onChange({ seasons: SERIES.filter((s) => next.includes(s.value)).map((s) => s.value) });
-  };
 
   return (
     <div className="view">
@@ -497,19 +493,15 @@ export default function SettingsView({
               {error ? <Notice className="set-notice">{error}</Notice> : null}
             </section>
 
-            <section className="set-group" aria-label="Exam sessions">
-              <SectionLabel label="Exam sessions" />
+            <section className="set-group" aria-label="Exam series">
+              <SectionLabel label="Exam series" />
               <Card rows>
-                {/* Multi-select: a candidate can sit more than one series, and the set drives the
-                    Dashboard's days-to-exam. Deselecting all is allowed and the helper says what it
-                    costs, rather than the row silently pinning a series the user does not sit. */}
+                {/* Single-select: the student sits one series, and it drives the Dashboard's
+                    days-to-exam. Picking one here moves the countdown's target sitting to match,
+                    so this row and onboarding's "which sitting" step can never disagree. */}
                 <CardRow
                   label="Series you sit"
-                  helper={
-                    settings.seasons.length > 0
-                      ? "Sets the Dashboard's days-to-exam countdown"
-                      : 'No series selected — the Dashboard has no countdown'
-                  }
+                  helper="Sets the Dashboard's days-to-exam countdown"
                 >
                   <span className="set-choice" role="group" aria-label="Series you sit">
                     {SERIES.map((s) => (
@@ -517,9 +509,9 @@ export default function SettingsView({
                         key={s.value}
                         label={s.label}
                         palette={s.palette}
-                        filled={settings.seasons.includes(s.value)}
+                        filled={settings.seasons[0] === s.value}
                         icon={<SeasonIcon season={s.value} />}
-                        onClick={() => toggleSeries(s.value)}
+                        onClick={() => onSeries(s.value)}
                       />
                     ))}
                   </span>

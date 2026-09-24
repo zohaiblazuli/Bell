@@ -34,6 +34,7 @@ import Slider from '@ui/Slider';
 import FocusTimer from '../components/FocusTimer';
 import MarkSchemeSheet from '../components/MarkSchemeSheet';
 import PaperCanvas from '../components/PaperCanvas';
+import { useNearViewport } from '../components/useNearViewport';
 import ClipPicker from '../components/ClipPicker';
 import WindowLights from '../components/WindowLights';
 import PageJumper from '../components/PageJumper';
@@ -71,6 +72,15 @@ const SHOW_CLIP_TOOL = true;
 /** The demo's page is 720 logical pixels wide; zoom multiplies that. */
 const BASE_WIDTH = 720;
 const ZOOMS = [0.7, 0.85, 1, 1.2, 1.45, 1.75, 2.1];
+
+/**
+ * How far outside the well a page stays rasterised. Roughly one screen of slack each way: a page is
+ * drawn just before it scrolls into view and released again once it is this far past, so the reader
+ * holds only the handful of pages around the one you are reading rather than every page you have
+ * scrolled through. Larger keeps more resident but re-renders less on a scroll back; smaller is
+ * leaner but flips more often. One screen is the balance the old preload margin already used.
+ */
+const KEEP_MARGIN = '900px 0px';
 
 /** §5's thumbnail sheet is 96 x 136 — and 96 × 1.414 lands on 136, so A4 fills it exactly. */
 const THUMB_WIDTH = 96;
@@ -119,6 +129,12 @@ const FEELINGS = [
 export interface Props {
   paper: PaperRow;
   onBack: () => void;
+  /**
+   * Whether this reader is the tab on screen. Inactive tabs are only hidden (visibility), not
+   * unmounted, so this is what lets a background reader release its rasterised pages while keeping
+   * its scroll position and state. Defaults to true for callers that render one reader at a time.
+   */
+  tabActive?: boolean;
   /** Focus mode lives on `.app`, because it also recedes the sidebar. */
   focus: boolean;
   onToggleFocus: () => void;
@@ -222,12 +238,14 @@ function PageThumb({
 }
 
 /**
- * One page in the continuous-scroll well. Rasterised only when near the viewport — pdf.js runs a
- * single worker, so mounting every page's canvas at once would queue the whole paper. Mirrors
- * `MarkSchemeSheet`'s per-page IntersectionObserver; until a page is near, a blank `--paper` box of
- * the A4 estimate holds its scroll height so nothing jumps as pages render in.
+ * One page in the continuous-scroll well. Rasterised only while near the viewport — pdf.js runs a
+ * single worker, so mounting every page's canvas at once would queue the whole paper. `useNearViewport`
+ * flips both ways, so a page that scrolls out of reach unmounts and frees its canvas; until a page is
+ * near, a blank `--paper` box of the A4 estimate holds its scroll height so nothing jumps as pages
+ * render in. `tabActive` releases the whole reader's pages when it is not the tab on screen.
  */
 function ReaderPage({
+  tabActive,
   doc,
   page,
   width,
@@ -239,6 +257,7 @@ function ReaderPage({
   clipping,
   onClip,
 }: {
+  tabActive: boolean;
   doc: PDFDocumentProxy;
   page: number;
   width: number;
@@ -251,23 +270,12 @@ function ReaderPage({
   onClip: (png: Blob) => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
-  const [near, setNear] = useState(page <= 2);
-
-  useEffect(() => {
-    if (near) return;
-    const el = box.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (el.closest('.app-tab-pane')?.getAttribute('data-active') === 'false') return;
-        if (entries.some((e) => e.isIntersecting)) setNear(true);
-      },
-      // A screen of slack, so a page rasterises just before it is scrolled to.
-      { root: el.closest('.rd-well'), rootMargin: '600px 0px' },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [near]);
+  const near = useNearViewport(box, {
+    rootSelector: '.rd-well',
+    margin: KEEP_MARGIN,
+    active: tabActive,
+    seed: page <= 2,
+  });
 
   return (
     <div ref={box} className="rd-page" data-page={page}>
@@ -294,6 +302,7 @@ function ReaderPage({
 export default function WorkspaceView({
   paper,
   onBack,
+  tabActive = true,
   focus,
   onToggleFocus,
   onDownload,
@@ -840,6 +849,7 @@ export default function WorkspaceView({
               Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
                 <ReaderPage
                   key={`${id}-${n}`}
+                  tabActive={tabActive}
                   doc={doc}
                   page={n}
                   width={width}
@@ -1091,6 +1101,7 @@ export default function WorkspaceView({
           path={msPath}
           label={`${code} · ${paper.scode}`}
           open={msOpen}
+          tabActive={tabActive}
           onClose={() => setMsOpen(false)}
           read={readMarkScheme}
           tool={armed ? tool : null}

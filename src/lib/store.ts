@@ -242,13 +242,18 @@ export function noteOpened(row: PaperRow) {
 /** The tone the user *chose*. `system` is an explicit opt-in; the product toggle is the default. */
 export type ToneChoice = 'day' | 'night' | 'system';
 
-/** Which CAIE series the user actually sits. Drives the Dashboard's days-to-exam. */
+/** The CAIE series the user sits — exactly one. Drives the Dashboard's days-to-exam. */
 export type SeasonChoice = 'm' | 's' | 'w';
 
 export interface Settings {
   tone: ToneChoice;
   /** Product-level twin of `prefers-reduced-motion`; either one collapses the motion. */
   reduceMotion: boolean;
+  /**
+   * The one series the student sits. Kept as a list — never more than one entry — so records saved
+   * by the old multi-select control still load, and so `nextWindow` (which filters by a set) needs
+   * no special case. The Settings and onboarding pickers both write a single-element array.
+   */
   seasons: SeasonChoice[];
   /** Default focus-session length in minutes, from the real CAIE durations. */
   focusMinutes: number;
@@ -271,7 +276,7 @@ export interface Settings {
 export const SETTINGS_DEFAULTS: Settings = {
   tone: 'day',
   reduceMotion: false,
-  seasons: ['m', 's', 'w'],
+  seasons: ['s'],
   focusMinutes: 90,
   focusAutostart: true,
   streakMinutes: 10,

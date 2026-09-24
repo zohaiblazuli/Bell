@@ -106,6 +106,23 @@ export function windowsFor(year: number): ExamWindow[] {
 }
 
 /**
+ * The window a session code names — `s27` -> May/June 2027 — or null if it is not a real
+ * `<season><yy>`. The two-digit year is read through the same 1980–2079 pivot `sessionLabel`
+ * (`difficulty.ts`) uses, so a target session recorded in onboarding resolves to exactly the window
+ * whose label the rest of the app already prints for that code. Built off `windowsFor`, so the
+ * `start`/`end`/`label`/`code` can never drift from the calendar the countdown and the grid share.
+ */
+export function windowForCode(code: string): ExamWindow | null {
+  const season = code[0]?.toLowerCase();
+  if (season !== 'm' && season !== 's' && season !== 'w') return null;
+  const yy = code.slice(1);
+  if (!/^\d{2}$/.test(yy)) return null;
+  const n = Number(yy);
+  const year = n >= 80 ? 1900 + n : 2000 + n;
+  return windowsFor(year).find((w) => w.season === season) ?? null;
+}
+
+/**
  * Every window that OVERLAPS the closed range `from`..`to`, in order. Overlap rather than
  * containment, because the activity grid's 53 weeks start and end mid-series and a half-visible
  * session still has to be shaded; clipping the band to the grid is the caller's job.

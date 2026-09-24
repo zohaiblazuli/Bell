@@ -53,7 +53,10 @@
 }
 
 /* All tab panes share the stage's one cell. Inactive tabs are hidden with visibility rather than
-   display: none so their layout boxes, scroll positions and rendered canvases stay intact. */
+   display: none so their layout boxes and scroll positions stay intact. The readers additionally
+   drop their rasterised page canvases while a tab is inactive (see useNearViewport's `active` gate),
+   so a background document holds no bitmaps; its scroll and state survive and its visible pages
+   re-render when it is shown again. */
 .app-tab-pane {
   grid-column: 1;
   grid-row: 1;

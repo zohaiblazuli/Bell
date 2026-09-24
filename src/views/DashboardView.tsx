@@ -4,7 +4,7 @@ import SubjectIcon from '@ui/icons/SubjectIcon';
 import Heatmap, { heatStats } from '@ui/shapekit/Heatmap';
 import Flame from '@ui/shapekit/Flame';
 import { sessionLabel } from '@/lib/difficulty';
-import { daysUntil, nextWindow, windowsBetween, type Season } from '@/lib/sessions';
+import { daysUntil, nextWindow, windowForCode, windowsBetween, type Season } from '@/lib/sessions';
 import {
   loadFocus,
   loadOnboarding,
@@ -47,7 +47,7 @@ export interface Props {
 const DAY_MS = 86_400_000;
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const SHORT_SEASON: Record<Season, string> = { m: 'Feb/Mar', s: 'May/Jun', w: 'Oct/Nov' };
+const SHORT_SEASON: Record<Season, string> = { m: 'Feb/Mar', s: 'May/June', w: 'Oct/Nov' };
 const COV_SEASON: Record<string, string> = { m: 'F/M', s: 'M/J', w: 'O/N' };
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
@@ -138,8 +138,21 @@ export default function DashboardView({ now, name, seasons, subjects, marks, onO
   const settings = useMemo(() => loadSettings(), []);
   const onboarding = useMemo(() => loadOnboarding(), []);
 
-  /* ---- the sitting ------------------------------------------------------ */
-  const sitting = useMemo(() => nextWindow(clock, seasons ?? settings.seasons), [clock, seasons, settings.seasons]);
+  /* ---- the sitting ------------------------------------------------------
+   * Onboarding's target session drives the countdown — its step 04 promises exactly that. Honour it
+   * while it is still ahead (`daysUntil` is >= 0 from the sitting's first day through its last), and
+   * only once it has passed, or was never chosen, fall back to the next series the student sits
+   * (`settings.seasons`). The explicit target wins over the season filter on purpose: it is the
+   * sitting they told us they are working towards.
+   */
+  const target = useMemo(
+    () => (onboarding.plan.session ? windowForCode(onboarding.plan.session) : null),
+    [onboarding.plan.session],
+  );
+  const sitting = useMemo(
+    () => (target && daysUntil(clock, target) >= 0 ? target : nextWindow(clock, seasons ?? settings.seasons)),
+    [target, clock, seasons, settings.seasons],
+  );
   const daysToExam = sitting ? daysUntil(clock, sitting) : null;
   const countdown = useCountdown(daysToExam);
 

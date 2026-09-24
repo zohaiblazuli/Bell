@@ -32,8 +32,8 @@ import { useCommunity } from './state/useCommunity';
 import { useTabs } from './state/useTabs';
 import { useWorkspace } from './state/useWorkspace';
 import { UPDATES_CONFIGURED } from './lib/updates';
-import { windowsBetween } from './lib/sessions';
-import { loadRecent, todayFocusMinutes, type MarkFilter } from './lib/store';
+import { nextWindow, windowsBetween } from './lib/sessions';
+import { loadRecent, todayFocusMinutes, type MarkFilter, type SeasonChoice } from './lib/store';
 import { hushLine } from './lib/hushLines';
 import type { PaperRow } from './lib/types';
 import type { CommunityResource } from './lib/community';
@@ -143,6 +143,38 @@ export default function App() {
     [onboarding.subjects, lib.subjects, prefs],
   );
   const study = useStudyState();
+
+  /**
+   * The one series the student sits, chosen from Settings. It moves the two records that must agree:
+   * the stored series (`settings.seasons`, the Dashboard's fallback) and the target sitting the
+   * countdown actually reads (`onboarding.plan.session` — set here to that series' next window, so a
+   * change is visible on the Dashboard at once). Onboarding writes the same pair from its own step 04.
+   */
+  const chooseSeries = useCallback(
+    (season: SeasonChoice) => {
+      prefs.patchSettings({ seasons: [season] });
+      const next = nextWindow(new Date(), [season]);
+      prefs.answerOnboarding('plan', { ...onboarding.plan, session: next?.code ?? null });
+    },
+    [prefs, onboarding.plan],
+  );
+
+  /**
+   * Onboarding's own answer sink, plus one mirror: when its step 04 picks a target sitting, its
+   * season becomes the stored series too, so the Settings "Series you sit" row shows what was chosen
+   * there. The exact sitting (year and all) stays on `plan.session`; only the season is mirrored.
+   */
+  const answerOnboarding = useCallback(
+    <K extends keyof typeof onboarding>(key: K, value: (typeof onboarding)[K]) => {
+      prefs.answerOnboarding(key, value);
+      if (key === 'plan') {
+        const season = (value as (typeof onboarding)['plan']).session?.[0];
+        if (season === 'm' || season === 's' || season === 'w') prefs.patchSettings({ seasons: [season] });
+      }
+    },
+    [prefs, onboarding],
+  );
+
   const up = useUpdates(settings.updateAuto, lib.setError);
   /* × / Later on the update corner hides it for the phase it was in; any change of phase (a finished
      download, a fresh manual check) clears that and brings the panel back. */
@@ -537,7 +569,7 @@ export default function App() {
         <div className="app app-bare" data-startup={splash} data-view="onboarding" data-tone={tone} data-motion={motion}>
           <OnboardingView
             answers={onboarding}
-            onAnswer={prefs.answerOnboarding}
+            onAnswer={answerOnboarding}
             subjects={lib.subjects}
             levels={lib.stats?.levels ?? []}
             sessions={planSessions}
@@ -740,6 +772,7 @@ export default function App() {
             <div className="main">
               <WorkspaceView
                 paper={tab.paper}
+                tabActive={isSelected}
                 focus={focusMode}
                 onToggleFocus={() => setFocusMode((f) => !f)}
                 onBack={() => {
@@ -774,6 +807,7 @@ export default function App() {
                 resource={tab.community}
                 tone={tone}
                 onTone={toggleTone}
+                tabActive={isSelected}
                 focus={focusMode}
                 onToggleFocus={() => setFocusMode((f) => !f)}
                 busy={lib.busy}
@@ -812,6 +846,7 @@ export default function App() {
                 inkKey={`workspace:${tab.workspace.id}`}
                 backLabel="Back to Workspace"
                 startNotebookOpen={Boolean(tab.notebookOpen)}
+                tabActive={isSelected}
                 tone={tone}
                 onTone={toggleTone}
                 focus={focusMode}
@@ -987,6 +1022,7 @@ export default function App() {
           <SettingsView
             settings={settings}
             onChange={prefs.patchSettings}
+            onSeries={chooseSeries}
             root={lib.downloadRoot ?? 'Resolving…'}
             stats={lib.stats}
             busy={lib.busy}
