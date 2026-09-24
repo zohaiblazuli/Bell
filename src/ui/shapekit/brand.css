@@ -38,3 +38,13 @@
   margin-left: .05em;
   background: var(--blue);
 }
+
+/* On ink (Night), the brand sheet turns the ears cream and lightens the full stop, so neither sinks
+   into the dark ground. Only where the mark sits straight on the app's ground — a notebook sticker
+   keeps its literal colours on its cover. */
+.app[data-tone='night'] :is(.sk-side__lockup, .onb-poster, .uflow-owl, .uflow-restart__owl) .owl-mark__ear {
+  background: var(--sk-cream);
+}
+.app[data-tone='night'] .bell-wordmark__stop {
+  background: #6f95d6;
+}
