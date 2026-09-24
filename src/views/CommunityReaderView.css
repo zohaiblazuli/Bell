@@ -2,17 +2,6 @@
   grid-template-columns: 140px minmax(0, 1fr);
 }
 .cr-reader .rd-barwrap { transform: translateX(70px); }
-.cr-reader-error {
-  width: min(460px, calc(100vw - 80px));
-  margin-top: 70px;
-  padding: 24px;
-  border-radius: var(--r-panel);
-  background: var(--card);
-  box-shadow: var(--shadow-card);
-  text-align: center;
-}
-.cr-reader-error h2 { margin: 0 0 8px; font: 700 19px/1.2 var(--font-disp); }
-.cr-reader-error p { margin: 0 0 18px; color: var(--ink-2); font-size: 13px; line-height: 1.5; }
 
 /* ─── Side Notebook Pane & Split View ────────────────────────────────────────── */
 
@@ -1313,5 +1302,4 @@ section.rd[data-resizing='true'] .rd-nb {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(350%); }
 }
-
 

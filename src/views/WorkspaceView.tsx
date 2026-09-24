@@ -97,7 +97,7 @@ function ToolGlyph({ tool }: { tool: Tool }) {
       </span>
     );
   return (
-    <span className={`rd-glyph rd-glyph--${tool}`} aria-hidden="true">
+    <span className={tool === 'hl' ? 'rd-glyph rd-glyph--hl' : 'rd-glyph rd-glyph--pen'} aria-hidden="true">
       <i>
         <i />
         <i />

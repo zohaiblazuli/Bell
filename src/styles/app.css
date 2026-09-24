@@ -55,7 +55,6 @@
   color: var(--ink-3);
 }
 
-
 .sec-label::after {
   content: '';
   flex: 1;
@@ -125,11 +124,6 @@
   fill: currentColor;
 }
 
-
-
-
-
-
 .docs {
   display: flex;
   gap: 5px;
@@ -145,11 +139,6 @@
   padding: 2px 5px;
 }
 
-
-
-
-
-
 .bar {
   flex: 1;
   height: 4px;
@@ -164,7 +153,6 @@
   background: var(--iris);
   transform-origin: left;
 }
-
 
 .btn:hover {
   border-color: var(--accent);
@@ -190,23 +178,12 @@
   opacity: 0.55;
 }
 
-
-
-
-
-
-
-
-
 .stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin: 22px 0 4px;
 }
-
-
-
 
 .ingest-line .now {
   overflow: hidden;
@@ -267,9 +244,6 @@
   pointer-events: none;
 }
 
-
-
-
 .paper {
   position: relative;
   background: var(--paper);
@@ -283,10 +257,6 @@
   opacity: 0.4;
   transition: opacity 0.2s;
 }
-
-
-
-
 
 .pagepill button:hover:not(:disabled) {
   background: var(--hair-2);
@@ -319,7 +289,6 @@
 .view-ws[data-ms='open'] .paper-wrap {
   transform: translateX(-150px) scale(0.94);
 }
-
 
 .ms-head .tag {
   font-family: var(--font-mono);
@@ -357,9 +326,6 @@
   font-family: var(--font-mono);
 }
 
-
-
-
 .nav:disabled {
   opacity: 0.42;
 }
@@ -377,38 +343,9 @@
   padding: 26px 30px 60px;
 }
 
-
-
-.hero-ring .trk {
-  fill: none;
-  stroke: var(--hair);
-  stroke-width: 5;
-}
-.hero-ring .prg {
-  fill: none;
-  stroke: url(#iris);
-  stroke-width: 5;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-
-
-
-.hero-num .tgt {
-  display: block;
-  margin-top: 5px;
-  padding: 0;
-  font-size: 11px;
-  color: var(--ink-3);
-  text-align: left;
-}
 .hero-num .tgt:hover {
   color: var(--ink-2);
 }
-
-
-
-
 
 .bars {
   display: flex;
@@ -417,14 +354,12 @@
   height: 38px;
 }
 
-
 .sbar.hit i {
   background: var(--accent);
 }
 .sbar[data-today='true'] i {
   background: var(--iris);
 }
-
 
 .dash .stats {
   margin: 14px 0 30px;
@@ -439,9 +374,6 @@ button.stat:hover:not(:disabled) {
 button.stat:disabled {
   opacity: 0.5;
 }
-
-
-
 
 .up {
   display: grid;
@@ -462,16 +394,6 @@ button.stat:disabled {
   border-color: var(--hair);
 }
 
-
-
-
-
-
-
-
-
-
-
 @media (prefers-reduced-motion: no-preference) {
   .pal {
     animation: pop 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -488,19 +410,14 @@ button.stat:disabled {
   }
 }
 
-
-
 .pal-in input::placeholder {
   color: var(--ink-3);
 }
-
-
 
 .pres:hover,
 .pres.sel {
   background: var(--accent-soft);
 }
-
 
 .pres .code {
   display: block;
