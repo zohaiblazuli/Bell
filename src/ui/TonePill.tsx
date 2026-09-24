@@ -19,7 +19,7 @@ export default function TonePill({ tone, onToggle, className }: TonePillProps) {
   const pick = (target: Tone) => (e: MouseEvent<HTMLButtonElement>) => {
     if (target === tone) return;
     const r = e.currentTarget.getBoundingClientRect();
-    revealTone({ x: r.left + r.width / 2, y: r.top + r.height / 2 }, onToggle, loadSettings().reduceMotion);
+    revealTone(target === 'night', { x: r.left + r.width / 2, y: r.top + r.height / 2 }, onToggle, loadSettings().reduceMotion);
   };
   return (
     <div className={className ? `tonepill ${className}` : 'tonepill'} role="group" aria-label="Day or night">

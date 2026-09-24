@@ -207,8 +207,11 @@
   55% { transform: translateY(0) scale(1.08, .92); }
 }
 
-/* Theme switch — the old tone shrinks into the pressed sun or moon, run through the View Transitions
- * API (see lib/toneReveal.ts). Default cross-fade off; the shrinking old layer is on top. */
+/* Theme switch — Night grows out of the pressed moon, Day shrinks back into the pressed sun: one motion
+ * and its reverse, run through the View Transitions API (see lib/toneReveal.ts). Default cross-fade
+ * off. The old snapshot is always on top and the live new frame always fills the window beneath it,
+ * so the window never shows through: Day clips the old (dark) snapshot to a shrinking circle; Night
+ * cuts a growing hole in the old (light) one, on the radius `--sk-tone-r` the script animates. */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
@@ -216,6 +219,15 @@
 }
 ::view-transition-old(root) { z-index: 2; }
 ::view-transition-new(root) { z-index: 1; }
+html.sk-to-night::view-transition-old(root) {
+  --sk-tone-hole: radial-gradient(
+    circle at var(--sk-tone-x) var(--sk-tone-y),
+    transparent var(--sk-tone-r),
+    #000 calc(var(--sk-tone-r) + .5px)
+  );
+  -webkit-mask-image: var(--sk-tone-hole);
+  mask-image: var(--sk-tone-hole);
+}
 
 /* Motion off: every Shape Kit animation and transition collapses to its end frame. */
 @media (prefers-reduced-motion: reduce) {
