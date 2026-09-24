@@ -653,8 +653,21 @@ export default function App() {
 
 
         <div className={`app-stage ${isBare ? 'app-stage-bare' : ''}`}>
-
-          {renderTabPanes()}
+          {/* One persistent tab row across every shelf and document (Zohaib, 2026-09-24). Hoisted here
+              rather than rendered per pane so it never remounts on a tab switch and the shelf can lead
+              the row as a pinned tab. Onboarding and the star gate render in their own app-bare branch,
+              so they never reach this. */}
+          <TabBar
+            tabs={tabsMgr.tabs}
+            activeId={tabsMgr.activeId}
+            onSelectTab={tabsMgr.selectTab}
+            onCloseTab={tabsMgr.closeTab}
+            onNewTab={handleNewTab}
+            onReorderTabs={tabsMgr.reorderTabs}
+          />
+          <div className="app-panes">
+            {renderTabPanes()}
+          </div>
         </div>
 
         <CommandPalette
@@ -726,21 +739,6 @@ export default function App() {
   );
 
   function renderTabPanes() {
-    const docTabs = (
-      <TabBar
-        tabs={tabsMgr.tabs}
-        activeId={tabsMgr.activeId}
-        onSelectTab={tabsMgr.selectTab}
-        onCloseTab={tabsMgr.closeTab}
-        onNewTab={handleNewTab}
-        onBack={() => {
-          setFocusMode(false);
-          go('library');
-        }}
-        onReorderTabs={tabsMgr.reorderTabs}
-      />
-    );
-
     return tabsMgr.tabs.map((tab) => {
       const isSelected = tab.id === tabsMgr.activeId;
       // Preserve the live reader session when changing tabs. Page canvases are still viewport-evicted
@@ -769,7 +767,6 @@ export default function App() {
             className="app-tab-pane"
             data-active={isSelected ? 'true' : 'false'}
           >
-            {docTabs}
             <div className="main">
               <WorkspaceView
                 paper={tab.paper}
@@ -804,7 +801,6 @@ export default function App() {
             className="app-tab-pane"
             data-active={isSelected ? 'true' : 'false'}
           >
-            {docTabs}
             <div className="main">
               <CommunityReaderView
                 resource={tab.community}
@@ -841,7 +837,6 @@ export default function App() {
             className="app-tab-pane"
             data-active={isSelected ? 'true' : 'false'}
           >
-            {docTabs}
             <div className="main">
               <CommunityReaderView
                 resource={workspaceReaderResource(tab.workspace)}
@@ -880,7 +875,6 @@ export default function App() {
             className="app-tab-pane"
             data-active={isSelected ? 'true' : 'false'}
           >
-            {docTabs}
             {openNb ? (
               <NotebookView
                 notebook={openNb}

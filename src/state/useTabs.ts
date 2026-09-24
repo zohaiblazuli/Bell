@@ -353,11 +353,17 @@ export function loadSavedTabs(): TabsState {
         return { ...tab, title: `${tab.paper.subjectName} · ${code}` };
       });
       const hasLibrary = restored.some((t) => t.id === DEFAULT_LIBRARY_TAB.id);
-      const tabs = hasLibrary ? restored : [DEFAULT_LIBRARY_TAB, ...restored];
-      const activeId = tabs.some((t: TabItem) => t.id === parsed.activeId)
-        ? parsed.activeId
-        : tabs[0].id;
-      return { tabs, activeId };
+      const withShelf = hasLibrary ? restored : [DEFAULT_LIBRARY_TAB, ...restored];
+      // Always open on Home (Zohaib, 2026-09-24): the saved set is restored, but the single shelf tab
+      // is reset to the dashboard and made active — the last document you had open is a click away in
+      // the row, not what greets you on launch.
+      const tabs = withShelf.map((t) =>
+        t.kind === 'shelf'
+          ? { ...t, shelfView: 'dashboard' as View, title: shelfTitle('dashboard'), icon: shelfIcon('dashboard') }
+          : t,
+      );
+      const home = tabs.find((t) => t.kind === 'shelf') ?? tabs[0];
+      return { tabs, activeId: home.id };
     }
   } catch {
     // Ignore corrupt storage and fall back to default

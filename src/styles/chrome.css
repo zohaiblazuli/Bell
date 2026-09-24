@@ -34,25 +34,41 @@
   --tone-content: background-color 0.2s ease-out, border-color 0.2s ease-out;
 }
 
-/* The sidebar owns the left edge; every screen — and an open document's tab row — lives in the stage. */
+/* The sidebar owns the left edge; every screen — and the always-on document tab row — lives in the
+   stage. The stage is two rows: the 40px tab row (components/TabBar), then the panes. */
 .app-stage {
   position: relative;
   grid-column: 2;
   grid-row: 1;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   min-height: 0;
   height: 100%;
   overflow: hidden;
 }
 
-/* A notebook owns the whole window: no sidebar, so the stage takes both columns. */
+/* A notebook owns the whole window: no sidebar, so the stage takes both columns. The tab row rides
+   along at the top just as it does over a paper. */
 .app[data-view='notebook'] > .app-stage {
   grid-column: 1 / -1;
 }
 
-/* All tab panes share the stage's one cell. Inactive tabs are hidden with visibility rather than
+/* The panes share one overlapping cell — a background tab keeps its layout box and scroll position —
+   sitting in the stage's second row, under the tab bar. */
+.app-panes {
+  position: relative;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* All tab panes share the panes' one cell. Inactive tabs are hidden with visibility rather than
    display: none so their layout boxes and scroll positions stay intact. The readers additionally
    drop their rasterised page canvases while a tab is inactive (see useNearViewport's `active` gate),
    so a background document holds no bitmaps; its scroll and state survive and its visible pages

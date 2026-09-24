@@ -10,19 +10,18 @@ interface TabBarProps {
   onCloseTab: (id: string) => void;
   /** The + at the end of the row: opens the command palette to pick another paper. */
   onNewTab: () => void;
-  /** The grid button at the start of the row: back to the shelf (Past Papers). */
-  onBack: () => void;
   onReorderTabs?: (fromIndex: number, toIndex: number) => void;
 }
 
 /**
- * The document tab row (Bell App v2 · reader tabs): a 40px pale strip at the top of an open paper,
- * notebook or community document. The shelf itself is not a tab — the sidebar is how you move
- * between shelves — so the row lists only what is open, with a back-to-Past-Papers button in front
- * and a + that opens the palette. Each paper tab carries its paper-number shape; the open one sits on
- * the page colour with a red bar along its top and ink rules either side, like a folder tab.
+ * The document tab row (Bell App v2 · reader tabs): a 40px pale strip that is now ALWAYS on screen,
+ * above every shelf and every open document (Zohaib, 2026-09-24). The current shelf leads the row as a
+ * pinned, non-closable tab — Home on launch, and whatever the sidebar last selected otherwise — so the
+ * row reads like a browser's: [ Home ] [ open papers/notebooks… ] [ + ]. Each paper tab carries its
+ * paper-number shape; the open one sits on the page colour with a red bar along its top and ink rules
+ * either side, like a folder tab. The sidebar still switches shelves (it re-targets the pinned tab).
  */
-export default function TabBar({ tabs, activeId, onSelectTab, onCloseTab, onNewTab, onBack, onReorderTabs }: TabBarProps) {
+export default function TabBar({ tabs, activeId, onSelectTab, onCloseTab, onNewTab, onReorderTabs }: TabBarProps) {
   const stripRef = useRef<HTMLDivElement>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
@@ -32,12 +31,7 @@ export default function TabBar({ tabs, activeId, onSelectTab, onCloseTab, onNewT
 
   return (
     <header className="doctabs" ref={stripRef} onWheel={onWheel} data-tauri-drag-region>
-      <button type="button" className="doctabs__back" title="Past Papers" aria-label="Back to Past Papers" onClick={onBack}>
-        <i />
-      </button>
-
       {tabs.map((tab, index) => {
-        if (tab.kind === 'shelf') return null;
         const isActive = tab.id === activeId;
         const paper = tab.kind === 'paper' ? tab.paper : undefined;
         const title = paper ? paper.subjectName : tab.title;

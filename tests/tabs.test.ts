@@ -2,6 +2,7 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   tabReducer,
+  loadSavedTabs,
   DEFAULT_LIBRARY_TAB,
   type TabsState,
 } from '@/state/useTabs';
@@ -240,5 +241,61 @@ describe('Tab System Operations & Lifecycle', () => {
     assert.equal(state.tabs[0].id, DEFAULT_LIBRARY_TAB.id);
     assert.equal(state.tabs[1].id, 'book:202');
     assert.equal(state.activeId, 'book:202');
+  });
+});
+
+/**
+ * Startup routing (Zohaib, 2026-09-24): the tab set is saved and restored, but the app always OPENS on
+ * Home — the last active document is a click away in the row, not what greets you. So loadSavedTabs
+ * keeps the persisted document tabs yet forces the single shelf tab back to the dashboard and makes it
+ * active, whatever was saved.
+ */
+describe('loadSavedTabs — restore the set, but always open on Home', () => {
+  const KEY = 'bell:tabs:v1';
+  function withStorage(seed?: unknown) {
+    const map = new Map<string, string>();
+    if (seed !== undefined) map.set(KEY, JSON.stringify(seed));
+    (globalThis as { localStorage?: unknown }).localStorage = {
+      getItem: (k: string) => (map.has(k) ? map.get(k)! : null),
+      setItem: (k: string, v: string) => void map.set(k, v),
+      removeItem: (k: string) => void map.delete(k),
+      clear: () => map.clear(),
+    };
+  }
+
+  test('no saved state → a single Home shelf tab, active', () => {
+    withStorage(undefined);
+    const s = loadSavedTabs();
+    assert.equal(s.tabs.length, 1);
+    assert.equal(s.tabs[0].id, DEFAULT_LIBRARY_TAB.id);
+    assert.equal(s.tabs[0].shelfView, 'dashboard');
+    assert.equal(s.activeId, DEFAULT_LIBRARY_TAB.id);
+  });
+
+  test('restores the documents but activates Home, not the saved active tab', () => {
+    withStorage({
+      tabs: [
+        { ...DEFAULT_LIBRARY_TAB, shelfView: 'settings', title: 'Settings', icon: 'sliders' },
+        { id: 'paper:101', kind: 'paper', title: 'x', icon: 'doc', closable: true, paper: samplePaper },
+      ],
+      activeId: 'paper:101',
+    });
+    const s = loadSavedTabs();
+    assert.ok(s.tabs.some((t) => t.id === 'paper:101'), 'the open paper survives the restart');
+    assert.equal(s.activeId, DEFAULT_LIBRARY_TAB.id, 'we land on the shelf, not the saved paper');
+    const shelf = s.tabs.find((t) => t.kind === 'shelf');
+    assert.equal(shelf?.shelfView, 'dashboard', 'the shelf is reset to Home even if it was saved elsewhere');
+    assert.equal(shelf?.title, 'Home');
+  });
+
+  test('a saved set with no shelf tab gets Home prepended and active', () => {
+    withStorage({
+      tabs: [{ id: 'paper:101', kind: 'paper', title: 'x', icon: 'doc', closable: true, paper: samplePaper }],
+      activeId: 'paper:101',
+    });
+    const s = loadSavedTabs();
+    assert.equal(s.tabs[0].id, DEFAULT_LIBRARY_TAB.id);
+    assert.equal(s.tabs[0].shelfView, 'dashboard');
+    assert.equal(s.activeId, DEFAULT_LIBRARY_TAB.id);
   });
 });
