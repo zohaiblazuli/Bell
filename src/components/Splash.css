@@ -65,6 +65,10 @@
   font-size: 120px;
   flex: none;
   isolation: isolate;
+  /* The window is transparent during the splash, so the mark carries its own separation from the
+     desktop. One filter shadows the composed silhouette; a per-rect box-shadow would outline each
+     block instead (same reason Mr. Bell takes a shadow, not a stroke). */
+  filter: drop-shadow(0 3px 10px color-mix(in srgb, var(--sk-black) 42%, transparent));
 }
 .splash__owl > i,
 .splash__owl > span {
@@ -143,9 +147,12 @@
   letter-spacing: -.04em;
   line-height: 1;
   font-size: 120px;
-  color: var(--sk-black);
+  color: var(--sk-white);
 }
 .splash__bell {
+  /* Same separation as the owl — the white word must not vanish into a light desktop. Kept off
+     .splash__word so the full-screen flood inside it is never filtered as it scales. */
+  filter: drop-shadow(0 3px 10px color-mix(in srgb, var(--sk-black) 42%, transparent));
   animation: splash-wipe .8s cubic-bezier(.2, .8, .2, 1) 2.8s both;
 }
 .splash__stop {
@@ -169,6 +176,7 @@
 }
 .splash__dot {
   background: var(--sk-blue);
+  filter: drop-shadow(0 2px 6px color-mix(in srgb, var(--sk-black) 38%, transparent));
   animation: splash-dot-tap .56s cubic-bezier(.3, .7, .3, 1) 3.6s both;
 }
 /* A second full stop over the first, which grows until the window is blue. `--flood` is measured in
