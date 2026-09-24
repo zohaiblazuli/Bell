@@ -58,7 +58,6 @@ const BENIGN = [
   { re: /(purl\.org|adobe\.com\/(ns|xap)|iptc\.org|ns\.adobe)/, why: 'XMP/metadata namespace' },
   { re: /(opensource\.org|www\.apache\.org\/licenses|mozilla\.org\/MPL|gnu\.org\/licenses)/, why: 'licence URL in a comment' },
   { re: /github\.com\/(mozilla|Vercel|vercel|adobe)/, why: 'upstream project link in a licence header' },
-  { re: /github\.com\/zohaiblazuli\/Bell/, why: "the app's own repo link (star gate), opened in the browser — not a fetch" },
   { re: /(scripts\.sil\.org|openfontlicense)/, why: 'SIL OFL licence URL' },
   { re: /developer\.mozilla\.org/, why: 'doc link in a comment' },
   { re: /(xfa|xdp)\.(org|adobe)/, why: 'pdf.js XFA schema id' },
@@ -129,31 +128,20 @@ function parseColour(v) {
   return null;
 }
 
-/** Read `tokens.css` into flat maps. `:root` is Day/Light; `[data-tone='night']` and
- *  `[data-theme='dark']` are the legacy-night and v2-dark overrides respectively. */
+/** Read `tokens.css` into two flat maps. `:root` is Day; `.app[data-tone='night']` overrides it. */
 function readTokens() {
   const css = readFileSync(join(root, 'src', 'styles', 'tokens.css'), 'utf8').replace(
     /\/\*[\s\S]*?\*\//g,
     '',
   );
-  const blocks = [
-    ...css.matchAll(/(:root|\.app\[data-tone='night'\]|\[data-theme='dark'\])\s*{([^}]*)}/g),
-  ];
+  const blocks = [...css.matchAll(/(:root|\.app\[data-tone='night'\])\s*{([^}]*)}/g)];
   const day = {};
   const night = {};
-  const dark = {};
   for (const [, sel, body] of blocks) {
-    const into = sel === ':root' ? day : sel.includes('data-tone') ? night : dark;
+    const into = sel === ':root' ? day : night;
     for (const m of body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) into[m[1]] = m[2].trim();
   }
-  // Legacy screens: day = :root, night = :root + night override.
-  // v2 screens: light = :root, dark = :root + dark override.
-  return {
-    day: { ...day },
-    night: { ...day, ...night },
-    light: { ...day },
-    dark: { ...day, ...dark },
-  };
+  return { day: { ...day }, night: { ...day, ...night } };
 }
 
 /** Composite `src` (which may carry alpha) over `dst`, both opaque-resolved. */
@@ -270,57 +258,6 @@ function auditContrast() {
   }
 }
 
-/**
- * Design System v2 contrast — the flat productivity palette, checked light and dark. Composited over
- * --bg-canvas rather than --ground, because v2 text sits on the new surfaces, not the glass ground.
- * Reports only, same posture as the legacy pass. Skips cleanly if v2 tokens are not present yet.
- */
-const V2_PAIRS = [
-  { fg: '--text-primary', bg: '--bg-canvas', min: 4.5, note: 'primary text on canvas' },
-  { fg: '--text-secondary', bg: '--bg-canvas', min: 4.5, note: 'secondary text on canvas' },
-  { fg: '--text-tertiary', bg: '--bg-canvas', min: 4.5, note: 'tertiary text on canvas' },
-  { fg: '--text-primary', bg: '--bg-panel', min: 4.5, note: 'primary text on panel' },
-  { fg: '--text-secondary', bg: '--bg-panel', min: 4.5, note: 'secondary text on panel' },
-  { fg: '--text-primary', bg: '--bg-sidebar', min: 4.5, note: 'primary text on sidebar' },
-  { fg: '--accent', bg: '--bg-canvas', min: 3.0, note: 'accent boundary on canvas (1.4.11)' },
-  { fg: '--accent', bg: '--bg-panel', min: 3.0, note: 'accent boundary on panel (1.4.11)' },
-  { fg: '--info', bg: '--bg-canvas', min: 3.0, note: 'info boundary on canvas' },
-  { fg: '--success', bg: '--bg-canvas', min: 3.0, note: 'success boundary on canvas' },
-  { fg: '--warning', bg: '--bg-canvas', min: 3.0, note: 'warning boundary on canvas' },
-  { fg: '--danger', bg: '--bg-canvas', min: 4.5, note: 'danger text on canvas' },
-  { fg: '--border-default', bg: '--bg-panel', min: 1.0, exempt: true, note: 'panel border' },
-];
-
-function auditContrastV2() {
-  heading('2b · CONTRAST (v2) — Design System v2 text/state on the flat surfaces, light and dark');
-  const tokens = readTokens();
-  const rows = [];
-  for (const mode of ['light', 'dark']) {
-    const t = tokens[mode];
-    const canvas = parseColour(t['--bg-canvas']);
-    if (!canvas) {
-      warn(`--bg-canvas unreadable in ${mode} — v2 tokens not present yet, skipping`);
-      continue;
-    }
-    for (const p of V2_PAIRS) {
-      const rawFg = parseColour(t[p.fg]);
-      const rawBg = parseColour(t[p.bg]);
-      if (!rawFg || !rawBg) continue;
-      const bg = over(rawBg, canvas);
-      const fg = over(rawFg, bg);
-      rows.push({ mode, ...p, r: ratio(fg, bg) });
-    }
-  }
-  for (const r of rows) {
-    const line = `${r.mode.padEnd(5)} ${r.fg.padEnd(18)} on ${r.bg.padEnd(14)} ${r.r
-      .toFixed(2)
-      .padStart(6)}  (needs ${r.min})${r.note ? '  — ' + r.note : ''}`;
-    if (r.exempt) warn(line);
-    else if (r.r < r.min) warn(line + '  ← below');
-    else pass(line);
-  }
-}
-
 /* ──────────────────────────────────────────────────────────── 3 · MOTION ─────────────────────── */
 
 /**
@@ -368,36 +305,9 @@ function auditMotion() {
   else fail(`MrBell.css: slump/sleep end-pose handling missing (found ${poses.length} of 2)`);
 }
 
-/**
- * The v2 layer (src/ui|components|views/v2) must be token-only — no raw hex. Difficulty pills are
- * the sanctioned exception and carry NO literal here (the hex lives in src/lib/difficulty.ts and is
- * passed through inline custom properties), so a hex literal inside a v2 file is a real regression.
- */
-function auditV2Hex() {
-  heading('4 · V2 TOKENS — the v2 layer must be hex-free (tokens only)');
-  const dirs = ['src/ui/v2', 'src/components/v2', 'src/views/v2'].map((d) => join(root, d));
-  const hits = [];
-  for (const dir of dirs) {
-    for (const f of walk(dir, (n) => n.endsWith('.css') || n.endsWith('.tsx'))) {
-      const text = readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-      for (const m of text.matchAll(/#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g)) {
-        hits.push({ file: relative(root, f), hex: m[0] });
-      }
-    }
-  }
-  if (hits.length === 0) {
-    pass('v2 layer is token-only — no raw hex in src/{ui,components,views}/v2');
-  } else {
-    for (const h of hits.slice(0, 20)) fail(`${h.file} → raw hex ${h.hex}`);
-    if (hits.length > 20) fail(`…and ${hits.length - 20} more`);
-  }
-}
-
 auditOffline();
 auditContrast();
-auditContrastV2();
 auditMotion();
-auditV2Hex();
 
 heading(failures === 0 ? 'All blocking audits passed.' : `${failures} blocking failure(s).`);
 process.exit(failures === 0 ? 0 : 1);

@@ -38,32 +38,6 @@ for (const type of ['dragover', 'drop'] as const) {
 // Study state is read synchronously all over the app, so it is loaded from disk before the
 // first render rather than threaded through as a loading state.
 void hydrate().then(async () => {
-  // Dev/preview: `?v2lib` renders the Design System v2 Library preview instead of the app, so the
-  // redesign can be viewed and screenshotted without cutting over the live shell. Dynamic-imported
-  // so it code-splits and adds nothing to the normal bundle.
-  // Dev/preview: `?v2` renders the assembled Design System v2 app (shell + all screens + palette),
-  // `?v2lib` renders just the v2 Library preview. Both dynamic-imported so they code-split and add
-  // nothing to the normal bundle, and both let the redesign be viewed without cutting over the live shell.
-  if (new URLSearchParams(window.location.search).has('v2')) {
-    const { default: V2App } = await import('./components/v2/V2App');
-    ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-      <React.StrictMode>
-        <V2App />
-      </React.StrictMode>,
-    );
-    requestAnimationFrame(() => requestAnimationFrame(() => void getCurrentWindow().show()));
-    return;
-  }
-  if (new URLSearchParams(window.location.search).has('v2lib')) {
-    const { default: LibraryPreview } = await import('./views/v2/LibraryPreview');
-    ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-      <React.StrictMode>
-        <LibraryPreview />
-      </React.StrictMode>,
-    );
-    requestAnimationFrame(() => requestAnimationFrame(() => void getCurrentWindow().show()));
-    return;
-  }
   // The mascot's spritesheet is read before the first frame too, and for a reason the splash makes
   // sharp: it hides the sidebar's mascot slot and travels its own crab into it, so if the pet arrived
   // one render later the handoff would land on a different animal than it started with. A failure here

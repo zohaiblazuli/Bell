@@ -502,7 +502,7 @@ export default function App() {
     return (
       <>
         <Sprite />
-        <div className="app app-bare" data-startup={splash} data-view="onboarding" data-tone={tone} data-theme={tone === 'night' ? 'dark' : 'light'} data-motion={motion}>
+        <div className="app app-bare" data-startup={splash} data-view="onboarding" data-tone={tone} data-motion={motion}>
           <AppBackground />
           <OnboardingView
             answers={onboarding}
@@ -536,7 +536,7 @@ export default function App() {
     return (
       <>
         <Sprite />
-        <div className="app app-bare" data-startup={splash} data-view="stargate" data-tone={tone} data-theme={tone === 'night' ? 'dark' : 'light'} data-motion={motion}>
+        <div className="app app-bare" data-startup={splash} data-view="stargate" data-tone={tone} data-motion={motion}>
           <AppBackground />
           <StarGateView
             userName={onboarding.name}
@@ -559,7 +559,6 @@ export default function App() {
         data-startup={splash}
         data-view={currentView}
         data-tone={tone}
-        data-theme={tone === 'night' ? 'dark' : 'light'}
         data-motion={motion}
         data-focus={focusMode && (inReader || inCommunityReader || inNotebook) ? 'on' : 'off'}
       >
