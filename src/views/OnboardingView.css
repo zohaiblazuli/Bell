@@ -109,8 +109,6 @@
   border: 1px solid var(--card-brd); /* 1px, INSIDE — hence border-box above */
   border-radius: var(--r-panel); /* 16, bound to radius/panel */
   box-shadow: var(--shadow-win);
-  -webkit-backdrop-filter: blur(13px);
-  backdrop-filter: blur(13px);
 }
 
 /* §5.6 — 06 alone adds a third panel effect: INNER_SHADOW offset (0,1) at radius and spread 0,

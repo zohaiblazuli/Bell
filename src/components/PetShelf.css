@@ -21,7 +21,6 @@
   inset: 0;
   z-index: 60;
   background: var(--scrim);
-  backdrop-filter: blur(6px);
 }
 
 .pets-sheet {

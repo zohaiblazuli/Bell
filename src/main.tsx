@@ -13,7 +13,6 @@ import './styles/fonts.css';
 import './styles/shapekit-fonts.css';
 import './styles/tokens.css';
 import './styles/type.css';
-import './styles/background.css';
 import './styles/chrome.css';
 import './styles/app.css';
 import './styles/motion.css';

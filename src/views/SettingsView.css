@@ -12,12 +12,14 @@
    same frame the Library's `lib` sits in. Capped and centred like `.lib` so a maximised window
    keeps the measured 1020 instead of stretching the 7/5 split past it. */
 .settings {
-  max-width: 1082px; /* 1020 + 2 x 31 */
+  /* Bell App v2: one 780px column of labelled cards. */
+  max-width: 780px;
   margin: 0 auto;
-  padding: 26px 31px 60px;
+  padding: 26px 24px 60px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 20px; /* `content` itemSpacing 20 */
+  gap: 14px;
 }
 
 /* `header` 1020 x 44 — VERTICAL, gap 6, and 24 + 6 + 14 = 44 falls out of the two type styles. */
@@ -27,12 +29,19 @@
   gap: 6px;
 }
 .set-title {
-  margin: 0; /* an <h1> brings a browser margin that would break the 44 */
+  margin: 0;
   color: var(--ink);
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.05;
 }
 .set-sub {
   margin: 0;
-  color: var(--ink-3);
+  font-size: 14.5px;
+}
+.set-head {
+  padding-bottom: 10px;
 }
 
 /* `cols` — HORIZONTAL, gap 24, MIN/MIN. `left` is FIXED 585 and `right` takes the remainder, which
@@ -44,13 +53,13 @@
    stretching to the taller one's height. */
 .set-cols {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
   gap: 24px;
 }
 .set-col {
   display: flex;
   flex-direction: column;
-  gap: 16px; /* `left` / `right` itemSpacing 16 */
+  gap: 24px;
   min-width: 0;
 }
 .set-col--left {
@@ -66,6 +75,7 @@
 .set-group {
   display: flex;
   flex-direction: column;
+  gap: 14px;
 }
 .set-notice {
   margin-top: 10px;
@@ -207,4 +217,76 @@
     flex: 0 0 auto;
     width: 100%;
   }
+}
+
+/* ---------- About ---------- */
+.set-about {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  background: var(--card);
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+.set-about-art {
+  position: relative;
+  height: 200px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pale2);
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+.set-about-art > i {
+  position: absolute;
+  left: -30px;
+  bottom: -30px;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: var(--sk-yellow);
+}
+.set-about-text {
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.set-about-name {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+}
+.set-about-build {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.set-about-text p {
+  margin: 6px 0 0;
+  max-width: 44ch;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.set-about-links {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.set-about-links button {
+  padding: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.set-about-links button:hover {
+  color: var(--red);
+}
+.set-about-licence {
+  font-weight: 400;
+  color: var(--mute);
 }

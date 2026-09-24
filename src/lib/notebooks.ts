@@ -137,17 +137,13 @@ export interface NbInkSettings {
 }
 
 /**
- * §6a's INK card: two rows of five, `SPACE_BETWEEN`, with `--iris-3` selected.
- *
- * Row one is the neutrals and the brand ramp — all mode-invariant, so they mean the same thing in
- * both tones. Row two borrows five of the eight cover colours, which is why the cover family being
- * mode-invariant matters twice: they are ink on white paper as well as a cover, and ink must never
- * invert. There is deliberately no `--d*` in here; the difficulty ramp retones, and a stroke drawn in
- * Night would then read as a different colour in Day.
+ * The INK card: two rows of five — Bell App v2's ten notebook inks. All mode-invariant (`--sk-*`,
+ * `--page-ink`): ink sits on white paper and must mean the same colour in Day and Night. Strokes store
+ * the literal a token resolved to, so retuning this list never recolours old handwriting.
  */
 export const NB_INK_PALETTE: readonly (readonly string[])[] = [
-  ['--page-ink', '--iris-3', '--iris-2', '--iris-1', '--bell-cap-hi'],
-  ['--cover-2', '--cover-3', '--cover-4', '--cover-5', '--cover-8'],
+  ['--page-ink', '--sk-blue', '--sk-green', '--sk-red', '--sk-yellow'],
+  ['--sk-orange', '--sk-purple', '--sk-mute', '--sk-steel', '--sk-navy'],
 ];
 
 /** §6a's STROKE card prints `8 px` and lights the middle dot in `--accent`. */
@@ -156,7 +152,7 @@ export const NB_STROKES = [5, 8, 12] as const;
 export const DEFAULT_INK: NbInkSettings = {
   tool: 'pen',
   shape: 'line',
-  colour: '--iris-3',
+  colour: '--sk-blue',
   strokePx: 8,
   opacity: 1,
   eraser: 'stroke',

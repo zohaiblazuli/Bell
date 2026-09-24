@@ -135,15 +135,15 @@ const PAPER_LABEL: Record<PaperStyle, string> = {
  */
 const INK_NAME: Record<string, string> = {
   '--page-ink': 'Graphite',
-  '--iris-3': 'Brand blue',
-  '--iris-2': 'Bright blue',
-  '--iris-1': 'Light blue',
-  '--bell-cap-hi': 'Sky',
-  '--cover-2': 'Teal',
-  '--cover-3': 'Green',
-  '--cover-4': 'Amber',
-  '--cover-5': 'Crimson',
-  '--cover-8': 'Rust',
+  '--sk-blue': 'Blue',
+  '--sk-green': 'Green',
+  '--sk-red': 'Red',
+  '--sk-yellow': 'Yellow',
+  '--sk-orange': 'Orange',
+  '--sk-purple': 'Purple',
+  '--sk-mute': 'Grey',
+  '--sk-steel': 'Steel',
+  '--sk-navy': 'Navy',
 };
 
 /** `Chip`'s `Palette` axis, from the catalogue's qualification. §6c draws `Palette=A Level`. */

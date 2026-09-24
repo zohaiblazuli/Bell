@@ -841,6 +841,8 @@ export default function App() {
                 focus={focusMode}
                 onToggleFocus={() => setFocusMode((f) => !f)}
                 onSearch={() => setPalette(true)}
+                tone={tone}
+                onTone={toggleTone}
                 onSaveMeta={(meta) => notebooks.save(tab.notebook!.id, meta)}
                 onDelete={async () => {
                   await notebooks.remove(tab.notebook!.id);
@@ -999,6 +1001,7 @@ export default function App() {
             onExportData={() => void up.exportData()}
             onRevealData={() => void up.revealData()}
             onClearData={() => void up.clearData()}
+            onRunSetup={() => prefs.answerOnboarding('done', false)}
           />
         )}
       </>

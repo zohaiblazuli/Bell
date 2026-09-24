@@ -29,8 +29,6 @@
   gap: 16px; /* §6: VERTICAL gap 16, pad 18 */
   padding: 18px;
   background: var(--glass);
-  -webkit-backdrop-filter: blur(26px) saturate(165%);
-  backdrop-filter: blur(26px) saturate(165%);
   /* 1px on ALL FOUR sides — not `border-left`. The Reader's topbar is the precedent for why: reusing
      a one-edge rule drops three of them. */
   border: 1px solid var(--hair);

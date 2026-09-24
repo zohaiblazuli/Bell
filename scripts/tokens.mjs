@@ -298,6 +298,10 @@ const GROUPS = [
       '--sk-cream': { day: '#efe9dc' },
       '--sk-green': { day: '#3e8a5a' },
       '--sk-gold': { day: '#c98f0e' },
+      '--sk-orange': { day: '#e07a2c' },
+      '--sk-purple': { day: '#7b5ea7' },
+      '--sk-mute': { day: '#5e584d' },
+      '--sk-steel': { day: '#8fa3c7' },
     },
   },
 ];

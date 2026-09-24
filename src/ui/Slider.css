@@ -1,5 +1,7 @@
 /* Slider — a 6px pale track filled with ink up to the value, with a square ink thumb. */
 input.bell-slider {
+  flex: 1 1 0;
+  min-width: 0;
   -webkit-appearance: none;
   appearance: none;
   height: 20px;

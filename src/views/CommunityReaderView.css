@@ -48,8 +48,6 @@ section.rd[data-resizing='true'] .rd-nb {
   display: flex;
   flex-direction: column;
   background: var(--glass-strong);
-  -webkit-backdrop-filter: blur(30px) saturate(170%);
-  backdrop-filter: blur(30px) saturate(170%);
   border-left: 1px solid var(--glass-brd);
   box-shadow: var(--shadow-pop), inset 1px 0 0 var(--glass-hi);
   transform: translateX(100%);
@@ -650,7 +648,6 @@ section.rd[data-resizing='true'] .rd-nb {
   background: rgba(0, 0, 0, 0.28);
   padding: 2px 5px;
   border-radius: 3px;
-  backdrop-filter: blur(4px);
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -927,7 +924,6 @@ section.rd[data-resizing='true'] .rd-nb {
 
 .rd-nb-tile-badge {
   background: rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(4px);
   padding: 2px 6px;
   border-radius: 4px;
   width: fit-content;

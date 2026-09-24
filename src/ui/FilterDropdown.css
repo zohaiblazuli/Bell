@@ -21,8 +21,6 @@
   cursor: pointer;
   user-select: none;
   transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.12s ease;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
 }
 
 .filter-dropdown-trigger:hover {
@@ -149,8 +147,6 @@
   background: var(--plate, #1e2230);
   border: 1px solid var(--outline, rgba(255, 255, 255, 0.16));
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.36), 0 2px 8px rgba(0, 0, 0, 0.16);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
   animation: filter-dropdown-in 0.15s cubic-bezier(0.2, 0.8, 0.25, 1) both;
 }
 

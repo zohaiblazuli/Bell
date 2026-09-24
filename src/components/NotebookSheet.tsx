@@ -34,12 +34,12 @@ const NO_SELECTION: readonly string[] = Object.freeze([]);
 
 const NB_SWATCHES: { token: string; label: string }[] = [
   { token: '--page-ink', label: 'Ink' },
-  { token: '--iris-3', label: 'Blue' },
-  { token: '--cover-2', label: 'Indigo' },
-  { token: '--cover-3', label: 'Emerald' },
-  { token: '--cover-4', label: 'Amber' },
-  { token: '--cover-5', label: 'Rose' },
-  { token: '--cover-8', label: 'Purple' },
+  { token: '--sk-blue', label: 'Blue' },
+  { token: '--sk-red', label: 'Red' },
+  { token: '--sk-green', label: 'Green' },
+  { token: '--sk-yellow', label: 'Yellow' },
+  { token: '--sk-purple', label: 'Purple' },
+  { token: '--sk-navy', label: 'Navy' },
 ];
 
 const NB_TOOLS: { tool: NbTool; icon: IconName; label: string; title: string }[] = [

@@ -15,6 +15,8 @@
  * WHAT IS DELIBERATELY ABSENT. §5a's `search` button searches inside the notebook; nothing indexes
  * handwriting, so it opens the app's own palette instead of pretending to. Said in its tooltip.
  */
+import TonePill, { type Tone } from '@ui/TonePill';
+import WindowLights from '@/components/WindowLights';
 import './NotebookView.css';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import IconButton from '@ui/IconButton';
@@ -83,6 +85,9 @@ export interface Props {
   focus: boolean;
   onToggleFocus: () => void;
   onSearch: () => void;
+  /** Day/Night, drawn in the notebook's own bar since it owns the whole window. */
+  tone?: Tone;
+  onTone?: () => void;
   onBack: () => void;
   onSaveMeta: (meta: NbAuthored) => Promise<void>;
   onDelete: () => Promise<void>;
@@ -95,6 +100,8 @@ export default function NotebookView({
   focus,
   onToggleFocus,
   onSearch,
+  tone,
+  onTone,
   onBack,
   onSaveMeta,
   onDelete,
@@ -428,6 +435,7 @@ export default function NotebookView({
       {/* §5a topbar 1320x52 — a hairline on all four sides, not a border-bottom. */}
       <header className="nbs-top" data-tauri-drag-region>
         <IconButton icon="left" label="Back to your notebooks" onClick={leave} />
+        <span className="nbs-swatch" style={{ background: `var(--cover-${authored.cover})` }} aria-hidden="true" />
 
         <div className="nbs-title">
           <span className="nbs-title-name t-body-strong">{title}</span>
@@ -466,6 +474,8 @@ export default function NotebookView({
           title="Focus mode — the dock and the inspector recede"
           onClick={onToggleFocus}
         />
+        {tone && onTone && <TonePill tone={tone} onToggle={onTone} />}
+        <WindowLights />
       </header>
 
       <ToolDock

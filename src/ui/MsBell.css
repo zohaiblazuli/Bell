@@ -663,8 +663,6 @@
   height: 98px;
   pointer-events: none;
   z-index: 1;
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
   -webkit-mask-image: linear-gradient(
     to bottom,
     transparent 0%,
@@ -691,8 +689,6 @@
   bottom: 0;
   height: 38px;
   pointer-events: none;
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.5) 45%, #000 100%);
   mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.5) 45%, #000 100%);
 }

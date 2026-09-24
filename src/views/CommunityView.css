@@ -124,7 +124,6 @@
     color-mix(in srgb, var(--ambient-a) 12%, var(--card))
   );
   box-shadow: var(--shadow-card), 0 20px 40px -15px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(20px);
 }
 
 .cr-hero-content-slider {
@@ -160,8 +159,6 @@
   border-radius: 50%;
   border: 1px solid var(--glass-brd);
   background: color-mix(in srgb, var(--card) 75%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   color: var(--ink);
   cursor: pointer;
   opacity: 0;
@@ -576,7 +573,6 @@
   font: 700 10px/1.2 var(--font-ui);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  backdrop-filter: blur(10px);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 .cr-tag-a-level {
@@ -600,7 +596,6 @@
   background: rgba(15, 18, 30, 0.75);
   color: #fff;
   font: 500 10px/1.2 var(--font-ui);
-  backdrop-filter: blur(8px);
   z-index: 2;
 }
 .cr-card-votes {
@@ -612,7 +607,6 @@
   background: rgba(15, 18, 30, 0.8);
   color: #fff;
   font: 600 10.5px/1 var(--font-mono);
-  backdrop-filter: blur(8px);
   z-index: 2;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
@@ -676,7 +670,6 @@
   inset: 0;
   z-index: 60;
   background: var(--scrim);
-  backdrop-filter: blur(5px);
   display: flex;
   justify-content: flex-end;
   animation: cr-scrim-in 0.2s ease-out both;
@@ -709,7 +702,6 @@
   padding: 16px 22px;
   border-bottom: 1px solid var(--hair);
   background: var(--glass-strong);
-  backdrop-filter: blur(15px);
 }
 .cr-drawer-head-tag span {
   font: 600 11.5px/1.3 var(--font-mono);
@@ -1016,7 +1008,6 @@
   padding: 16px 24px;
   border-top: 1px solid var(--hair);
   background: var(--glass-strong);
-  backdrop-filter: blur(15px);
 }
 
 /* Retain utility elements for Admin and Modals */
@@ -1039,7 +1030,7 @@
 .cr-inline-error { padding: 9px 11px; border-radius: var(--r-btn); background: var(--danger-soft); color: var(--danger); font-size: 12px; line-height: 1.4; }
 
 .cr-auth-scrim { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; padding: 24px; background: var(--scrim); }
-.cr-auth { width: min(390px, 100%); display: flex; flex-direction: column; gap: 12px; padding: 24px; border: 1px solid var(--glass-brd); border-radius: var(--r-panel); background: var(--glass-strong); backdrop-filter: blur(30px) saturate(170%); box-shadow: var(--shadow-pop); }
+.cr-auth { width: min(390px, 100%); display: flex; flex-direction: column; gap: 12px; padding: 24px; border: 1px solid var(--glass-brd); border-radius: var(--r-panel); background: var(--glass-strong); box-shadow: var(--shadow-pop); }
 .cr-auth-mark { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; background: var(--accent-soft); color: var(--accent); }
 .cr-auth-mark svg { width: 22px; height: 22px; }
 .cr-auth h2 { margin: 4px 0 0; font: 700 20px/1.2 var(--font-disp); }
@@ -1058,8 +1049,6 @@
   border: 1px solid var(--glass-brd);
   border-radius: var(--r-panel);
   background: var(--glass-strong);
-  backdrop-filter: blur(30px) saturate(170%);
-  -webkit-backdrop-filter: blur(30px) saturate(170%);
   box-shadow: var(--shadow-pop);
 }
 .cr-edit-grid {
