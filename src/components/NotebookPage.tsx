@@ -491,6 +491,9 @@ export default function NotebookPage({
         // dead. Focus is then placed explicitly by the effect keyed on `editing`.
         e.currentTarget.releasePointerCapture(e.pointerId);
         owner.current = null;
+        // The press no longer takes focus (see `onMouseDown` below), so an open editor is not blurred
+        // by it — commit what it holds here, or opening the next one would drop it.
+        if (editing && typingRef.current) commitText(typingRef.current.value);
         const kind = tool === 'text' ? 'text' : 'note';
         // Clamped once, here, so the editor and the object it commits agree on where they are: the page
         // clips its own children, and an unclamped press near an edge opened the box into a sliver.
@@ -759,6 +762,11 @@ export default function NotebookPage({
         role="img"
         aria-label={`Page ${pageLabel(index)}`}
         onPointerDown={down}
+        // A mouse press's default action moves focus to <body> AFTER `down` has opened the editor, which
+        // blurred it on the spot and committed nothing — the Text tool looked dead with a mouse.
+        onMouseDown={(e) => {
+          if (tool === 'text' || tool === 'sticky') e.preventDefault();
+        }}
         onPointerMove={move}
         onPointerUp={up}
         onPointerCancel={up}
