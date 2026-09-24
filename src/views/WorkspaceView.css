@@ -511,45 +511,6 @@ section.rd[data-nb='open'] .rd-barwrap {
   box-shadow: 0 0 0 2px var(--ground), 0 0 0 4px var(--ink);
 }
 /* the tool glyphs */
-.rd-glyph {
-  position: relative;
-  display: block;
-  width: 20px;
-  height: 20px;
-}
-.rd-glyph > i,
-.rd-glyph > i > i,
-.rd-glyph > b {
-  position: absolute;
-  display: block;
-}
-.rd-glyph--pen > i,
-.rd-glyph--hl > i {
-  left: 7.5px;
-  top: -1px;
-  width: 5px;
-  height: 22px;
-  transform: rotate(45deg);
-}
-.rd-glyph--pen > i > i:nth-child(1),
-.rd-glyph--hl > i > i:nth-child(1) { left: 0; top: 0; width: 5px; height: 4px; background: currentColor; }
-.rd-glyph--pen > i > i:nth-child(2),
-.rd-glyph--hl > i > i:nth-child(2) { left: 0; top: 5px; width: 5px; height: 10px; box-shadow: inset 0 0 0 1.8px currentColor; }
-.rd-glyph--pen > i > i:nth-child(3) { left: 0; top: 15px; width: 5px; height: 6px; background: currentColor; clip-path: polygon(0 0, 100% 0, 50% 100%); }
-.rd-glyph--hl > i > i:nth-child(3) { left: 0; top: 15px; width: 5px; height: 5px; background: currentColor; clip-path: polygon(0 0, 100% 0, 100% 40%, 0 100%); }
-.rd-glyph--pen > b { left: 1px; bottom: 1px; width: 5px; height: 2px; background: var(--sk-blue); }
-.rd-glyph--hl > b { left: 0; bottom: 0; width: 9px; height: 4px; background: var(--sk-yellow); }
-.rd-glyph--er > i {
-  left: 2px;
-  top: 6px;
-  width: 16px;
-  height: 8px;
-  transform: rotate(-35deg);
-  box-shadow: inset 0 0 0 1.8px currentColor;
-}
-.rd-glyph--er > i > i { left: 0; top: 0; width: 7px; height: 8px; background: var(--sk-red); box-shadow: inset 0 0 0 1.8px currentColor; }
-.rd-glyph--er > b { left: 3px; bottom: 1px; width: 15px; height: 1.8px; background: currentColor; }
-
 /* ---------- the tool settings popover ---------- */
 .rd-tool-pop {
   position: absolute;

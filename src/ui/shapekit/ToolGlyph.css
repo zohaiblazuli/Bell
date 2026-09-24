@@ -1,0 +1,88 @@
+/* Shape Kit tool glyphs — Bell App v2's drawing tools, built from flat shapes rather than outline
+   icons. Shared by the Reader's floating bar and the notebook editor's dock. 20 x 20, currentColor,
+   with the tools' own colours (blue nib, yellow highlighter, red eraser end) fixed as `--sk-*`. */
+.sk-tg {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+.sk-tg > i,
+.sk-tg > i > i,
+.sk-tg > b {
+  position: absolute;
+  display: block;
+}
+
+/* pen, pencil and marker: a 5-wide barrel on the diagonal */
+.sk-tg--pen > i,
+.sk-tg--pencil > i,
+.sk-tg--marker > i {
+  left: 7.5px;
+  top: -1px;
+  width: 5px;
+  height: 22px;
+  transform: rotate(45deg);
+}
+.sk-tg > i > i:nth-child(1) { left: 0; top: 0; width: 5px; height: 4px; background: currentColor; }
+.sk-tg > i > i:nth-child(2) { left: 0; top: 5px; width: 5px; height: 10px; box-shadow: inset 0 0 0 1.8px currentColor; }
+.sk-tg--pen > i > i:nth-child(3),
+.sk-tg--pencil > i > i:nth-child(3) { left: 0; top: 15px; width: 5px; height: 6px; background: currentColor; clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.sk-tg--marker > i > i:nth-child(3) { left: 0; top: 15px; width: 5px; height: 5px; background: currentColor; clip-path: polygon(0 0, 100% 0, 100% 40%, 0 100%); }
+.sk-tg--pen > b { left: 1px; bottom: 1px; width: 5px; height: 2px; background: var(--sk-blue); }
+.sk-tg--pencil > b { left: 1px; bottom: 1px; width: 5px; height: 2px; background: var(--mute3); }
+.sk-tg--marker > b { left: 0; bottom: 0; width: 9px; height: 4px; background: var(--sk-yellow); }
+
+/* the notebook highlighter: a yellow square in a 2px ring */
+.sk-tg--hl > b {
+  left: 3px;
+  top: 3px;
+  width: 14px;
+  height: 14px;
+  background: var(--sk-yellow);
+  box-shadow: 0 0 0 2px currentColor;
+}
+
+/* eraser: a tilted block with a red end, on a baseline */
+.sk-tg--er > i {
+  left: 2px;
+  top: 6px;
+  width: 16px;
+  height: 8px;
+  transform: rotate(-35deg);
+  box-shadow: inset 0 0 0 1.8px currentColor;
+}
+.sk-tg--er > i > i { left: 0; top: 0; width: 7px; height: 8px; background: var(--sk-red); box-shadow: inset 0 0 0 1.8px currentColor; }
+.sk-tg--er > b { left: 3px; bottom: 1px; width: 15px; height: 1.8px; background: currentColor; }
+
+/* lasso: a dashed oval */
+.sk-tg--lasso > b {
+  left: 2px;
+  top: 4px;
+  width: 16px;
+  height: 12px;
+  border: 2px dashed currentColor;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+/* shapes: a solid triangle */
+.sk-tg--shapes > b {
+  left: 2px;
+  top: 3px;
+  width: 16px;
+  height: 14px;
+  background: currentColor;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+/* text: a bold T */
+.sk-tg--text > b {
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  font-weight: 700;
+  font-style: normal;
+  line-height: 1;
+}

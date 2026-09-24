@@ -82,7 +82,7 @@ export default function Sidebar({
 }: Props) {
   const study: Row[] = [
     { view: 'dashboard', glyph: 'home', label: 'Home', active: view === 'dashboard' },
-    { view: 'library', glyph: 'papers', label: 'Past Papers', count: paperCount?.toLocaleString(), active: view === 'library' },
+    { view: 'library', glyph: 'papers', label: 'Past Papers', count: paperCount?.toLocaleString(), active: view === 'library' || view === 'reader' },
     { view: 'notebooks', glyph: 'notebooks', label: 'Notebooks', count: notebookCount ?? undefined, active: view === 'notebooks' || view === 'notebook' },
     { view: 'workspace', glyph: 'workspace', label: 'Workspace', active: view === 'workspace' },
     {

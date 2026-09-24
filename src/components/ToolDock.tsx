@@ -20,20 +20,19 @@
  * through Select — removing the tools orphans no saved work. The community-reader annotation sheet
  * (`NotebookSheet`) keeps its own tool set; this trim is the desktop dock only.
  *
- * `undo` reuses the existing `ret` glyph; `redo` is a NEW glyph rather than `ret` mirrored, because
- * the Reader mirrors `ret` with a CSS transform and the result reads as a different arrow at 18px.
+ * The glyphs are Bell App v2's Shape Kit tools (`ui/shapekit/ToolGlyph`) — flat shapes, not outline
+ * icons — and undo/redo are the design's ↶ and ↷.
  *
  * Its CSS lives in `src/views/NotebookView.css` with the rest of the spread — the same arrangement
  * `PaperCanvas` has with `WorkspaceView.css`, and for the same reason: this is mounted nowhere else.
  */
 import { Fragment } from 'react';
-import IconButton from '@ui/IconButton';
-import type { IconName } from './Icon';
+import ToolGlyph, { type ToolGlyphKind } from '@ui/shapekit/ToolGlyph';
 import type { NbTool } from '@/lib/notebooks';
 
 interface Entry {
   tool: NbTool;
-  icon: IconName;
+  icon: ToolGlyphKind;
   label: string;
   /** What the button does, said plainly — this is the tooltip and it is the only place a student
    *  finds out that the eraser has two modes or that the ruler is a snap guide. */
@@ -46,7 +45,7 @@ const GROUPS: readonly (readonly Entry[])[] = [
     { tool: 'pen', icon: 'pen', label: 'Pen', title: 'Pen — pressure and taper from the nib' },
     { tool: 'pencil', icon: 'pencil', label: 'Pencil', title: 'Pencil — a drier, grainier line' },
     { tool: 'hl', icon: 'hl', label: 'Highlighter', title: 'Highlighter — a flat translucent band' },
-    { tool: 'er', icon: 'eraser', label: 'Eraser', title: 'Eraser — removes whole strokes' },
+    { tool: 'er', icon: 'er', label: 'Eraser', title: 'Eraser — removes whole strokes' },
   ],
   [
     { tool: 'lasso', icon: 'lasso', label: 'Select', title: 'Select — lasso strokes and objects to move, resize by a corner, or delete' },
@@ -89,14 +88,17 @@ export default function ToolDock({
           {i > 0 && <span className="nbs-dock-sep" aria-hidden="true" />}
           <div className="nbs-dock-grp" role="group" aria-label={['Ink', 'Objects'][i]}>
             {group.map((entry) => (
-              <IconButton
+              <button
                 key={entry.tool}
-                icon={entry.icon}
-                label={entry.label}
+                type="button"
+                className={tool === entry.tool ? 'icobtn icobtn--on' : 'icobtn'}
+                aria-label={entry.label}
+                aria-pressed={tool === entry.tool}
                 title={entry.title}
-                active={tool === entry.tool}
                 onClick={() => onTool(entry.tool)}
-              />
+              >
+                <ToolGlyph kind={entry.icon} />
+              </button>
             ))}
           </div>
         </Fragment>
@@ -108,14 +110,26 @@ export default function ToolDock({
       <span className="nbs-dock-sep" aria-hidden="true" />
 
       <div className="nbs-dock-grp" role="group" aria-label="History">
-        <IconButton
-          icon="ret"
-          label="Undo"
+        <button
+          type="button"
+          className="icobtn nbs-dock-hist"
+          aria-label="Undo"
           title="Undo — works across pages, and survives a relaunch"
           disabled={!canUndo}
           onClick={onUndo}
-        />
-        <IconButton icon="redo" label="Redo" disabled={!canRedo} onClick={onRedo} />
+        >
+          <span aria-hidden="true">↶</span>
+        </button>
+        <button
+          type="button"
+          className="icobtn nbs-dock-hist"
+          aria-label="Redo"
+          title="Redo"
+          disabled={!canRedo}
+          onClick={onRedo}
+        >
+          <span aria-hidden="true">↷</span>
+        </button>
       </div>
     </nav>
   );

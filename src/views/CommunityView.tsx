@@ -992,7 +992,7 @@ export default function CommunityView({ community, subjects, mySubjects, onOpen 
         <div className="cxp-chips" role="group" aria-label="Subjects">
           {chips.map(([key, label]) => {
             const on = chipScope === key;
-            const dot = key.length === 4 ? coverColours({ code: key, name: label }, 1).bg : null;
+            const dot = /^\d{4}$/.test(key) ? coverColours({ code: key, name: label }, 1).bg : null;
             return (
               <button
                 key={key}
@@ -1015,33 +1015,35 @@ export default function CommunityView({ community, subjects, mySubjects, onOpen 
             );
           })}
         </div>
-        <span className="crd-gap" />
-        <span className="crd-sort-label">Sort</span>
-        <select
-          className="crd-select"
-          aria-label="Sort"
-          value={viewSort}
-          onChange={(event) => {
-            const next = event.target.value as ViewSort;
-            setViewSort(next);
-            community.patchFilters({ sort: next === 'downloads' ? 'popular' : next });
-          }}
-        >
-          {VIEW_SORTS.map((sort) => (
-            <option key={sort} value={sort}>
-              {viewSortLabel(sort)}
-            </option>
-          ))}
-        </select>
-        <span
-          className="crd-online cxp-online"
-          data-online={community.error ? undefined : 'true'}
-          title={community.error ? 'Offline' : 'Online'}
-        >
-          <i aria-hidden="true" />
-          <span className="cxp-sr">{community.error ? 'Offline' : 'Online'}</span>
-        </span>
-        <Button ref={adminButtonRef} label="Admin" onClick={enterAdmin} />
+        {/* Sort, the online light and Admin stay together when the bar wraps. */}
+        <div className="cxp-end">
+          <span className="crd-sort-label">Sort</span>
+          <select
+            className="crd-select"
+            aria-label="Sort"
+            value={viewSort}
+            onChange={(event) => {
+              const next = event.target.value as ViewSort;
+              setViewSort(next);
+              community.patchFilters({ sort: next === 'downloads' ? 'popular' : next });
+            }}
+          >
+            {VIEW_SORTS.map((sort) => (
+              <option key={sort} value={sort}>
+                {viewSortLabel(sort)}
+              </option>
+            ))}
+          </select>
+          <span
+            className="crd-online cxp-online"
+            data-online={community.error ? undefined : 'true'}
+            title={community.error ? 'Offline' : 'Online'}
+          >
+            <i aria-hidden="true" />
+            <span className="cxp-sr">{community.error ? 'Offline' : 'Online'}</span>
+          </span>
+          <Button ref={adminButtonRef} label="Admin" onClick={enterAdmin} />
+        </div>
       </div>
 
       {community.error && community.result.items.length === 0 ? (

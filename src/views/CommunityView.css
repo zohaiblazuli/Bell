@@ -322,6 +322,7 @@
   color: var(--ink);
   font: inherit;
   font-size: 13.5px;
+  text-overflow: ellipsis;
 }
 .crd-search input::placeholder {
   color: var(--mute);
@@ -432,28 +433,34 @@
 .cxp-bar {
   flex: none;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   padding: 14px 24px;
   border-bottom: 2px solid var(--line);
 }
+/* The design's bar: a fixed 280 search, then the chips; when the window is too narrow for one row
+   the bar wraps rather than clipping a chip or squeezing the search. */
 .cxp-bar .crd-search {
-  /* The search gives way first, so the chips stay whole on a narrow window. */
-  flex: 0 100 280px !important;
-  min-width: 160px;
+  /* Measured at 200 for the line break, then grows back to the design's 280 when there is room. */
+  flex: 1 1 200px !important;
+  max-width: 280px;
+  min-width: 200px;
   height: 36px;
 }
 .cxp-bar > * {
   flex-shrink: 0;
 }
-/* The chips take whatever width is left and scroll sideways rather than wrap the bar. */
-.cxp-chips {
-  flex: 0 1 auto !important;
-  min-width: 0;
+.cxp-end {
   display: flex;
+  align-items: center;
   gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
+  margin-left: auto;
+}
+.cxp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 .cxp-chips button {
   flex: none;

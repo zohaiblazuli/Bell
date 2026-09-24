@@ -380,13 +380,12 @@ function ToolTab({
       <Card className="nbi-card">
         <SectionLabel label="Stroke" />
 
-        {/* Real-time preview: a dot the true size of the brush, painted in the current ink at its
-            opacity — it grows and shrinks as Size moves, and recolours / fades with Ink and Opacity. */}
+        {/* Real-time preview: Bell App v2's stroke strip, a 120-long line the true thickness of the
+            brush in the current ink at its opacity. */}
         <div className="nbi-preview">
           <span
             className="nbi-preview-dot"
             style={{
-              width: ink.strokePx,
               height: ink.strokePx,
               background: paint(ink.colour),
               opacity: ink.opacity,
