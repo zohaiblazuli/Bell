@@ -163,6 +163,17 @@
 @keyframes sk-ear-wig-l { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-18deg); } 60% { transform: rotate(8deg); } }
 @keyframes sk-ear-wig-r { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(18deg); } 60% { transform: rotate(-8deg); } }
 
+/* Hush's speech bubble */
+@keyframes sk-bub-bob { 0%, 100% { transform: none; } 50% { transform: translateY(-3px) rotate(-.6deg); } }
+@keyframes sk-bub-pop {
+  0% { opacity: 0; transform: scale(.3) rotate(-8deg); }
+  60% { opacity: 1; transform: scale(1.06) rotate(1.5deg); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes sk-dots-out { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes sk-dot-hop { 0%, 60%, 100% { transform: none; } 30% { transform: translateY(-3px); } }
+@keyframes sk-text-in { 0%, 55% { opacity: 0; transform: translateY(4px); } 100% { opacity: 1; transform: none; } }
+
 /* star gate */
 @keyframes sk-twinkle {
   0%, 100% { transform: scale(.6) rotate(0); opacity: .4; }

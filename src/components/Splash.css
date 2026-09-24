@@ -189,12 +189,15 @@
 .app[data-startup='handoff'] .app-stage {
   animation: sk-rise .72s cubic-bezier(.2, .8, .2, 1) .94s both;
 }
+/* Hush's bubble waits out the startup with its animations held, so its own pop (dots, then the
+   line) plays fresh once the window is open. */
 .app:not([data-startup='done']) .sk-hush__bubble {
   opacity: 0;
 }
-.app[data-startup='done'] .sk-hush__bubble {
-  transform-origin: 0 100%;
-  animation: sk-pop .48s cubic-bezier(.2, .8, .2, 1) .5s both;
+.app:not([data-startup='done']) .sk-hush__bubble,
+.app:not([data-startup='done']) .sk-hush__dots,
+.app:not([data-startup='done']) .sk-hush__line {
+  animation: none;
 }
 
 /* Reduced motion (OS or Settings): no build, no flight — the finished lockup shows briefly and the

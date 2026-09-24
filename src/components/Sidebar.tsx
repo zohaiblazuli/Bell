@@ -208,7 +208,17 @@ export default function Sidebar({
             put a decorative owl in every keyboard user's tab order. */}
         <div className="sk-hush" onPointerDown={onPokeMascot}>
           <Mascot size={86} mood={mascot} />
-          <div className="sk-hush__bubble">{line}</div>
+          {/* Keyed on the line so every new line pops in again: typing dots first, then the words. */}
+          <div className="sk-hush__say">
+            <div className="sk-hush__bubble" key={line}>
+              <span className="sk-hush__dots" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </span>
+              <span className="sk-hush__line">{line}</span>
+            </div>
+          </div>
         </div>
         <div className="sk-side__version">
           v{version} · build {build}
