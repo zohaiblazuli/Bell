@@ -170,7 +170,6 @@
 @keyframes sk-star-twinkle { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(.3); opacity: .4; } }
 
 /* Hush's speech bubble */
-@keyframes sk-bub-bob { 0%, 100% { transform: none; } 50% { transform: translateY(-3px) rotate(-.6deg); } }
 @keyframes sk-bub-pop {
   0% { opacity: 0; transform: scale(.3) rotate(-8deg); }
   60% { opacity: 1; transform: scale(1.06) rotate(1.5deg); }

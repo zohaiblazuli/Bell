@@ -210,14 +210,13 @@
   gap: 10px;
   cursor: pointer;
 }
-/* The speech bubble is the one rounded box in the kit: a comic balloon, not a frame. It bobs, and
-   each new line pops out of Hush with three typing dots before the words land. Its rest state is
-   the finished bubble with the dots gone, so motion off shows the words straight away. */
+/* The speech bubble is the one rounded box in the kit: a comic balloon, not a frame, with an ink tail
+   pointing down at Hush. Its rest state is the finished bubble with any dots gone, so motion off
+   shows the words straight away. */
 .sk-hush__say {
   flex: 1;
   min-width: 0;
   margin: 0 0 18px 6px;
-  animation: sk-bub-bob 2.8s ease-in-out 1s infinite;
 }
 .sk-hush__bubble {
   position: relative;
@@ -229,10 +228,7 @@
   font-weight: 500;
   line-height: 1.3;
   text-wrap: balance;
-  transform-origin: -8px 90%;
-  animation: sk-bub-pop .5s cubic-bezier(.2, .8, .2, 1) both;
 }
-/* The tail: an ink triangle with a card-coloured one inset, pointing down-left at Hush. */
 .sk-hush__bubble::before,
 .sk-hush__bubble::after {
   content: '';
@@ -253,7 +249,16 @@
   height: 9.3px;
   background: var(--card);
 }
-.sk-hush__dots {
+.sk-hush__rest {
+  visibility: hidden;
+}
+
+/* A later line pops out of Hush, three dots first, then the words. */
+.sk-hush__bubble--pop {
+  transform-origin: -8px 90%;
+  animation: sk-bub-pop .5s cubic-bezier(.2, .8, .2, 1) both;
+}
+.sk-hush__think {
   position: absolute;
   left: 11px;
   top: 0;
@@ -265,15 +270,15 @@
   opacity: 0;
   animation: sk-dots-out .5s linear both;
 }
-.sk-hush__dots span {
+.sk-hush__think span {
   width: 5px;
   height: 5px;
   border-radius: 50%;
   background: var(--ink);
   animation: sk-dot-hop .6s ease-in-out infinite;
 }
-.sk-hush__dots span:nth-child(2) { animation-delay: .1s; }
-.sk-hush__dots span:nth-child(3) { animation-delay: .2s; }
+.sk-hush__think span:nth-child(2) { animation-delay: .1s; }
+.sk-hush__think span:nth-child(3) { animation-delay: .2s; }
 .sk-hush__line {
   display: block;
   animation: sk-text-in .75s cubic-bezier(.2, .8, .2, 1) both;

@@ -289,6 +289,18 @@
   left: 584px;
 }
 
+/* Where a cross-binding drag will land. Drawn as an inset accent ring on the page the pointer is over
+   while a selection is being dragged off its neighbour — the only cue the student gets that letting go
+   here moves the ink across, since the dragged ghost itself is clipped at the source page's edge. */
+.nbs-page[data-drop-target='true']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 3px var(--accent);
+}
+
 /* The three stacked canvases, all filling the page. `paper` repaints only when the style or the box
    changes, `static` on a commit or a page change, and `live` carries the stroke in flight — which is
    what stops a long stroke re-rasterising the ruling underneath it on every pointermove. */

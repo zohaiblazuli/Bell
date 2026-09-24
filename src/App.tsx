@@ -646,6 +646,7 @@ export default function App() {
               recentCount: loadRecent().length,
               bookmarks: study.marks.bookmarks.size,
             })}
+            startup={motion === 'on' ? splash : 'done'}
             mascot={mascot.mood}
             onPokeMascot={mascot.poke}
           />

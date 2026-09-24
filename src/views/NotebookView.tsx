@@ -25,7 +25,20 @@ import ToolDock from '../components/ToolDock';
 import NotebookPage from '../components/NotebookPage';
 import Inspector from '../components/Inspector';
 import { imageFrom, planImage, toPng } from '../lib/clip';
-import { addObjectCmd, deleteCmd, type Pt, type Ruler } from '../lib/ink';
+import {
+  addObjectCmd,
+  deleteCmd,
+  isStroke,
+  paintedBBox,
+  pasteCmd,
+  transformObject,
+  transformStroke,
+  translation,
+  unionBBox,
+  type NbRecord,
+  type Pt,
+  type Ruler,
+} from '../lib/ink';
 import {
   nbExport,
   nbStat,
@@ -73,6 +86,8 @@ const TURN_MS = 450;
 
 /** The name field types straight through, so the write is held back this long. */
 const META_MS = 500;
+
+const clamp = (n: number, lo: number, hi: number) => Math.min(Math.max(n, lo), hi);
 
 /** One shared empty list for the pages that hold no selection — a fresh `[]` per render would rebuild
  *  `NotebookPage`'s overlay painter, and with it a clear of the live canvas, on every render. */
@@ -329,6 +344,12 @@ export default function NotebookView({
   /** The last pointer position on the spread, used to place a paste where the student is looking. */
   const lastPointer = useRef<{ page: number; x: number; y: number } | null>(null);
 
+  /** Records copied or cut, in page fractions, awaiting a paste. Lives for the session, not per page. */
+  const clipboard = useRef<NbRecord[] | null>(null);
+
+  /** The page a cross-binding drag is hovering over, so it can wear the landing ring. */
+  const [dropTarget, setDropTarget] = useState<number | null>(null);
+
   const onPointerHint = useCallback((index: number, at: Pt) => {
     lastPointer.current = { page: index, x: at.x, y: at.y };
   }, []);
@@ -378,16 +399,93 @@ export default function NotebookView({
     return () => window.clearTimeout(timer);
   }, [notice]);
 
+  /**
+   * Copy, cut and paste. Screenshots still arrive through the OS clipboard as before; a selection of the
+   * student's own ink and objects rides an in-app clipboard so it can be moved to another page — the
+   * relocation the per-page drag boundary otherwise makes impossible.
+   *
+   * All three run off the browser's own clipboard events, which fire on Ctrl+C/X/V once the keydown
+   * handler has passed them through. A press inside the inline text editor is left to edit text.
+   */
   useEffect(() => {
-    const onPaste = (e: ClipboardEvent) => {
-      const file = imageFrom(e.clipboardData);
-      if (!file) return;
-      e.preventDefault();
-      void takeImage(file);
+    const editable = (t: EventTarget | null) =>
+      t instanceof HTMLElement &&
+      (t.isContentEditable || t.tagName === 'TEXTAREA' || t.tagName === 'INPUT');
+
+    const gather = (): NbRecord[] => {
+      if (selection.ids.length === 0) return [];
+      const pg = nb.page(selection.page);
+      const set = new Set(selection.ids);
+      return [...pg.strokes, ...pg.objects].filter((r) => set.has(r.id)).map((r) => ({ ...r }));
     };
+
+    const onCopy = (e: ClipboardEvent) => {
+      if (editable(e.target)) return;
+      const recs = gather();
+      if (recs.length === 0) return;
+      e.preventDefault();
+      clipboard.current = recs;
+    };
+
+    const onCut = (e: ClipboardEvent) => {
+      if (editable(e.target)) return;
+      const recs = gather();
+      if (recs.length === 0) return;
+      e.preventDefault();
+      clipboard.current = recs;
+      nb.commit(deleteCmd(selection.page, nb.page(selection.page), selection.ids));
+      setSelection({ page: -1, ids: [] });
+    };
+
+    const onPaste = (e: ClipboardEvent) => {
+      if (editable(e.target)) return;
+      // A screenshot on the OS clipboard wins, exactly as before.
+      const img = imageFrom(e.clipboardData);
+      if (img) {
+        e.preventDefault();
+        void takeImage(img);
+        return;
+      }
+      const recs = clipboard.current;
+      if (!recs || recs.length === 0) return;
+      e.preventDefault();
+      // Land on the page under the cursor if it is one of the open pair, else the right page — the same
+      // rule an image paste follows. Move the copied set so its top-left sits at the cursor (or a small
+      // nudge in when there is no hint), clamped so nothing pastes off the page.
+      const hint = lastPointer.current;
+      const target = hint && nb.open.includes(hint.page) ? hint.page : nb.open[1];
+      const bbox = unionBBox(recs.map(paintedBBox));
+      const to =
+        hint && hint.page === target
+          ? { x: hint.x, y: hint.y }
+          : { x: bbox.x + 0.04, y: bbox.y + 0.04 };
+      const dx = clamp(to.x, 0, Math.max(0, 1 - bbox.w)) - bbox.x;
+      const dy = clamp(to.y, 0, Math.max(0, 1 - bbox.h)) - bbox.y;
+      const m = translation(dx, dy);
+      const stamp = Date.now().toString(36);
+      let seq = 0;
+      // Fresh ids: a paste is a new record, so pasting twice — or onto the page it was copied from —
+      // cannot collide with what is already there.
+      const placed: NbRecord[] = recs.map((r) => {
+        const moved = isStroke(r) ? transformStroke(r, m) : transformObject(r, m);
+        const kind = isStroke(r) ? 'stroke' : r.k;
+        return { ...moved, id: `${kind}-${stamp}-${seq++}` } as NbRecord;
+      });
+      nb.commit(pasteCmd(target, placed));
+      // Select what just landed, on Select, so it can be moved or deleted straight away.
+      nb.patchInk({ tool: 'lasso' });
+      setSelection({ page: target, ids: placed.map((r) => r.id) });
+    };
+
+    window.addEventListener('copy', onCopy);
+    window.addEventListener('cut', onCut);
     window.addEventListener('paste', onPaste);
-    return () => window.removeEventListener('paste', onPaste);
-  }, [takeImage]);
+    return () => {
+      window.removeEventListener('copy', onCopy);
+      window.removeEventListener('cut', onCut);
+      window.removeEventListener('paste', onPaste);
+    };
+  }, [nb, selection, takeImage]);
 
   const [left, right] = nb.open;
   /**
@@ -412,6 +510,7 @@ export default function NotebookView({
     onRuler: setRuler,
     onCommand: nb.commit,
     onPointerHint,
+    onDropHint: setDropTarget,
   };
 
   /* --- leaving, and the one irreversible thing here ------------------------ */
@@ -568,6 +667,7 @@ export default function NotebookView({
                 page={nb.page(left)}
                 selection={selection.page === left ? selection.ids : NO_SELECTION}
                 onSelection={(ids) => setSelection({ page: left, ids })}
+                dropActive={dropTarget === left}
                 turn={nb.turning?.dir === 'back' ? 'in' : undefined}
               />
               <NotebookPage
@@ -578,6 +678,7 @@ export default function NotebookView({
                 page={nb.page(right)}
                 selection={selection.page === right ? selection.ids : NO_SELECTION}
                 onSelection={(ids) => setSelection({ page: right, ids })}
+                dropActive={dropTarget === right}
                 turn={nb.turning?.dir === 'fwd' ? 'in' : undefined}
               />
 

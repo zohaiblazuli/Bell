@@ -34,7 +34,12 @@ export function revealTone(toNight: boolean, origin: { x: number; y: number } | 
       },
       {
         duration: 750,
-        easing: 'cubic-bezier(.65,0,.25,1)',
+        // Grow and shrink want different curves. Night's reveal (grow) uses an ease-in-out, where the
+        // slow start is invisible — a tiny circle is meant to start small. Reusing that on the shrink
+        // made the full dark screen hang for a beat after the click before collapsing (ease-in), which
+        // read as lag. Day's reveal (shrink) instead starts fast so it responds the instant you press
+        // the sun, then settles into it — the design system's "rise" curve.
+        easing: toNight ? 'cubic-bezier(.65,0,.25,1)' : 'cubic-bezier(.2,.8,.2,1)',
         fill: 'forwards',
         pseudoElement: toNight ? '::view-transition-new(root)' : '::view-transition-old(root)',
       },

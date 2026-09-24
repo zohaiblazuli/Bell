@@ -44,8 +44,8 @@ from the same shapes, is the only mascot. Actual documents stay bright and visua
 - Views iris in from the top-left; cards are dealt; shapes roll, swing and pop into place; the bell
   quarter rings. The Day/Night switch is a circle reveal from the pressed sun or moon (View
   Transitions API).
-- Startup v2, "Full stop": the logo builds straight on the desktop, then the window opens behind it
-  and the lockup flies into the sidebar.
+- Startup v2, "Full stop": the logo builds straight on the desktop, then the full stop floods the
+  window blue and lifts away to reveal Home; Hush rises into the sidebar and types his first line.
 - View-level entrance animations must not fill forwards on `opacity`, `transform` or `clip-path`:
   a lingering stacking context or clip traps modal scrims raised inside the view.
 
