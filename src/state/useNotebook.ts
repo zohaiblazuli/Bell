@@ -41,6 +41,7 @@ import {
   apply as applyCommand,
   canRedo as historyCanRedo,
   canUndo as historyCanUndo,
+  commandPages,
   emptyHistory,
   parseHistory,
   pushCommand,
@@ -367,11 +368,14 @@ export function useNotebook(entry: NbEntry, startPage = 0): NotebookSession {
     (command: InkCommand) => {
       setPages((prev) => applyCommand(prev, command));
       setHistory((prev) => pushCommand(prev, command));
-      dirty.current.add(command.page);
+      // A command can touch more than one page — a cross-page move writes both — so every page it names
+      // is marked dirty and the count follows the highest of them.
+      const touched = commandPages(command);
+      for (const p of touched) dirty.current.add(p);
       historyDirty.current = true;
       // A stroke on a page past the current end is what materialises that page — the count follows
       // the writing rather than being asked for. TRAP 15's promise, in one line.
-      setPageTotal((n) => Math.max(n, pageCountFromMaxIndex(command.page)));
+      setPageTotal((n) => Math.max(n, pageCountFromMaxIndex(Math.max(...touched))));
       schedule();
 
       // An eraser swipe is a stroke too in paint mode, and "recent colours" means colours the student
@@ -397,7 +401,7 @@ export function useNotebook(entry: NbEntry, startPage = 0): NotebookSession {
     if (!result.command) return;
     setPages(result.state);
     setHistory(result.history);
-    dirty.current.add(result.command.page);
+    for (const p of commandPages(result.command)) dirty.current.add(p);
     historyDirty.current = true;
     schedule();
   }, [schedule]);
@@ -407,9 +411,10 @@ export function useNotebook(entry: NbEntry, startPage = 0): NotebookSession {
     if (!result.command) return;
     setPages(result.state);
     setHistory(result.history);
-    dirty.current.add(result.command.page);
+    const touched = commandPages(result.command);
+    for (const p of touched) dirty.current.add(p);
     historyDirty.current = true;
-    setPageTotal((n) => Math.max(n, pageCountFromMaxIndex(result.command!.page)));
+    setPageTotal((n) => Math.max(n, pageCountFromMaxIndex(Math.max(...touched))));
     schedule();
   }, [schedule]);
 

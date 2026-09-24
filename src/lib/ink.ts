@@ -1056,7 +1056,12 @@ export type InkCommand =
   | { k: 'transform'; page: number; before: NbRecord[]; m: Affine }
   | { k: 'recolour'; page: number; before: { id: string; c: string }[]; c: string }
   | { k: 'delete'; page: number; strokes: Placed<NbStroke>[]; objects: Placed<NbObject>[] }
-  | { k: 'paste'; page: number; strokes: NbStroke[]; objects: NbObject[] };
+  | { k: 'paste'; page: number; strokes: NbStroke[]; objects: NbObject[] }
+  // A sequence applied and reverted as ONE undo step, across as many pages as its members touch. The
+  // only maker is `moveCmd`, which carries content across the binding as a delete-here + paste-there
+  // pair; `page` is the destination, for the count and the validity check, but `commandPages` is what
+  // the save layer reads so BOTH ends are written.
+  | { k: 'batch'; page: number; commands: InkCommand[] };
 
 const pageAt = (state: NbPages, index: number): NbPage => state[index] ?? emptyPage();
 const withPage = (state: NbPages, index: number, page: NbPage): NbPages => ({
@@ -1126,6 +1131,10 @@ export function apply(state: NbPages, command: InkCommand): NbPages {
         objects: [...page.objects, ...command.objects.filter((o) => !have.has(o.id))],
       });
     }
+    case 'batch':
+      // In order: `moveCmd`'s delete-then-paste, so the source loses the records before the target
+      // gains them. Each member names its own page, so `command.page` is unused here.
+      return command.commands.reduce((next, c) => apply(next, c), state);
   }
 }
 
@@ -1187,6 +1196,10 @@ export function revert(state: NbPages, command: InkCommand): NbPages {
         objects: page.objects.filter((o) => !ids.has(o.id)),
       });
     }
+    case 'batch':
+      // Reverse order, so a move's paste is undone before its delete is — `reduceRight` walks the
+      // members from last to first, which makes `revert(apply(s, batch), batch)` deep-equal `s`.
+      return command.commands.reduceRight((next, c) => revert(next, c), state);
   }
 }
 
@@ -1255,6 +1268,46 @@ export function pasteCmd(page: number, records: readonly NbRecord[]): InkCommand
     else objects.push(rec);
   }
   return { k: 'paste', page, strokes, objects };
+}
+
+/**
+ * Carry a selection from one page to another as a SINGLE undo step.
+ *
+ * Cross-page drag and cut-to-another-page both end here. It is a `batch` of a `delete` on the source —
+ * which snapshots the originals at their z, so an undo puts them back exactly where they were — and a
+ * `paste` of those same records, transformed by `m` into the destination's coordinate box, onto the
+ * target. The ids are KEPT rather than reminted: a record lives on exactly one page at a time, so there
+ * is nothing on the far page to collide with, and identical ids are what make the delete and the paste
+ * reverse each other cleanly. `m` is a fractional translation, and both page boxes are the same size,
+ * so the point the hand grabbed stays under the hand as it crosses the binding.
+ */
+export function moveCmd(
+  from: number,
+  fromPage: NbPage,
+  to: number,
+  ids: Iterable<string>,
+  m: Affine,
+): InkCommand {
+  const set = setOf(ids);
+  const moved: NbRecord[] = [
+    ...fromPage.strokes.filter((s) => set.has(s.id)).map((s) => transformStroke(s, m)),
+    ...fromPage.objects.filter((o) => set.has(o.id)).map((o) => transformObject(o, m)),
+  ];
+  return { k: 'batch', page: to, commands: [deleteCmd(from, fromPage, ids), pasteCmd(to, moved)] };
+}
+
+/**
+ * Every disk page a command touches — one for the simple kinds, the union of its members for a `batch`.
+ *
+ * The save layer marks each of these dirty and the page count follows the highest, so a cross-page move
+ * writes both ends rather than leaving the source's copy on disk, and materialises the far page rather
+ * than reporting a count short of it.
+ */
+export function commandPages(command: InkCommand): number[] {
+  if (command.k !== 'batch') return [command.page];
+  const seen = new Set<number>();
+  for (const member of command.commands) for (const p of commandPages(member)) seen.add(p);
+  return [...seen];
 }
 
 /* ────────────────────────────────────────────── the history, persisted to disk ──────────────────── */
@@ -1355,6 +1408,8 @@ function validCommand(x: unknown): x is InkCommand {
       return allOf(c.strokes, isPlaced) && allOf(c.objects, isPlaced);
     case 'paste':
       return allOf(c.strokes, isRecord) && allOf(c.objects, isRecord);
+    case 'batch':
+      return allOf(c.commands, validCommand);
     default:
       return false;
   }

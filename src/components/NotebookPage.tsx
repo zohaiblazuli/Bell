@@ -31,6 +31,7 @@ import {
   eraseAt,
   hitTest,
   hitTestLasso,
+  moveCmd,
   NIB_FOR_TOOL,
   paintLive,
   paintPaper,
@@ -115,6 +116,11 @@ export interface Props {
   onSelection: (ids: string[]) => void;
   /** Reports the pointer's fractional position on this page, for cursor-aware paste. */
   onPointerHint?: (index: number, at: Pt) => void;
+  /** While a selection is being dragged, the page it is hovering over when that is NOT this one — so the
+   *  view can highlight where a cross-binding drop will land. Null the moment the drag leaves or ends. */
+  onDropHint?: (target: number | null) => void;
+  /** This page is the live drop target of a drag happening on the other page: draw the landing ring. */
+  dropActive?: boolean;
   /** Set during a page turn, so the sheet can animate without the view re-keying the canvases. */
   turn?: 'in' | 'out';
 }
@@ -135,6 +141,8 @@ export default function NotebookPage({
   selection,
   onSelection,
   onPointerHint,
+  onDropHint,
+  dropActive,
   turn,
 }: Props) {
   const paperRef = useRef<HTMLCanvasElement>(null);
@@ -395,6 +403,15 @@ export default function NotebookPage({
   const sample = (e: React.PointerEvent<HTMLCanvasElement>): InkPoint[] =>
     samplePointer(e.nativeEvent, e.currentTarget.getBoundingClientRect());
 
+  /** The page a drag is currently hovering over when it is not this one, deduped so `onDropHint` fires
+   *  on a crossing rather than on every move. */
+  const lastDrop = useRef<number | null>(null);
+  const reportDrop = (target: number | null) => {
+    if (lastDrop.current === target) return;
+    lastDrop.current = target;
+    onDropHint?.(target);
+  };
+
   function down(e: React.PointerEvent<HTMLCanvasElement>) {
     if (e.button !== 0) return;
     // Palm rejection lives in the engine: a pen that is down owns the surface, and while anything is
@@ -563,6 +580,11 @@ export default function NotebookPage({
     }
     if (drag.current) {
       drag.current.last = at;
+      // Which page is the pointer over? If it is the neighbour, the drop will hand the selection across
+      // the binding — tell the view so it can show where. `elementFromPoint` hit-tests the real DOM, so
+      // it sees the neighbour even though this page's canvas is holding pointer capture.
+      const over = pageUnder(e.clientX, e.clientY);
+      reportDrop(over && over.index !== index ? over.index : null);
       loop.mark();
       return;
     }
@@ -626,11 +648,28 @@ export default function NotebookPage({
     if (drag.current) {
       const { ids, from, last } = drag.current;
       drag.current = null;
-      const dx = q4(last.x - from.x);
-      const dy = q4(last.y - from.y);
-      if (dx !== 0 || dy !== 0) onCommand(transformCmd(index, page, ids, translation(dx, dy)));
-      // Nothing moved, so no commit will repaint: the lifted ink has to be put back by hand.
-      else settle();
+      const dest = pageUnder(e.clientX, e.clientY);
+      if (dest && dest.index !== index) {
+        // Released over the neighbour: carry the selection across the binding as one undo step. The
+        // fractional delta from where the hand grabbed to where it let go transfers directly, because
+        // every page box is the same size — so the grabbed point lands under the cursor on the far page.
+        const m = translation(q4(dest.at.x - from.x), q4(dest.at.y - from.y));
+        onCommand(moveCmd(index, page, dest.index, ids, m));
+        // Selection is per page and these records have left this one; the commit repaints both ends.
+        onSelection([]);
+      } else {
+        // Stayed on this page. Clamp the move so a selection cannot be shoved off an outer edge into the
+        // `overflow: hidden` dead zone the way it used to vanish under the neighbour.
+        const frame = selectionFrame(page, ids);
+        const clamped = frame
+          ? clampTranslation(frame, last.x - from.x, last.y - from.y)
+          : { dx: last.x - from.x, dy: last.y - from.y };
+        const dx = q4(clamped.dx);
+        const dy = q4(clamped.dy);
+        if (dx !== 0 || dy !== 0) onCommand(transformCmd(index, page, ids, translation(dx, dy)));
+        // Nothing moved, so no commit will repaint: the lifted ink has to be put back by hand.
+        else settle();
+      }
       finishGesture();
       return;
     }
@@ -657,6 +696,7 @@ export default function NotebookPage({
 
   function finishGesture() {
     owner.current = null;
+    reportDrop(null);
     loop.mark();
   }
 
@@ -740,6 +780,7 @@ export default function NotebookPage({
       data-side={side}
       data-page-index={index}
       data-armed={armed}
+      data-drop-target={dropActive ? 'true' : undefined}
       data-turn={turn}
       onPointerMove={onPointerHint ? (e) => {
         const rect = e.currentTarget.getBoundingClientRect();
@@ -956,6 +997,38 @@ function clampSpot(at: Pt, kind: 'text' | 'note'): Pt {
   return {
     x: Math.min(Math.max(0, at.x), (BOX.w - box.w) / BOX.w),
     y: Math.min(Math.max(0, at.y), (BOX.h - box.h) / BOX.h),
+  };
+}
+
+/**
+ * The `.nbs-page` under a client point, and the pointer's fraction of it.
+ *
+ * This is how a drag hands a selection across the binding. It reads `elementFromPoint`, which hit-tests
+ * the real DOM and so returns the NEIGHBOUR even though the dragging page's canvas holds pointer
+ * capture — capture routes events, it does not move the cursor. The fraction is measured against the
+ * found page's own box, so it is correct at any spread scale, exactly as `fractionOf` is.
+ */
+function pageUnder(clientX: number, clientY: number): { index: number; at: Pt } | null {
+  const el = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>('.nbs-page');
+  if (!el || el.dataset.pageIndex === undefined) return null;
+  const rect = el.getBoundingClientRect();
+  return {
+    index: Number(el.dataset.pageIndex),
+    at: { x: (clientX - rect.left) / rect.width, y: (clientY - rect.top) / rect.height },
+  };
+}
+
+/**
+ * Clamp a same-page move so the selection's box stays inside the page.
+ *
+ * A drag that ends on the page it began on can no longer shove ink off an edge into the `overflow:
+ * hidden` dead zone — the bug behind content vanishing "under the next page". A drag that crosses the
+ * binding never reaches here: it is handed to the neighbour instead.
+ */
+function clampTranslation(frame: Rect, dx: number, dy: number): { dx: number; dy: number } {
+  return {
+    dx: Math.min(Math.max(dx, -frame.x), 1 - (frame.x + frame.w)),
+    dy: Math.min(Math.max(dy, -frame.y), 1 - (frame.y + frame.h)),
   };
 }
 

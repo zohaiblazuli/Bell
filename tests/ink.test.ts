@@ -31,6 +31,7 @@ import {
   apply,
   bboxCacheSize,
   clearBBoxCache,
+  commandPages,
   createInkLoop,
   deleteCmd,
   deleteRecords,
@@ -47,6 +48,7 @@ import {
   paintedBBox,
   parseHistory,
   pasteCmd,
+  moveCmd,
   pointInPolygon,
   pushCommand,
   recolourCmd,
@@ -848,6 +850,47 @@ describe('undo and redo are notebook-wide', () => {
     history = pushCommand(history, second);
     assert.equal(history.undone.length, 0);
     assert.equal(history.done.length, 1);
+  });
+});
+
+describe('moving a selection across the binding', () => {
+  test('moveCmd takes the named records off the source and lands them, transformed, on the target', () => {
+    const state: NbPages = { 4: base(), 5: emptyPage() };
+    const cmd = moveCmd(4, state[4], 5, ['s1', 'o1'], translation(0.1, -0.05));
+    const after = apply(state, cmd);
+    // Gone from the source, the rest untouched.
+    assert.deepEqual(after[4].strokes.map((s) => s.id), ['s2']);
+    assert.deepEqual(after[4].objects.map((o) => o.id), ['o2']);
+    // Arrived on the target, keeping their ids and shifted by the translation.
+    assert.deepEqual(after[5].strokes.map((s) => s.id), ['s1']);
+    const img = after[5].objects.find((o) => o.id === 'o1')!;
+    assert.ok(Math.abs(img.x - 0.2) < 1e-6, 'the image carried its translation across');
+  });
+
+  test('a move reverts exactly — one undo step puts both pages back', () => {
+    const state: NbPages = { 4: base(), 5: emptyPage() };
+    const cmd = moveCmd(4, state[4], 5, ['s1', 'o1'], translation(0.1, -0.05));
+    assert.deepEqual(revert(apply(state, cmd), cmd), state);
+  });
+
+  test('undo restores the moved records at the z they were taken from', () => {
+    const state: NbPages = { 4: base(), 5: emptyPage() };
+    const cmd = moveCmd(4, state[4], 5, ['s1'], translation(0.2, 0.2));
+    const back = revert(apply(state, cmd), cmd);
+    assert.deepEqual(back[4].strokes.map((s) => s.id), ['s1', 's2']);
+    assert.deepEqual(back[5].strokes, []);
+  });
+
+  test('a move onto a never-written page materialises it', () => {
+    const state: NbPages = { 4: base() };
+    const after = apply(state, moveCmd(4, state[4], 9, ['o2'], translation(0, 0)));
+    assert.deepEqual(after[9].objects.map((o) => o.id), ['o2']);
+    assert.equal(after[9].v, 1);
+  });
+
+  test('commandPages names both ends of a move, and the one page of a simple command', () => {
+    assert.deepEqual(commandPages(moveCmd(4, base(), 5, ['s1'], translation(0.1, 0.1))).sort((a, b) => a - b), [4, 5]);
+    assert.deepEqual(commandPages(addStrokeCmd(7, S1)), [7]);
   });
 });
 
