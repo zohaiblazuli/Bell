@@ -116,8 +116,9 @@ export default function Hush({ pose = 'idle', size = 86, shadow = true, classNam
         )}
         {pose === 'asleep' && (
           <>
-            <i className="hush__z hush__z--a" />
-            <i className="hush__z hush__z--b" />
+            <i className="hush__z hush__z--a">Z</i>
+            <i className="hush__z hush__z--b">Z</i>
+            <i className="hush__z hush__z--c">Z</i>
           </>
         )}
       </div>

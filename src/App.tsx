@@ -631,7 +631,6 @@ export default function App() {
             view={currentView}
             onView={go}
             version={APP_VERSION}
-            build={APP_BUILD}
             subjects={mySubjects}
             activeSubject={lib.subjectId}
             onSubject={pickSubject}

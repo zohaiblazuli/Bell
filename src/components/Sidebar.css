@@ -284,9 +284,30 @@
   animation: sk-text-in .75s cubic-bezier(.2, .8, .2, 1) both;
 }
 .sk-side__version {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   font-family: var(--font-mono);
   font-size: 10px;
   line-height: 1.6;
+}
+.sk-side__author {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.sk-side__author:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.sk-side__author:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
 }
 
 /* Focus mode: the sidebar recedes, as the glass one did. */

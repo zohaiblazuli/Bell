@@ -30,12 +30,6 @@
   display: block;
 }
 
-/* Elevated hover zoom on card preview */
-.lw-card:hover .pdf-thumb-card .pdf-thumb-img {
-  transform: scale(1.05);
-  filter: brightness(1.03);
-}
-
 /* Skeleton loader */
 .pdf-thumb-skeleton {
   width: 100%;

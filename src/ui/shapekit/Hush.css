@@ -121,9 +121,22 @@
 }
 .hush__star--a { left: 128px; top: 14px; width: 22px; height: 22px; }
 .hush__star--b { left: 26px; top: 34px; width: 14px; height: 14px; background: var(--sk-red); animation-delay: .8s; }
-.hush__z { background: var(--sk-yellow); animation: sk-z-rise 2.4s ease-out infinite; }
-.hush__z--a { left: 140px; top: 40px; width: 10px; height: 10px; }
-.hush__z--b { left: 146px; top: 48px; width: 7px; height: 7px; animation-delay: 1.2s; }
+/* Letter Zs drift up and out from over his right ear, one a second. They float off him onto the page,
+   so they take the tone's ink rather than a literal. The rest state (motion off) is the three of
+   them stacked in a rising staircase; `backwards` keeps a Z hidden until its first turn. */
+.hush__z {
+  left: 128px;
+  top: 34px;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  animation: sk-z-rise 3s ease-out infinite backwards;
+}
+.hush__z--a { transform: scale(.6); }
+.hush__z--b { transform: translate(9px, -20px) scale(.8); animation-delay: 1s; }
+.hush__z--c { transform: translate(18px, -42px); animation-delay: 2s; }
 .hush__burst { left: 84px; top: 80px; width: 12px; height: 12px; }
 .hush__burst--1 { width: 14px; height: 14px; border-radius: 50%; background: var(--sk-red); animation: sk-burst-1 1.2s ease-out infinite; }
 .hush__burst--2 { width: 14px; background: var(--sk-blue); clip-path: polygon(50% 0, 100% 100%, 0 100%); animation: sk-burst-2 1.2s ease-out infinite; }

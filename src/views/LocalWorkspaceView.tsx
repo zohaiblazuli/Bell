@@ -1,16 +1,21 @@
 /**
- * THESIS: Private study material should feel like a calm workbench, not a cloud drive.
- * OWN-WORLD: Bell's paper planes, compact metadata, blue live line and bookish restraint continue.
- * STORY: Import at the top, scan the local shelf, then read alone or open a notebook beside it.
- * FIRST VIEWPORT: A welcoming hero with quick stats, search/sort toolbar, and a rich visual shelf.
+ * Workspace — the student's own PDFs, imported onto this machine (Bell App v2, Shape Kit).
+ *
+ * Composed from the shelves around it rather than drawn fresh: the Notebooks head (a big title, a
+ * one-line count, the layout toggle and one primary action), Past Papers' filter bar (a framed search
+ * and a joined sort toggle whose chosen segment inverts to ink), and Paper Card's frame, hover lift
+ * and footer. Each card shows the document's first page on a paper sheet that bleeds off the foot of
+ * its well, as Community's carousel does — the document earns trust, not the chrome.
+ *
+ * The list layout is Recent's ruled list. Empty, it is Hush sighing beside one Import button.
+ * Dropping PDFs anywhere on the view imports them.
  */
-import { useMemo, useState, type DragEvent } from 'react';
+import { useMemo, useState, type CSSProperties, type DragEvent } from 'react';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
-import Icon, { type IconName } from '@/components/Icon';
+import Icon from '@/components/Icon';
 import Button from '@ui/Button';
 import Dialog from '@ui/Dialog';
 import Notice from '@ui/Notice';
-import SegmentedControl from '@ui/SegmentedControl';
 import PdfThumbnail from '@/components/PdfThumbnail';
 import Mascot from '@/components/Mascot';
 import type { WorkspaceDocument } from '@/lib/workspace';
@@ -25,10 +30,16 @@ interface Props {
 type ViewMode = 'grid' | 'list';
 type SortKey = 'recent' | 'imported' | 'name' | 'size';
 
-const VIEW_SEGMENTS = [
-  { icon: 'grid' as IconName, label: 'Grid view' },
-  { icon: 'list' as IconName, label: 'List view' },
-] as const;
+const SORTS: { key: SortKey; label: string; title: string }[] = [
+  { key: 'recent', label: 'Recent', title: 'Most recently opened first' },
+  { key: 'imported', label: 'Added', title: 'Most recently imported first' },
+  { key: 'name', label: 'A–Z', title: 'By title' },
+  { key: 'size', label: 'Size', title: 'Largest first' },
+];
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+const shortDate = (at: number) => new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -42,10 +53,10 @@ function formatBytes(bytes: number): string {
 }
 
 function timeAgo(at: number | null): string {
-  if (!at) return 'Never';
+  if (!at) return 'never';
   const diff = Date.now() - at;
   const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return 'Just now';
+  if (minutes < 1) return 'just now';
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
@@ -99,16 +110,6 @@ export default function LocalWorkspaceView({ workspace, onOpen }: Props) {
     [workspace.documents],
   );
 
-  const lastActivity = useMemo(() => {
-    if (workspace.documents.length === 0) return null;
-    let latest = 0;
-    for (const doc of workspace.documents) {
-      const stamp = doc.lastOpenedAt ?? doc.importedAt;
-      if (stamp > latest) latest = stamp;
-    }
-    return latest > 0 ? latest : null;
-  }, [workspace.documents]);
-
   const handlePickFiles = async () => {
     try {
       const selected = await openDialog({
@@ -154,6 +155,8 @@ export default function LocalWorkspaceView({ workspace, onOpen }: Props) {
   const onDragLeave = (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // Moving between the view's own children fires leave too; only leaving the view ends the drag.
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
     setIsDragOver(false);
   };
 
@@ -186,394 +189,232 @@ export default function LocalWorkspaceView({ workspace, onOpen }: Props) {
     }
   };
 
+  const total = workspace.documents.length;
+  const busyLabel = importing ? 'Importing…' : 'Import PDFs';
+  const pick = () => void handlePickFiles();
+
+  const actions = (doc: WorkspaceDocument, row = false) => (
+    <div className={row ? 'lw-row-actions' : 'lw-card-actions'}>
+      <button type="button" className="lw-read" onClick={() => onOpen(doc)} title={`Read “${doc.title}”`}>
+        Read
+        <i aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        className="lw-icon-btn"
+        onClick={() => onOpen(doc, true)}
+        title="Read beside a notebook"
+        aria-label={`Read ${doc.title} beside a notebook`}
+      >
+        <Icon name="notebook" />
+      </button>
+      <button
+        type="button"
+        className="lw-icon-btn lw-icon-btn--danger"
+        onClick={() => setConfirmDoc(doc)}
+        title="Remove from Workspace"
+        aria-label={`Remove ${doc.title} from Workspace`}
+      >
+        <Icon name="trash" />
+      </button>
+    </div>
+  );
+
   return (
-    <section
-      className={`view lw ${isDragOver ? 'lw-drag-active' : ''}`}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={(e) => void onDrop(e)}
-    >
-      {/* Drop zone overlay */}
-      {isDragOver && (
-        <div className="lw-drop-scrim">
-          <div className="lw-drop-box">
-            <span className="lw-drop-icon">
-              <Icon name="doc" />
-            </span>
-            <b>Drop PDF documents here</b>
-            <p>They will be imported privately into your local Workspace</p>
-          </div>
-        </div>
-      )}
+    <>
+      <div
+        className="view"
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={(e) => void onDrop(e)}
+      >
+        <div className="lw">
+          <header className="lw-head">
+            <div className="lw-greeting">
+              <h2 className="lw-title">Your workspace</h2>
+              <p className="lw-subline">
+                {plural(total, 'document')}
+                {total > 0 && ` · ${formatBytes(totalBytes)}`}
+                {' · '}
+                stored on this device
+              </p>
+            </div>
+            {total > 0 && (
+              <Button variant="primary" icon="plus" label={busyLabel} onClick={pick} disabled={importing} />
+            )}
+          </header>
 
-      {/* Hero Banner */}
-      <header className="lw-hero">
-        <div className="lw-hero-content">
-          <div className="lw-hero-tags">
-            <span className="lw-pill-badge">
-              <Icon name="checkc" /> Offline &amp; Private
-            </span>
-          </div>
-          <h1 className="lw-hero-title">Private Workspace</h1>
-          <p className="lw-hero-subtitle">
-            Your personal study shelf. Textbooks, syllabus guides, and class handouts stored securely
-            on this device.
-          </p>
-        </div>
+          {workspace.error && <Notice className="lw-error">{workspace.error}</Notice>}
 
-        <div className="lw-hero-actions">
-          <Button
-            variant="primary"
-            icon="plus"
-            label={importing ? 'Importing…' : 'Import PDFs'}
-            onClick={() => void handlePickFiles()}
-            disabled={importing}
-          />
-          <SegmentedControl
-            items={VIEW_SEGMENTS}
-            value={viewMode === 'grid' ? 0 : 1}
-            onChange={(v) => setViewMode(v === 0 ? 'grid' : 'list')}
-            label="View format"
-          />
-        </div>
-      </header>
+          {total > 0 && (
+            <div className="lw-bar">
+              <label className="lw-search">
+                <Icon name="search" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Find by title or file name"
+                  aria-label="Search documents"
+                />
+                {query && (
+                  <button type="button" className="lw-search-clear" onClick={() => setQuery('')} aria-label="Clear search">
+                    <Icon name="x" />
+                  </button>
+                )}
+              </label>
+              <div className="lw-sort" role="group" aria-label="Sort documents">
+                <span>Sort</span>
+                {SORTS.map((o) => (
+                  <button
+                    key={o.key}
+                    type="button"
+                    aria-pressed={sortKey === o.key}
+                    title={o.title}
+                    onClick={() => setSortKey(o.key)}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+              <span className="lw-strut" />
+              <div className="lw-toggle" role="group" aria-label="Workspace layout">
+                <button type="button" aria-pressed={viewMode === 'grid'} title="Show as cards" onClick={() => setViewMode('grid')}>
+                  <i className="lw-toggle-cards" />
+                </button>
+                <button type="button" aria-pressed={viewMode === 'list'} title="Show as a list" onClick={() => setViewMode('list')}>
+                  <i className="lw-toggle-list" />
+                </button>
+              </div>
+            </div>
+          )}
 
-      {/* Workspace Insight Metrics */}
-      <div className="lw-metrics-grid">
-        <div className="lw-metric-card">
-          <span className="lw-metric-icon">
-            <Icon name="doc" />
-          </span>
-          <div className="lw-metric-body">
-            <span className="lw-metric-value">{workspace.documents.length}</span>
-            <span className="lw-metric-label">
-              {workspace.documents.length === 1 ? 'Document' : 'Documents'}
-            </span>
-          </div>
-        </div>
+          {workspace.loading && total === 0 ? (
+            <p className="lw-status" role="status">
+              Reading your workspace…
+            </p>
+          ) : total === 0 ? (
+            <div className="lw-empty">
+              <Mascot size={108} mood="empty" />
+              <span className="lw-empty-head">Nothing on the desk yet</span>
+              <span className="lw-empty-detail">
+                Bring in textbooks, class notes or revision guides as PDFs — or drop them anywhere here. They stay
+                on this computer, and each one can be read beside a notebook.
+              </span>
+              <Button variant="primary" icon="plus" label={busyLabel} onClick={pick} disabled={importing} />
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="lw-empty">
+              <span className="lw-empty-head">Nothing matches “{query}”</span>
+              <button type="button" className="lw-clear" onClick={() => setQuery('')}>
+                Clear the search
+              </button>
+            </div>
+          ) : (
+            <section className="lw-group" aria-label="Documents">
+              <div className="lw-group-head">
+                <span className="lw-group-label">Shelf</span>
+                <span className="lw-group-meta">
+                  {filtered.length === total ? plural(total, 'file') : `${filtered.length} of ${total}`}
+                </span>
+                <i />
+              </div>
 
-        <div className="lw-metric-card">
-          <span className="lw-metric-icon">
-            <Icon name="folder" />
-          </span>
-          <div className="lw-metric-body">
-            <span className="lw-metric-value">{formatBytes(totalBytes)}</span>
-            <span className="lw-metric-label">Storage Used</span>
-          </div>
-        </div>
-
-        <div className="lw-metric-card">
-          <span className="lw-metric-icon">
-            <Icon name="clock" />
-          </span>
-          <div className="lw-metric-body">
-            <span className="lw-metric-value">{lastActivity ? timeAgo(lastActivity) : '—'}</span>
-            <span className="lw-metric-label">Last Activity</span>
-          </div>
-        </div>
-
-        <div className="lw-metric-card">
-          <span className="lw-metric-icon">
-            <Icon name="notebook" />
-          </span>
-          <div className="lw-metric-body">
-            <span className="lw-metric-value">Companion</span>
-            <span className="lw-metric-label">Notebook Ready</span>
-          </div>
-        </div>
-      </div>
-
-      {workspace.error && (
-        <div className="lw-error-wrap">
-          <Notice>{workspace.error}</Notice>
-        </div>
-      )}
-
-      {/* Toolbar: Search, Sort & Count */}
-      <div className="lw-toolbar">
-        <div className="lw-search-wrap">
-          <Icon name="search" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Find in Workspace by title or filename…"
-            aria-label="Search documents"
-          />
-          {query && (
-            <button
-              type="button"
-              className="lw-search-clear"
-              onClick={() => setQuery('')}
-              title="Clear search"
-              aria-label="Clear search"
-            >
-              <Icon name="x" />
-            </button>
+              {viewMode === 'grid' ? (
+                <div className="lw-grid" role="list">
+                  {filtered.map((doc, index) => (
+                    <article
+                      key={doc.id}
+                      className="lw-card"
+                      role="listitem"
+                      style={{ '--deal': `${Math.min(index, 8) * 45}ms` } as CSSProperties}
+                    >
+                      <button
+                        type="button"
+                        className="lw-card-open"
+                        onClick={() => onOpen(doc)}
+                        aria-label={`Read ${doc.title}`}
+                      />
+                      <div className="lw-well" aria-hidden="true">
+                        <div className="lw-sheet">
+                          <PdfThumbnail path={doc.path} title={doc.title} size="card" targetWidth={420} />
+                        </div>
+                      </div>
+                      <div className="lw-card-id">
+                        <span className="lw-card-title" title={doc.title}>
+                          {doc.title}
+                        </span>
+                        <span className="lw-card-file" title={doc.originalName}>
+                          {doc.originalName}
+                        </span>
+                      </div>
+                      <div className="lw-card-meta">
+                        {doc.lastOpenedAt ? `Opened ${timeAgo(doc.lastOpenedAt)}` : `Added ${shortDate(doc.importedAt)}`}
+                        <span>{formatBytes(doc.size)}</span>
+                      </div>
+                      {actions(doc)}
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="lw-list" role="list">
+                  {filtered.map((doc) => (
+                    <div key={doc.id} className="lw-row" role="listitem">
+                      <button type="button" className="lw-row-open" onClick={() => onOpen(doc)} title={`Read “${doc.title}”`}>
+                        <span className="lw-row-sheet" aria-hidden="true">
+                          <PdfThumbnail path={doc.path} title={doc.title} size="mini" targetWidth={80} />
+                        </span>
+                        <span className="lw-row-name">
+                          <b>{doc.title}</b>
+                          <small>{doc.originalName}</small>
+                        </span>
+                        <span className="lw-row-mono">{formatBytes(doc.size)}</span>
+                        <span className="lw-row-mono">{doc.lastOpenedAt ? timeAgo(doc.lastOpenedAt) : 'unopened'}</span>
+                        <span className="lw-row-mono">{shortDate(doc.importedAt)}</span>
+                      </button>
+                      {actions(doc, true)}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
           )}
         </div>
 
-        <div className="lw-toolbar-meta">
-          <div className="lw-sort-group">
-            <span className="lw-sort-label">Sort by:</span>
-            <select
-              value={sortKey}
-              onChange={(e) => setSortKey(e.target.value as SortKey)}
-              className="lw-sort-select"
-              aria-label="Sort documents"
-            >
-              <option value="recent">Recently Opened</option>
-              <option value="imported">Recently Imported</option>
-              <option value="name">Title (A–Z)</option>
-              <option value="size">File Size (Largest)</option>
-            </select>
+        {isDragOver && (
+          <div className="lw-drop" aria-hidden="true">
+            <div className="lw-drop-box">
+              <Mascot size={72} mood="download" />
+              <b>Drop to import</b>
+              <span>PDFs only · they stay on this computer</span>
+            </div>
           </div>
-
-          <span className="lw-count-label">
-            {filtered.length === workspace.documents.length
-              ? `${workspace.documents.length} ${workspace.documents.length === 1 ? 'file' : 'files'}`
-              : `${filtered.length} of ${workspace.documents.length} matching`}
-          </span>
-        </div>
+        )}
       </div>
 
-      {/* Content Area */}
-      {workspace.loading && workspace.documents.length === 0 ? (
-        <div className="lw-state-card">
-          <div className="lw-state-spinner" />
-          <b>Reading your Workspace…</b>
-          <span>Loading local documents from disk.</span>
-        </div>
-      ) : workspace.documents.length === 0 ? (
-        <div className="lw-empty-desk">
-          <Mascot size={110} mood="empty" />
-          <h2>Your private study shelf is empty</h2>
-          <p>
-            Add textbooks, lecture notes, syllabus handbooks, or revision guides.
-            <br />
-            Documents stay 100% on this computer and can be studied beside companion notebooks.
-          </p>
-          <div className="lw-empty-actions">
-            <Button
-              variant="primary"
-              icon="plus"
-              label={importing ? 'Importing…' : 'Import your first PDF'}
-              onClick={() => void handlePickFiles()}
-              disabled={importing}
-            />
-          </div>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="lw-state-card">
-          <Icon name="search" />
-          <b>No documents match “{query}”</b>
-          <span>Try a different keyword or clear your filter.</span>
-          <button type="button" className="lw-text-btn" onClick={() => setQuery('')}>
-            Clear filter
-          </button>
-        </div>
-      ) : viewMode === 'grid' ? (
-        /* Visual Grid View */
-        <div className="lw-grid" role="list" aria-label="Workspace documents grid">
-          {filtered.map((doc) => (
-            <article key={doc.id} className="lw-card" role="listitem">
-              {/* Card visual cover with extracted page-1 thumbnail */}
-              <div
-                className="lw-card-cover"
-                onClick={() => onOpen(doc)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onOpen(doc);
-                  }
-                }}
-                title={`Open “${doc.title}”`}
-              >
-                <div className="lw-cover-spine" />
-                <PdfThumbnail
-                  path={doc.path}
-                  title={doc.title}
-                  size="card"
-                  targetWidth={500}
-                  className="lw-card-thumb"
-                />
-                <div className="lw-cover-badge">
-                  <Icon name="doc" />
-                  <span>PDF</span>
-                </div>
-                <div className="lw-cover-size">{formatBytes(doc.size)}</div>
-                <div className="lw-cover-hover-prompt">
-                  <Icon name="book" />
-                  <span>Read Now</span>
-                </div>
-              </div>
-
-              {/* Card body */}
-              <div className="lw-card-body">
-                <h3 className="lw-card-title" title={doc.title}>
-                  {doc.title}
-                </h3>
-                <span className="lw-card-file" title={doc.originalName}>
-                  {doc.originalName}
-                </span>
-
-                <div className="lw-card-timestamps">
-                  <span>
-                    <Icon name="clock" /> {doc.lastOpenedAt ? `Opened ${timeAgo(doc.lastOpenedAt)}` : 'Unopened'}
-                  </span>
-                  <span>
-                    Imported {new Date(doc.importedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                  </span>
-                </div>
-
-                {/* Card Action Buttons */}
-                <div className="lw-card-actions">
-                  <button
-                    type="button"
-                    className="lw-btn-primary"
-                    onClick={() => onOpen(doc)}
-                    title={`Open “${doc.title}”`}
-                  >
-                    <Icon name="book" />
-                    <span>Open</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="lw-btn-ghost"
-                    onClick={() => onOpen(doc, true)}
-                    title="Open side-by-side with companion notebook"
-                    aria-label={`Open ${doc.title} with notebook`}
-                  >
-                    <Icon name="notebook" />
-                  </button>
-
-                  <button
-                    type="button"
-                    className="lw-btn-danger"
-                    onClick={() => setConfirmDoc(doc)}
-                    title="Remove from Workspace"
-                    aria-label={`Remove ${doc.title} from Workspace`}
-                  >
-                    <Icon name="trash" />
-                  </button>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      ) : (
-        /* Detailed List View */
-        <div className="lw-list-wrapper">
-          <div className="lw-list-header">
-            <span>Document</span>
-            <span>Size</span>
-            <span>Last Opened</span>
-            <span>Imported</span>
-            <span className="lw-col-actions">Actions</span>
-          </div>
-          <div className="lw-list-body" role="list" aria-label="Workspace documents list">
-            {filtered.map((doc) => (
-              <div key={doc.id} className="lw-list-row" role="listitem">
-                <div className="lw-list-primary">
-                  <PdfThumbnail
-                    path={doc.path}
-                    title={doc.title}
-                    size="mini"
-                    targetWidth={80}
-                    className="lw-list-thumb"
-                  />
-                  <div className="lw-list-info">
-                    <b
-                      className="lw-list-title"
-                      title={doc.title}
-                      onClick={() => onOpen(doc)}
-                      role="button"
-                      tabIndex={0}
-                    >
-                      {doc.title}
-                    </b>
-                    <small className="lw-list-filename" title={doc.originalName}>
-                      {doc.originalName}
-                    </small>
-                  </div>
-                </div>
-
-                <span className="lw-list-size">{formatBytes(doc.size)}</span>
-                <span className="lw-list-activity">{timeAgo(doc.lastOpenedAt)}</span>
-                <span className="lw-list-date">
-                  {new Date(doc.importedAt).toLocaleDateString(undefined, {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
-                </span>
-
-                <div className="lw-list-actions">
-                  <button
-                    type="button"
-                    className="lw-list-btn-open"
-                    onClick={() => onOpen(doc)}
-                    title="Open document"
-                  >
-                    <Icon name="book" /> Open
-                  </button>
-                  <button
-                    type="button"
-                    className="lw-list-btn-icon"
-                    onClick={() => onOpen(doc, true)}
-                    title="Open side-by-side with companion notebook"
-                    aria-label={`Open ${doc.title} with notebook`}
-                  >
-                    <Icon name="notebook" />
-                  </button>
-                  <button
-                    type="button"
-                    className="lw-list-btn-icon lw-danger-hover"
-                    onClick={() => setConfirmDoc(doc)}
-                    title="Remove from Workspace"
-                    aria-label={`Remove ${doc.title} from Workspace`}
-                  >
-                    <Icon name="trash" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Bell Dialog confirmation modal */}
+      {/* A sibling of `.view`, not a child — see NotebooksView: the view's entrance transform would
+          otherwise position the fixed scrim against the view instead of the window. */}
       <Dialog
         open={confirmDoc !== null}
         title="Remove from Workspace?"
         onClose={() => setConfirmDoc(null)}
-        art={
-          <div className="lw-dialog-badge">
-            <Icon name="trash" />
-          </div>
-        }
+        art={<Mascot size={72} mood="alarm" />}
         actions={
           <>
-            <Button
-              variant="secondary"
-              onClick={() => setConfirmDoc(null)}
-              label="Keep in Workspace"
-            />
+            <Button label="Keep it" onClick={() => setConfirmDoc(null)} />
             <Button
               variant="primary"
+              className="dlg-danger"
               onClick={() => void runDelete()}
-              disabled={deleting}
-              label={deleting ? 'Removing…' : 'Remove Document'}
+              aria-disabled={deleting ? 'true' : undefined}
+              aria-busy={deleting ? true : undefined}
+              label={deleting ? 'Removing…' : 'Remove'}
             />
           </>
         }
       >
-        “{confirmDoc?.title}” will be removed from your Workspace shelf. The original file on your
-        computer remains untouched.
+        “{confirmDoc?.title}” comes off your Workspace shelf. The original file on your computer is not touched.
       </Dialog>
-    </section>
+    </>
   );
 }
