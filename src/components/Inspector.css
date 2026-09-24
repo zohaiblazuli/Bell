@@ -278,16 +278,19 @@ button.nbi-disc[aria-pressed='true'] {
 .nbi-preview {
   display: grid;
   place-items: center;
-  height: 48px;
-  border-radius: var(--r-btn);
-  background: var(--paper);
-  box-shadow: inset 0 0 0 1px var(--hair);
+  height: 56px;
+  overflow: hidden;
+  border-radius: 0;
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 1.5px var(--line);
 }
 /* Size is inline (the true px); no width/height transition here, so the dot tracks the slider in real
    time. Colour and opacity may ease — the motion block below adds that. */
 .nbi-preview-dot {
   display: block;
-  border-radius: 50%;
+  width: 120px;
+  max-height: 44px;
+  border-radius: 4px;
 }
 
 .nbi-slide {

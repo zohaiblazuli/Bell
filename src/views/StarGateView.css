@@ -76,7 +76,8 @@
 .stargate__panel {
   position: relative;
   z-index: 1;
-  width: min(520px, 100%);
+  /* The design's 520 is the content width; its 36px padding sits outside it. */
+  width: min(592px, 100%);
   box-sizing: border-box;
   padding: 30px 36px 28px;
   display: flex;

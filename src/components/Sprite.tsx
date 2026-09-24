@@ -59,17 +59,12 @@ export default function Sprite() {
           <circle cx="15" cy="8" r="2.4" fill="currentColor" stroke="none" />
           <circle cx="9" cy="16" r="2.4" fill="currentColor" stroke="none" />
         </symbol>
-        <symbol id="i-grid" viewBox="0 0 24 24">
-          <rect x="4" y="4" width="7" height="7" rx="1.6" />
-          <rect x="13" y="4" width="7" height="7" rx="1.6" />
-          <rect x="4" y="13" width="7" height="7" rx="1.6" />
-          <rect x="13" y="13" width="7" height="7" rx="1.6" />
+        {/* Shape Kit: four solid squares, and three solid bars — flat shapes, not outlines. */}
+        <symbol id="i-grid" viewBox="0 0 14 14">
+          <path d="M0 0h6v6H0zM8 0h6v6H8zM0 8h6v6H0zM8 8h6v6H8z" fill="currentColor" stroke="none" />
         </symbol>
-        <symbol id="i-list" viewBox="0 0 24 24">
-          <path d="M9 6h11M9 12h11M9 18h11" />
-          <circle cx="4.5" cy="6" r="1.1" fill="currentColor" stroke="none" />
-          <circle cx="4.5" cy="12" r="1.1" fill="currentColor" stroke="none" />
-          <circle cx="4.5" cy="18" r="1.1" fill="currentColor" stroke="none" />
+        <symbol id="i-list" viewBox="0 0 14 14">
+          <path d="M0 1h14v2H0zM0 6h14v2H0zM0 11h14v2H0z" fill="currentColor" stroke="none" />
         </symbol>
         <symbol id="i-left" viewBox="0 0 24 24">
           <path d="M19 12H5M12 19l-7-7 7-7" />

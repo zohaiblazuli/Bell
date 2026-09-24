@@ -38,6 +38,8 @@ export interface PaletteCommand {
   /** One line beside the label — "Browse every paper", "13,447 papers". Also matched by the query. */
   hint?: string;
   icon: IconName;
+  /** Bell App v2's framed character glyph (▤, ⌂, ◆ …). When set it is drawn instead of `icon`. */
+  glyph?: string;
   /**
    * NEW. The eyebrow this command sits under. Consecutive commands sharing one are grouped beneath a
    * single header, in the order `commands` arrives — the caller's order is authoritative, nothing
@@ -73,6 +75,8 @@ export interface PaletteScreens {
   onBookmarks: () => void;
   onRecent: () => void;
   onSettings: () => void;
+  /** Your own PDFs. Optional: the row only appears when something can open the Workspace. */
+  onWorkspace?: () => void;
   /**
    * Ask the updater to look now. OMIT IT while the app has no updater: the entry then does not render
    * at all, rather than offering the user a check that cannot happen.
@@ -86,13 +90,7 @@ export interface PaletteScreens {
  * something other than what it counts.
  */
 export interface PaletteScreenCounts {
-  /**
-   * `LibraryStats.docs`, i.e. the number the sidebar's Library row already shows. It counts indexed
-   * FILES, not papers: a question paper, its mark scheme, its threshold table and its examiner
-   * report are four docs, so reading it out as a paper count is wrong by roughly 4x —
-   * `views/SettingsView.tsx` makes the same point about the same number and prints "documents".
-   * So does the hint here.
-   */
+  /** Papers in the catalogue — `LibraryStats.papers`, the number the sidebar's Past Papers row shows. */
   docs?: number | null;
   bookmarks?: number | null;
   recent?: number | null;
@@ -119,14 +117,16 @@ export function screenCommands(
   const count = (n: number | null | undefined, one: string, many: string) =>
     typeof n === 'number' && n > 0 ? `${n.toLocaleString()} ${n === 1 ? one : many}` : undefined;
 
+  /* Bell App v2's GO TO list, in its order, each with its framed character glyph. */
   const list: PaletteCommand[] = [
     {
       id: 'go-library',
       section: GO_TO,
-      label: 'Library',
-      hint: count(counts.docs, 'document indexed', 'documents indexed') ?? 'Browse every paper',
+      label: 'Past Papers',
+      hint: count(counts.docs, 'paper indexed', 'papers indexed') ?? 'Browse every paper',
       icon: 'lib',
-      keywords: 'papers browse subjects sessions',
+      glyph: '▤',
+      keywords: 'papers browse library subjects sessions',
       run: go.onLibrary,
     },
     {
@@ -135,33 +135,51 @@ export function screenCommands(
       label: 'Notebooks',
       hint: count(counts.notebooks, 'notebook', 'notebooks') ?? 'Your own working',
       icon: 'book',
+      glyph: '▯',
       keywords: 'notebook write pages spread ink clip',
       run: go.onNotebooks,
     },
     {
       id: 'go-community',
       section: GO_TO,
-      label: 'Community Resources',
+      label: 'Community',
       hint: 'Approved notes and study material',
       icon: 'doc',
+      glyph: '◆',
       keywords: 'community notes resources guides formula sheets',
       run: go.onCommunity,
     },
     {
       id: 'go-dashboard',
       section: GO_TO,
-      label: 'Dashboard',
+      label: 'Home',
       hint: 'Focus, streak and up next',
       icon: 'dash',
-      keywords: 'stats activity streak minutes coverage',
+      glyph: '⌂',
+      keywords: 'dashboard stats activity streak minutes coverage',
       run: go.onDashboard,
     },
+    ...(go.onWorkspace
+      ? [
+          {
+            id: 'go-workspace',
+            section: GO_TO,
+            label: 'Workspace',
+            hint: 'Your own PDFs, kept private',
+            icon: 'doc' as IconName,
+            glyph: '□',
+            keywords: 'local pdf import private files',
+            run: go.onWorkspace,
+          },
+        ]
+      : []),
     {
       id: 'go-bookmarks',
       section: GO_TO,
       label: 'Bookmarks',
       hint: count(counts.bookmarks, 'paper marked', 'papers marked') ?? 'Papers you have marked',
       icon: 'bm',
+      glyph: '◤',
       keywords: 'marked saved starred',
       run: go.onBookmarks,
     },
@@ -171,6 +189,7 @@ export function screenCommands(
       label: 'Recent',
       hint: count(counts.recent, 'paper opened', 'papers opened') ?? 'Papers you opened last',
       icon: 'clock',
+      glyph: '○',
       keywords: 'history last opened today yesterday',
       run: go.onRecent,
     },
@@ -180,6 +199,7 @@ export function screenCommands(
       label: 'Settings',
       hint: 'Tone, library folder, focus and updates',
       icon: 'sliders',
+      glyph: '≡',
       keywords: 'preferences options tone night day theme folder reduce motion',
       run: go.onSettings,
     },
@@ -426,11 +446,12 @@ export default function CommandPalette({ open, onClose, onOpenPaper, commands }:
      the cursor state stays in one place; nothing in either of them holds state of its own. */
   const paperRow = (p: PaperRow, i: number) => {
     /* `9706 /12` as one string, the way the Recent row bakes it (§6). The space belongs to the file.
-       `variant` is null on a subject-wide row, which prints the code alone. */
-    const code = p.variant ? `${p.subjectCode} /${p.variant}` : p.subjectCode;
+       It is the two-digit component, not `variant` (its second digit alone); a subject-wide row has
+       no component and prints the code alone. */
+    const code = p.component ? `${p.subjectCode} /${p.component}` : p.subjectCode;
     return (
       <button
-        key={`${p.subjectCode}/${p.scode}/${p.variant ?? '-'}/${p.level}`}
+        key={`${p.subjectCode}/${p.scode}/${p.component ?? '-'}/${p.level}`}
         type="button"
         id={rowId(i)}
         role="option"
@@ -473,8 +494,8 @@ export default function CommandPalette({ open, onClose, onOpenPaper, commands }:
       onMouseEnter={() => point(i)}
       onClick={() => choose(i)}
     >
-      <span className="cmdk-row__glyph cmdk-row__glyph--cmd">
-        <Icon name={c.icon} />
+      <span className="cmdk-row__glyph cmdk-row__glyph--cmd" aria-hidden="true">
+        {c.glyph ?? <Icon name={c.icon} />}
       </span>
       <span className="cmdk-row__name">{c.label}</span>
       <span className="cmdk-row__code">{c.shortcut ?? ''}</span>

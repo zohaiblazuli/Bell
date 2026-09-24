@@ -1642,28 +1642,31 @@ export function paintPaper(
   ctx.fillStyle = resolveInk('--paper', canvas);
   ctx.fillRect(0, 0, box.w, box.h);
 
-  const x0 = PAPER.padX * box.w;
-  const y0 = PAPER.padY * box.h;
-  const w = PAPER.inkW * box.w;
-  const h = PAPER.inkH * box.h;
-  const pitchY = PAPER.pitchY * box.h;
-  const pitchX = PAPER.pitchX * box.w;
-  // Mode-invariant 14%, so the ruling is identical in Day and Night — §5c is explicit that a red
-  // margin rule would need a token that retones and there is no such token.
-  ctx.fillStyle = resolveInk('--page-line', canvas);
+  // Bell App v2's exercise-book sheet: pale blue rules run edge to edge every 36 of a 560-tall page
+  // (the first at 39), and a red margin rule runs the full height at 44. Scaled from the page's
+  // height so the ruling keeps the design's proportions at any page box. Purely paint: stored ink is
+  // in PAGE fractions, so moving the rules never moves a mark.
+  const unit = box.h / 560;
+  const pitch = 36 * unit;
+  const first = 39 * unit;
+  const hair = Math.max(1, unit);
+  ctx.fillStyle = resolveInk('--t-blue2', canvas);
 
   if (style === 'ruled' || style === 'grid') {
-    for (let i = 0; i < PAPER.lines; i++) ctx.fillRect(x0, y0 + i * pitchY, w, 1);
+    for (let y = first; y < box.h; y += pitch) ctx.fillRect(0, y, box.w, hair);
   }
   if (style === 'grid') {
-    for (let x = x0; x <= x0 + w + 0.5; x += pitchX) ctx.fillRect(x, y0, 1, h);
+    for (let x = first; x < box.w; x += pitch) ctx.fillRect(x, 0, hair, box.h);
   }
   if (style === 'dotted') {
-    // Square dots: at 1.4px a square and a circle are the same three pixels, and this needs no arc.
-    for (let y = y0; y <= y0 + h + 0.5; y += pitchY)
-      for (let x = x0; x <= x0 + w + 0.5; x += pitchX) ctx.fillRect(x - 0.7, y - 0.7, 1.4, 1.4);
+    const d = 1.6 * unit;
+    for (let y = first; y < box.h; y += pitch)
+      for (let x = first; x < box.w; x += pitch) ctx.fillRect(x - d / 2, y - d / 2, d, d);
   }
-  if (margin) ctx.fillRect(PAPER.marginX * box.w, y0, 1, h);
+  if (margin) {
+    ctx.fillStyle = 'rgba(217, 67, 47, .45)';
+    ctx.fillRect(44 * unit, 0, 1.5 * unit, box.h);
+  }
 }
 
 /** The tokens a static repaint needs, read once. `getComputedStyle` forces style resolution, and

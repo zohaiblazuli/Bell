@@ -532,8 +532,7 @@ export default function OnboardingView({
                 <div className="onb-heading">
                   <h1 className="t-display-setup-title">What should I call you?</h1>
                   <p className="onb-sub t-body-default">
-                    It only shows up in your dashboard greeting, and you can change it whenever you
-                    like.
+                    It goes on your Home screen and nowhere else. Bell has no accounts.
                   </p>
                 </div>
                 <Field
@@ -558,7 +557,7 @@ export default function OnboardingView({
             {step === 2 && (
               <>
                 <div className="onb-heading">
-                  <h1 className="t-display-setup-title">Which qualification are you studying?</h1>
+                  <h1 className="t-display-setup-title">Which qualification?</h1>
                   <p className="onb-sub t-body-default">
                     This filters the library and the subject list. You can add another qualification
                     later.
@@ -604,7 +603,7 @@ export default function OnboardingView({
                     margin in CSS, which is why the row carries no gap — §5.3. */}
                 <div className="onb-headrow">
                   <div className="onb-heading">
-                    <h1 className="t-display-setup-title">Pick your subjects</h1>
+                    <h1 className="t-display-setup-title">Which subjects do you sit?</h1>
                     <p className="onb-sub t-body-default">
                       These are the subjects listed in your sidebar. You can change them in Settings.
                     </p>
@@ -694,7 +693,7 @@ export default function OnboardingView({
             {step === 4 && (
               <>
                 <div className="onb-heading">
-                  <h1 className="t-display-setup-title">When are you sitting these?</h1>
+                  <h1 className="t-display-setup-title">When is your next sitting?</h1>
                   <p className="onb-sub t-body-default">
                     Your target session drives the countdown on your dashboard and how your papers
                     are paced.
@@ -776,7 +775,7 @@ export default function OnboardingView({
             {step === 5 && (
               <>
                 <div className="onb-heading">
-                  <h1 className="t-display-setup-title">Building your library</h1>
+                  <h1 className="t-display-setup-title">Building your library.</h1>
                   {/* The spec's copy reads "Downloading and indexing", and for the first time it is
                       literally what happens: every question paper and mark scheme for the chosen
                       subjects is fetched here, so the app is usable with the network unplugged

@@ -24,14 +24,23 @@ export default function TonePill({ tone, onToggle, className }: TonePillProps) {
   return (
     <div className={className ? `tonepill ${className}` : 'tonepill'} role="group" aria-label="Day or night">
       <button type="button" className="tonepill__btn tonepill__btn--day" aria-pressed={tone === 'day'} title="Day" onClick={pick('day')}>
+        {/* Bell App v2's sun: eight rays, long and short in turn, round a 7px disc. */}
         <span className="tonepill__sun" aria-hidden="true">
-          <i />
-          <i />
-          <i />
+          <span className="tonepill__rays">
+            {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
+              <i key={deg} style={{ transform: `rotate(${deg}deg)` }} />
+            ))}
+          </span>
+          <b />
         </span>
       </button>
       <button type="button" className="tonepill__btn tonepill__btn--night" aria-pressed={tone === 'night'} title="Night" onClick={pick('night')}>
-        <span className="tonepill__moon" aria-hidden="true" />
+        {/* A crescent with two diamond stars that twinkle while it is night. */}
+        <span className="tonepill__moon" aria-hidden="true">
+          <b />
+          <i />
+          <i />
+        </span>
       </button>
     </div>
   );

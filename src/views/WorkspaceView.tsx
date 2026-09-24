@@ -37,6 +37,8 @@ import PaperCanvas from '../components/PaperCanvas';
 import { useNearViewport } from '../components/useNearViewport';
 import ClipPicker from '../components/ClipPicker';
 import WindowLights from '../components/WindowLights';
+import TonePill, { type Tone } from '@ui/TonePill';
+import SkToolGlyph from '@ui/shapekit/ToolGlyph';
 import PageJumper from '../components/PageJumper';
 import SubjectIcon from '@ui/icons/SubjectIcon';
 import Faces from '@ui/shapekit/Faces';
@@ -97,28 +99,8 @@ const TOOLS: { tool: Tool; icon: IconName; label: string }[] = [
 /** Which of the two pages a mark was made on. Each keeps its own ink file and its own undo stack. */
 type Surface = 'qp' | 'ms';
 
-/** The reader's tool glyphs, drawn the Bell App v2 way: a slanted capped pen with a blue ink stroke,
- *  a tilted block eraser with a red end, and a highlighter as a chisel nib over a yellow bar. */
 function ToolGlyph({ tool }: { tool: Tool }) {
-  if (tool === 'er')
-    return (
-      <span className="rd-glyph rd-glyph--er" aria-hidden="true">
-        <i>
-          <i />
-        </i>
-        <b />
-      </span>
-    );
-  return (
-    <span className={tool === 'hl' ? 'rd-glyph rd-glyph--hl' : 'rd-glyph rd-glyph--pen'} aria-hidden="true">
-      <i>
-        <i />
-        <i />
-        <i />
-      </i>
-      <b />
-    </span>
-  );
+  return <SkToolGlyph kind={tool === 'hl' ? 'marker' : tool === 'er' ? 'er' : 'pen'} />;
 }
 
 /** "How did this one feel?" — the four faces under the mark scheme, and what Hush says back. */
@@ -132,6 +114,9 @@ const FEELINGS = [
 export interface Props {
   paper: PaperRow;
   onBack: () => void;
+  /** The Day/Night switch, which the design keeps in the Reader's bar beside Clip. */
+  tone?: Tone;
+  onTone?: () => void;
   /**
    * Whether this reader is the tab on screen. Inactive tabs are only hidden (visibility), not
    * unmounted, so this is what lets a background reader release its rasterised pages while keeping
@@ -305,6 +290,8 @@ function ReaderPage({
 export default function WorkspaceView({
   paper,
   onBack,
+  tone,
+  onTone,
   tabActive = true,
   focus,
   onToggleFocus,
@@ -760,6 +747,7 @@ export default function WorkspaceView({
         </div>
         <FocusTimer paper={id} />
         <div className="rd-top-r">
+          {tone && onTone && <TonePill tone={tone} onToggle={onTone} />}
           {SHOW_FOCUS_TOGGLE && (
             <IconButton icon="focus" label="Focus mode" active={focus} title="Focus mode — everything but the paper recedes" onClick={onToggleFocus} />
           )}

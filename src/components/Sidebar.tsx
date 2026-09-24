@@ -2,7 +2,7 @@ import OwlMark from '@ui/shapekit/OwlMark';
 import BellWordmark from '@ui/shapekit/BellWordmark';
 import NavGlyph, { type NavGlyphName } from '@ui/shapekit/NavGlyph';
 import SubjectIcon from '@ui/icons/SubjectIcon';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { HushPose } from '@ui/shapekit/Hush';
 import Mascot from './Mascot';
 import type { SplashPhase } from './Splash';
@@ -123,7 +123,7 @@ export default function Sidebar({
 }: Props) {
   const study: Row[] = [
     { view: 'dashboard', glyph: 'home', label: 'Home', active: view === 'dashboard' },
-    { view: 'library', glyph: 'papers', label: 'Past Papers', count: paperCount?.toLocaleString(), active: view === 'library' },
+    { view: 'library', glyph: 'papers', label: 'Past Papers', count: paperCount?.toLocaleString(), active: view === 'library' || view === 'reader' },
     { view: 'notebooks', glyph: 'notebooks', label: 'Notebooks', count: notebookCount ?? undefined, active: view === 'notebooks' || view === 'notebook' },
     { view: 'workspace', glyph: 'workspace', label: 'Workspace', active: view === 'workspace' },
     {
@@ -148,6 +148,11 @@ export default function Sidebar({
   ];
 
   const typed = useTyped(line, startup);
+  // Only a line that replaces the first one pops; the first arrives through the launch's own typing.
+  const firstLine = useRef(line);
+  const changed = useRef(false);
+  if (line !== firstLine.current) changed.current = true;
+  const popped = changed.current;
   const minutes = Math.round(todayMinutes);
   const goal = Math.max(1, goalMinutes);
   const filled = Math.min(9, Math.floor((minutes / goal) * 9));
@@ -250,24 +255,43 @@ export default function Sidebar({
             put a decorative owl in every keyboard user's tab order. */}
         <div className="sk-hush" onPointerDown={onPokeMascot}>
           <Mascot size={86} mood={mascot} />
-          <div className="sk-hush__bubble">
-            {typed == null ? (
-              line
-            ) : (
-              <>
-                {line.slice(0, typed)}
-                {/* The rest is laid out but unseen, so the bubble is its final size from the first
-                    frame and the typing never re-wraps a line. */}
-                <span className="sk-hush__rest">{line.slice(typed)}</span>
-                {typed === 0 && (
-                  <span className="sk-hush__dots" aria-hidden="true">
-                    <i />
-                    <i />
-                    <i />
-                  </span>
-                )}
-              </>
-            )}
+          {/* The balloon bobs on its own wrapper, so the bubble inside is free to pop. The first line is
+              typed in during the launch (`useTyped`); every later line pops in behind three typing
+              dots — keyed on the line so the pop replays. */}
+          <div className="sk-hush__say">
+            <div
+              className={popped ? 'sk-hush__bubble sk-hush__bubble--pop' : 'sk-hush__bubble'}
+              key={popped ? line : undefined}
+            >
+              {typed == null ? (
+                popped ? (
+                  <>
+                    <span className="sk-hush__think" aria-hidden="true">
+                      <span />
+                      <span />
+                      <span />
+                    </span>
+                    <span className="sk-hush__line">{line}</span>
+                  </>
+                ) : (
+                  line
+                )
+              ) : (
+                <>
+                  {line.slice(0, typed)}
+                  {/* The rest is laid out but unseen, so the bubble is its final size from the first
+                      frame and the typing never re-wraps a line. */}
+                  <span className="sk-hush__rest">{line.slice(typed)}</span>
+                  {typed === 0 && (
+                    <span className="sk-hush__dots" aria-hidden="true">
+                      <i />
+                      <i />
+                      <i />
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
         <div className="sk-side__version">

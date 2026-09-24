@@ -235,8 +235,9 @@
 }
 .sk-hush__dots > i:nth-child(2) { animation-delay: 1.9s; }
 .sk-hush__dots > i:nth-child(3) { animation-delay: 2s; }
-/* Once he has said it, the bubble keeps floating gently. */
-.app[data-startup='done'][data-motion='on'] .sk-hush__bubble {
+/* Once he has said it, the bubble keeps floating gently — on its wrapper, so a later line's pop on
+   the bubble itself does not fight the bob. */
+.app[data-startup='done'][data-motion='on'] .sk-hush__say {
   animation: splash-bob 2.8s ease-in-out infinite;
 }
 

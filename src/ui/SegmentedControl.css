@@ -19,8 +19,8 @@ button.bell-seg-item {
   transition: background-color .16s, color .16s;
 }
 button.bell-seg-item svg {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
   stroke-width: 2.2;
 }
 button.bell-seg-item[aria-pressed='true'] {

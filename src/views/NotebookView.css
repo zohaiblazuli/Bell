@@ -184,6 +184,11 @@
   width: 40px;
   height: 40px;
 }
+.nbs-dock .nbs-dock-hist {
+  height: 36px;
+  font-size: 15px;
+  line-height: 1;
+}
 /* §5b's `sep`, 24x1. The dock's own 6px gap either side of it reproduces the file's 175 → 182 step. */
 .nbs-dock-sep {
   flex: none;
@@ -273,7 +278,8 @@
   border-radius: 0;
   background: var(--paper);
   color: var(--page-ink);
-  box-shadow: var(--shadow-paper);
+  /* Bell App v2: the open book lifts off the desk on a soft shadow, with no ink frame. */
+  box-shadow: 0 20px 30px rgba(40, 30, 10, .35);
   overflow: hidden;
 }
 .nbs-page[data-side='l'] {

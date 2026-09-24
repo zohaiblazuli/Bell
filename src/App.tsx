@@ -496,6 +496,7 @@ export default function App() {
         onBookmarks: () => go('bookmarks'),
         onRecent: () => go('recent'),
         onSettings: () => go('settings'),
+        onWorkspace: () => go('workspace'),
         // Omitted while unconfigured, so the palette never offers a check that cannot happen.
         onCheckUpdates: UPDATES_CONFIGURED ? () => void up.check(true) : undefined,
       },
@@ -773,6 +774,8 @@ export default function App() {
             <div className="main">
               <WorkspaceView
                 paper={tab.paper}
+                tone={tone}
+                onTone={toggleTone}
                 tabActive={isSelected}
                 focus={focusMode}
                 onToggleFocus={() => setFocusMode((f) => !f)}
@@ -945,7 +948,6 @@ export default function App() {
           busy={lib.busy}
           onReindex={() => void lib.runSync()}
           onSearch={() => setPalette(true)}
-          showSearch={screenView !== 'community'}
           showSync={screenView !== 'community'}
         />
 
