@@ -2,8 +2,10 @@ import OwlMark from '@ui/shapekit/OwlMark';
 import BellWordmark from '@ui/shapekit/BellWordmark';
 import NavGlyph, { type NavGlyphName } from '@ui/shapekit/NavGlyph';
 import SubjectIcon from '@ui/icons/SubjectIcon';
+import { useEffect, useState } from 'react';
 import type { HushPose } from '@ui/shapekit/Hush';
 import Mascot from './Mascot';
+import type { SplashPhase } from './Splash';
 import type { Subject } from '@/lib/types';
 import './Sidebar.css';
 
@@ -37,11 +39,49 @@ interface Props {
   goalMinutes: number;
   /** A route-aware line for Hush's speech bubble. */
   line: string;
+  /** The launch phase. During the handoff Hush rises and types his first line (Splash.css); pass
+   *  `done` when motion is off and the line is simply there. */
+  startup?: SplashPhase;
   update?: React.ReactNode;
   mascot?: HushPose;
   onPokeMascot?: () => void;
   version?: string;
   build?: string;
+}
+
+/** When the typing starts, counted from the handoff (Startup v2: 7.25s, the handoff opening at 4.9s),
+ *  and how long the whole line takes — a fixed length, so a long line types faster rather than later. */
+const TYPE_AT_MS = 2350;
+const TYPE_MS = 700;
+
+/**
+ * How many characters of Hush's first line are on show. Null is all of them: after the launch, with
+ * motion off, and from then on for every later line, which just appears.
+ */
+function useTyped(line: string, startup: SplashPhase): number | null {
+  const [shown, setShown] = useState<number | null>(startup === 'done' ? null : 0);
+  useEffect(() => {
+    if (startup === 'done' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setShown(null);
+      return;
+    }
+    if (startup !== 'handoff') return;
+    let tick: number | undefined;
+    const start = window.setTimeout(() => {
+      const t0 = performance.now();
+      tick = window.setInterval(() => {
+        const n = Math.ceil(((performance.now() - t0) / TYPE_MS) * line.length);
+        setShown(n >= line.length ? null : n);
+        if (n >= line.length) window.clearInterval(tick);
+      }, 30);
+    }, TYPE_AT_MS);
+    return () => {
+      window.clearTimeout(start);
+      window.clearInterval(tick);
+    };
+    // The line is read once, when the typing starts; a line that changes mid-type is caught by `done`.
+  }, [startup]);
+  return shown;
 }
 
 interface Row {
@@ -74,6 +114,7 @@ export default function Sidebar({
   todayMinutes,
   goalMinutes,
   line,
+  startup = 'done',
   update,
   mascot = 'idle',
   onPokeMascot,
@@ -106,6 +147,7 @@ export default function Sidebar({
     { view: 'settings', glyph: 'settings', label: 'Settings', active: view === 'settings' },
   ];
 
+  const typed = useTyped(line, startup);
   const minutes = Math.round(todayMinutes);
   const goal = Math.max(1, goalMinutes);
   const filled = Math.min(9, Math.floor((minutes / goal) * 9));
@@ -208,7 +250,25 @@ export default function Sidebar({
             put a decorative owl in every keyboard user's tab order. */}
         <div className="sk-hush" onPointerDown={onPokeMascot}>
           <Mascot size={86} mood={mascot} />
-          <div className="sk-hush__bubble">{line}</div>
+          <div className="sk-hush__bubble">
+            {typed == null ? (
+              line
+            ) : (
+              <>
+                {line.slice(0, typed)}
+                {/* The rest is laid out but unseen, so the bubble is its final size from the first
+                    frame and the typing never re-wraps a line. */}
+                <span className="sk-hush__rest">{line.slice(typed)}</span>
+                {typed === 0 && (
+                  <span className="sk-hush__dots" aria-hidden="true">
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                )}
+              </>
+            )}
+          </div>
         </div>
         <div className="sk-side__version">
           v{version} · build {build}

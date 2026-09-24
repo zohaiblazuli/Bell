@@ -211,6 +211,7 @@
   cursor: pointer;
 }
 .sk-hush__bubble {
+  position: relative;
   flex: 1;
   min-width: 0;
   margin-bottom: 18px;
@@ -220,6 +221,9 @@
   font-size: 13px;
   line-height: 1.3;
   text-wrap: balance;
+}
+.sk-hush__rest {
+  visibility: hidden;
 }
 .sk-side__version {
   font-family: var(--font-mono);

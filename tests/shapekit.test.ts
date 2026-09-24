@@ -20,9 +20,9 @@ const tsx = walk(SRC, ['.ts', '.tsx']).map((f) => [f, fs.readFileSync(f, 'utf-8'
 const motion = fs.readFileSync(path.join(SRC, 'styles/motion.css'), 'utf-8');
 
 describe('Startup v2 "Full stop" splash timings', () => {
-  test('the lockup holds, then hands off to the sidebar', () => {
-    assert.equal(startupHoldDurationMs(false), 4500);
-    assert.equal(startupHandoffDurationMs(false), 1200);
+  test('the lockup holds, then floods into Home and Hush', () => {
+    assert.equal(startupHoldDurationMs(false), 4900);
+    assert.equal(startupHandoffDurationMs(false), 3100);
   });
 
   test('reduced motion cuts both phases short', () => {
