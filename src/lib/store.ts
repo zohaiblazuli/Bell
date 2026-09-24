@@ -155,6 +155,24 @@ export function addFocusSeconds(paper: string, seconds: number) {
   write('focus', { days, papers });
 }
 
+// --- where you are in a paper ------------------------------------------------
+
+/** The page a paper was left on, and how many it has — Home's "pick up where you left off" strip. */
+export interface ReaderPos {
+  page: number;
+  pages: number;
+}
+
+export const loadReaderPos = (paper: string): ReaderPos | null =>
+  read<ReaderPos | null>(`pos.${paper.replace(/[^A-Za-z0-9]+/g, '-')}`, null);
+
+export function saveReaderPos(paper: string, pos: ReaderPos) {
+  const key = `pos.${paper.replace(/[^A-Za-z0-9]+/g, '-')}`;
+  const prev = read<ReaderPos | null>(key, null);
+  if (prev && prev.page === pos.page && prev.pages === pos.pages) return;
+  write(key, pos);
+}
+
 // --- recently opened, and the rows behind the marks -------------------------
 
 /**

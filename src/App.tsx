@@ -933,6 +933,7 @@ export default function App() {
             subjects={lib.subjects}
             marks={study.marks}
             onOpen={openPaperAt}
+            onBrowse={() => go('library')}
             sittingTotals={lib.sittingTotals}
             onSubject={pickSubject}
           />

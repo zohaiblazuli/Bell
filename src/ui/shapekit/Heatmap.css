@@ -1,0 +1,109 @@
+/* Home heatmap — 10px squares, 3px gaps, a 218px scrolling window. */
+.sk-heat {
+  position: relative;
+  width: 218px;
+}
+.sk-heat__scroll {
+  width: 218px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+}
+.sk-heat__inner {
+  width: max-content;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sk-heat__months {
+  position: relative;
+  height: 13px;
+  margin-bottom: -3px;
+}
+.sk-heat__months span {
+  position: absolute;
+  top: 0;
+  padding-left: 4px;
+  border-left: 1.5px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 13px;
+}
+.sk-heat__grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 10px);
+  grid-auto-columns: 10px;
+  gap: 3px;
+}
+.sk-heat__grid span {
+  width: 10px;
+  height: 10px;
+  animation: sk-tile .45s cubic-bezier(.2, .8, .2, 1) both;
+}
+.sk-heat__grid span[data-level='1'] { background: var(--heat-1); }
+.sk-heat__grid span[data-level='2'] { background: var(--heat-2); }
+.sk-heat__grid span[data-level='3'] { background: var(--heat-3); }
+.sk-heat__grid span[data-level='4'] { background: var(--heat-4); }
+.sk-heat__grid span[data-empty] { box-shadow: inset 0 0 0 1.5px var(--dim2); }
+.sk-heat__grid span[data-today] { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.sk-heat__bands {
+  position: relative;
+  height: 22px;
+}
+.sk-heat__bands > div {
+  position: absolute;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.sk-heat__bands i {
+  display: block;
+  height: 6px;
+  transform-origin: 0 50%;
+  animation: sk-grow-x .5s cubic-bezier(.2, .8, .2, 1) .8s both;
+}
+.sk-heat__bands span {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.sk-heat__tip {
+  position: absolute;
+  z-index: 3;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  padding: 5px 8px;
+  background: var(--inkbg);
+  color: var(--onink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: nowrap;
+  animation: sk-fade .12s ease both;
+}
+.sk-heat__tip i {
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 10px;
+  height: 5px;
+  margin-left: -5px;
+  background: var(--inkbg);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.sk-heat-key {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.sk-heat-key span {
+  display: flex;
+  gap: 3px;
+}
+.sk-heat-key i {
+  display: block;
+  width: 10px;
+  height: 10px;
+}
