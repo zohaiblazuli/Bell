@@ -6,6 +6,8 @@ import {
   pickFrom,
   routeSayKey,
   fillTemplate,
+  canSay,
+  pickLine,
   type HushSayKey,
 } from '@/lib/hushLines';
 
@@ -122,6 +124,47 @@ describe('HUSH_LINES — the registry stays within Hush\'s constraints', () => {
     for (const key of SAY_KEYS) {
       for (const line of HUSH_LINES[key as HushSayKey]) {
         assert.ok(line.trim().length > 0, `a line in "${key}" is blank`);
+      }
+    }
+  });
+});
+
+/**
+ * The student's own numbers. A line quoting a fact Hush doesn't have is never picked, so "day
+ * {streak}" can't show on day one and the countdown can't show mid-sitting.
+ */
+describe('fact lines — only said when the fact is there', () => {
+  const base = { papers: 2605, recentCount: 3, bookmarks: 1 };
+
+  test('canSay needs a streak of two or more', () => {
+    assert.equal(canSay('day {streak}.', { ...base, streak: 1 }), false);
+    assert.equal(canSay('day {streak}.', { ...base, streak: 2 }), true);
+    assert.equal(canSay('day {streak}.', base), false);
+  });
+
+  test('canSay needs the sitting ahead, not under way', () => {
+    assert.equal(canSay('{minutes} left', { ...base, minutesToExam: -5 }), false);
+    assert.equal(canSay('{minutes} left', { ...base, minutesToExam: null }), false);
+    assert.equal(canSay('{minutes} left', { ...base, minutesToExam: 90 }), true);
+  });
+
+  test('canSay needs a subject furthest behind', () => {
+    assert.equal(canSay('{behind} is behind', { ...base, behind: null }), false);
+    assert.equal(canSay('{behind} is behind', { ...base, behind: 'Physics' }), true);
+  });
+
+  test('fillTemplate writes the streak, minutes and subject', () => {
+    const facts = { ...base, streak: 9, minutesToExam: 172800, behind: 'Chemistry' };
+    assert.equal(fillTemplate('day {streak}.', facts), 'day 9.');
+    assert.equal(fillTemplate('{minutes} left', facts), '172,800 minutes left');
+    assert.equal(fillTemplate('{behind} is behind', facts), 'Chemistry is behind');
+  });
+
+  test('a Home pick without facts never lands on a fact line', () => {
+    for (const key of ['dashboard-morning', 'dashboard-afternoon', 'dashboard-evening'] as HushSayKey[]) {
+      for (let i = 0; i < HUSH_LINES[key].length; i++) {
+        const line = pickLine(key, { facts: base, rng: () => i / HUSH_LINES[key].length });
+        assert.ok(canSay(line, base), `"${line}" needs a fact that is missing`);
       }
     }
   });

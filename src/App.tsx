@@ -33,8 +33,9 @@ import { useTabs } from './state/useTabs';
 import { useWorkspace } from './state/useWorkspace';
 import { UPDATES_CONFIGURED } from './lib/updates';
 import { nextWindow, windowsBetween } from './lib/sessions';
-import { loadRecent, todayFocusMinutes, type MarkFilter, type SeasonChoice } from './lib/store';
-import { routeSayKey, pickLine, fillTemplate, type HushFacts, type HushSayKey } from './lib/hushLines';
+import { loadFocus, loadRecent, loadRows, todayFocusMinutes, type MarkFilter, type SeasonChoice } from './lib/store';
+import { routeSayKey, pickLine, fillTemplate, canSay, type HushFacts, type HushSayKey } from './lib/hushLines';
+import { countedDays, rankSubjects, sittingFor, streaksOf } from './lib/homeFacts';
 import type { PaperRow } from './lib/types';
 import type { CommunityResource } from './lib/community';
 import { readWorkspaceDocument, recordWorkspaceOpen, workspaceReaderResource, type WorkspaceDocument } from './lib/workspace';
@@ -255,15 +256,33 @@ export default function App() {
    *    retype the bubble), with the count tokens filled fresh so the number stays current. The
    *    reader's feelings reply still wins over the route line while its paper is the open tab.
    */
+  const hushNow = new Date();
+  const hushRecent = loadRecent();
+  // The same streak, sitting and ranking Home shows (`lib/homeFacts`), so Hush can't contradict it.
+  const hushBehind = useMemo(() => {
+    const ranked = rankSubjects({
+      subjects: lib.subjects,
+      marks: study.marks,
+      recent: hushRecent,
+      rows: loadRows(),
+      chosen: onboarding.subjects,
+    });
+    return ranked.length >= 2 ? ranked[0].name : null;
+    // Recents are read fresh each render; the ranking only moves with marks, subjects and choices.
+  }, [lib.subjects, study.marks, onboarding.subjects]);
+  const hushSitting = sittingFor(hushNow, onboarding.plan.session, settings.seasons);
   const hushFacts: HushFacts = {
     papers: lib.stats?.papers ?? null,
-    recentCount: loadRecent().length,
+    recentCount: hushRecent.length,
     bookmarks: study.marks.bookmarks.size,
+    streak: streaksOf(countedDays(loadFocus().days, settings.streakMinutes), hushNow).current,
+    minutesToExam: hushSitting ? (hushSitting.start.getTime() - hushNow.getTime()) / 60_000 : null,
+    behind: hushBehind,
   };
-  const routeKey = routeSayKey(currentView, hushFacts, new Date().getHours());
+  const routeKey = routeSayKey(currentView, hushFacts, hushNow.getHours());
   const routeHeld = useRef<{ key: HushSayKey; line: string } | null>(null);
-  if (!routeHeld.current || routeHeld.current.key !== routeKey) {
-    routeHeld.current = { key: routeKey, line: pickLine(routeKey, { avoid: routeHeld.current?.line }) };
+  if (!routeHeld.current || routeHeld.current.key !== routeKey || !canSay(routeHeld.current.line, hushFacts)) {
+    routeHeld.current = { key: routeKey, line: pickLine(routeKey, { avoid: routeHeld.current?.line, facts: hushFacts }) };
   }
   const routeLine = fillTemplate(routeHeld.current.line, hushFacts);
 

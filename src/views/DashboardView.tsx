@@ -5,7 +5,8 @@ import Heatmap, { heatStats } from '@ui/shapekit/Heatmap';
 import Flame from '@ui/shapekit/Flame';
 import { sessionLabel } from '@/lib/difficulty';
 import { pickGreeting, slotOf } from '@/lib/greetings';
-import { daysUntil, nextWindow, windowForCode, windowsBetween, type Season } from '@/lib/sessions';
+import { daysUntil, windowsBetween, type Season } from '@/lib/sessions';
+import { countedDays, isoOf, midday, parseIso, rankSubjects, sittingFor, streaksOf } from '@/lib/homeFacts';
 import {
   loadFocus,
   loadOnboarding,
@@ -46,19 +47,12 @@ export interface Props {
   sittingTotals?: Record<string, number>;
 }
 
-const DAY_MS = 86_400_000;
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const SHORT_SEASON: Record<Season, string> = { m: 'Feb/Mar', s: 'May/June', w: 'Oct/Nov' };
 const COV_SEASON: Record<string, string> = { m: 'F/M', s: 'M/J', w: 'O/N' };
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
-const isoOf = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-const midday = (d: Date, offsetDays = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + offsetDays, 12);
-const parseIso = (date: string) => {
-  const [y, m, d] = date.split('-').map(Number);
-  return new Date(y, m - 1, d, 12);
-};
 // The greeting shown last, so coming back to Home draws a different one where the pool allows.
 let lastGreeting: string | null = null;
 
@@ -80,29 +74,6 @@ function ago(atMs: number, nowMs: number): string {
   return `${plural(Math.round(days / 7), 'week')} ago`;
 }
 
-/**
- * The current run is anchored on today, or on yesterday if today has not been counted YET, so the
- * streak does not read zero every morning. The longest run walks the sorted dates once.
- */
-function streaksOf(active: Set<string>, clock: Date): { current: number; longest: number } {
-  let current = 0;
-  for (let i = active.has(isoOf(clock)) ? 0 : 1; i < 4000; i += 1) {
-    if (!active.has(isoOf(midday(clock, -i)))) break;
-    current += 1;
-  }
-  let longest = 0;
-  let run = 0;
-  let previous = 0;
-  for (const date of [...active].sort()) {
-    const at = parseIso(date).getTime();
-    run = previous && Math.round((at - previous) / DAY_MS) === 1 ? run + 1 : 1;
-    previous = at;
-    longest = Math.max(longest, run);
-  }
-  return { current, longest };
-}
-
-const codeOf = (key: string) => key.split('/')[0] ?? '';
 const sittingOf = (key: string) => key.split('/').slice(0, 2).join('/');
 
 type Standing = 'Start here' | 'Catching up' | 'Ahead';
@@ -158,19 +129,12 @@ export default function DashboardView({ now, name, seasons, subjects, marks, onO
   const onboarding = useMemo(() => loadOnboarding(), []);
 
   /* ---- the sitting ------------------------------------------------------
-   * Onboarding's target session drives the countdown — its step 04 promises exactly that. Honour it
-   * while it is still ahead (`daysUntil` is >= 0 from the sitting's first day through its last), and
-   * only once it has passed, or was never chosen, fall back to the next series the student sits
-   * (`settings.seasons`). The explicit target wins over the season filter on purpose: it is the
-   * sitting they told us they are working towards.
+   * Onboarding's target session drives the countdown — its step 04 promises exactly that — while it
+   * is still ahead; after that, the next series the student sits. See `sittingFor`.
    */
-  const target = useMemo(
-    () => (onboarding.plan.session ? windowForCode(onboarding.plan.session) : null),
-    [onboarding.plan.session],
-  );
   const sitting = useMemo(
-    () => (target && daysUntil(clock, target) >= 0 ? target : nextWindow(clock, seasons ?? settings.seasons)),
-    [target, clock, seasons, settings.seasons],
+    () => sittingFor(clock, onboarding.plan.session, seasons ?? settings.seasons),
+    [clock, onboarding.plan.session, seasons, settings.seasons],
   );
   const daysToExam = sitting ? daysUntil(clock, sitting) : null;
   const countdown = useCountdown(daysToExam);
@@ -183,10 +147,7 @@ export default function DashboardView({ now, name, seasons, subjects, marks, onO
   }, [focus.days, recent, clock]);
   const days = useMemo(() => heatStats(focus.days, since, clock), [focus.days, since, clock]);
 
-  const counted = useMemo(() => {
-    const floor = Math.max(1, settings.streakMinutes);
-    return new Set(Object.entries(focus.days).filter(([, m]) => m >= floor).map(([d]) => d));
-  }, [focus.days, settings.streakMinutes]);
+  const counted = useMemo(() => countedDays(focus.days, settings.streakMinutes), [focus.days, settings.streakMinutes]);
   const streaks = useMemo(() => streaksOf(counted, clock), [counted, clock]);
 
   const weekMinutes = useMemo(() => {
@@ -204,38 +165,7 @@ export default function DashboardView({ now, name, seasons, subjects, marks, onO
 
   /* ---- standing --------------------------------------------------------- */
   const standing = useMemo(() => {
-    const indexed = new Map<string, { id: number; name: string; papers: number }>();
-    for (const s of subjects) {
-      const seen = indexed.get(s.code);
-      if (seen) seen.papers += s.papers;
-      else indexed.set(s.code, { id: s.id, name: s.name, papers: s.papers });
-    }
-    const doneBy = new Map<string, number>();
-    for (const key of marks.done) doneBy.set(codeOf(key), (doneBy.get(codeOf(key)) ?? 0) + 1);
-
-    // Your subjects first; failing that, anything you have touched.
-    const codes = new Set(onboarding.subjects);
-    if (codes.size === 0) {
-      for (const set of [marks.done, marks.revision, marks.bookmarks]) for (const key of set) codes.add(codeOf(key));
-      for (const entry of recent) codes.add(codeOf(entry.key));
-    }
-    codes.delete('');
-
-    const named = new Map<string, string>();
-    for (const row of Object.values(rows)) named.set(row.subjectCode, row.subjectName);
-
-    const list = [...codes].map((code) => {
-      const index = indexed.get(code);
-      const done = doneBy.get(code) ?? 0;
-      const total = index?.papers ?? 0;
-      return {
-        code,
-        id: index?.id ?? null,
-        name: index?.name ?? named.get(code) ?? code,
-        pct: total ? Math.round((done / total) * 100) : 0,
-      };
-    });
-    list.sort((a, b) => a.pct - b.pct || a.name.localeCompare(b.name));
+    const list = rankSubjects({ subjects, marks, recent, rows, chosen: onboarding.subjects });
     return list.slice(0, 5).map((r, i, all) => ({
       ...r,
       band: (all.length > 1 && i === all.length - 1 ? 'Ahead' : i === 0 ? 'Start here' : 'Catching up') as Standing,

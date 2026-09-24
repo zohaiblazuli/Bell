@@ -3,21 +3,30 @@ import type { View } from '@/components/Sidebar';
 /**
  * Hush's speech — the sidebar bubble, and the reader's "how did this one feel?" reply.
  *
- * His voice (Bell App v2 behaviour sheet, sharpened by Zohaib): a dry study-buddy who has clearly
- * done this before. Self-deprecating — *we* reorganised the notes, never *you* — specific over
- * motivational, and quiet. No internet slang: it dates in months and this ships in a slow binary.
- * No syllabus in-jokes either; he reacts to the moment you are in, which is fair game because the
- * app is for studying. Twelve words at most, because the bubble types at a fixed size (Sidebar).
+ * His voice (rewritten with Zohaib, from what students actually post on r/igcse, r/alevel, r/olevels
+ * and on X): a tired student who has sat these papers before. Dry and flat, lowercase, the turn
+ * in the last few words, never explained. The examiner is a real, nosy person; Cambridge is the
+ * villain; thresholds, variants and the "five-minute break" are shared lore. Swearing is allowed
+ * and lands as the punchline, not as decoration. English only. Slang only where it earns its place
+ * (brands saying current slang is itself the joke). Dark humour points at the system or at our own
+ * mess — never at a person, never at race, never at self-harm, never at parents hurting anyone.
+ * Twelve words at most, because the bubble types at a fixed size (Sidebar).
  *
  * Every screen and moment draws from a POOL and `pickFrom` never repeats the line it just showed,
  * so he reads as alive rather than as one canned string per route.
  */
 
-/** The counts a line may quote. The shape the sidebar already handed the old `hushLine`. */
+/** The facts a line may quote. The last three are optional: a line that needs one it lacks is skipped. */
 export interface HushFacts {
   papers: number | null;
   recentCount: number;
   bookmarks: number;
+  /** Current focus streak in days. `{streak}` lines need two or more. */
+  streak?: number;
+  /** Minutes until the sitting opens. `{minutes}` lines need it ahead, not under way. */
+  minutesToExam?: number | null;
+  /** The subject furthest behind. `{behind}` lines need two or more ranked subjects. */
+  behind?: string | null;
 }
 
 /**
@@ -45,108 +54,115 @@ export type HushSayKey =
   | 'feel-tough'
   | 'feel-lost';
 
-/** The lines themselves. `{recent}`, `{papers}` and `{bookmarks}` are filled at render (`fillTemplate`). */
+// Lines that quote the student's own numbers. They join every Home pool and are skipped whenever
+// the fact they need is missing (see `canSay`).
+const HOME_FACTS = [
+  "day {streak}. streak's alive. don't make it weird",
+  '{minutes} till the exam. not that i’m counting',
+  '{behind} is furthest behind. it’s noticed',
+];
+
+/** The lines themselves. Tokens are filled at render (`fillTemplate`). */
 export const HUSH_LINES: Record<HushSayKey, readonly string[]> = {
   'dashboard-morning': [
-    'The hard paper first, while we still mean it.',
-    "Morning. Let's spend the good hours on the mean ones.",
-    'Early start. I respect it more than I show.',
-    'Coffee, then a paper. That is the correct order.',
+    '9am: anything is possible. 2pm: not today. use the 9am',
+    '“i’ll start at 10.” it’s 10:40',
+    'up before the examiner. small win. take it',
+    ...HOME_FACTS,
   ],
   'dashboard-afternoon': [
-    'Afternoon. One more section than you planned. Classic.',
-    'The afternoon slump is real. A paper cuts through it.',
-    'Afternoon. Still time to make today count.',
+    '“five-minute break.” that was 3 reels, 2 snacks and an hour ago',
+    'made a revision timetable. colour-coded it. that was the revision',
+    'lunch was 2 hours ago. productivity was 2 hours before that',
+    ...HOME_FACTS,
   ],
   'dashboard-evening': [
-    "Evening. My shift, technically. Let's get one done.",
-    'Evenings are quiet. Quiet is good for a timed paper.',
-    'The night is mine. Borrow it for one paper.',
+    'owl hours. i’m finally awake. you’re finally stressed',
+    '“i’ll do it after dinner.” dinner was at 8. it’s 11',
+    '“one more reel.” that was 45 minutes ago',
+    'one paper tonight and tomorrow-you owes you one',
+    ...HOME_FACTS,
   ],
   reader: [
-    'Watching the clock. Not you.',
-    'The paper will not open itself. I already checked.',
-    "You have read that line three times. Gently, I counted.",
-    "Focus. I will be here, being an owl about it.",
-    'First ten minutes are the worst. Then it flows.',
+    '“show your working.” the examiner is so nosy',
+    '“answer all questions.” ambitious of them',
+    '“this page is intentionally left blank.” it literally isn’t',
+    '“suggest a reason.” oh, now they want my opinion',
+    '“hence, or otherwise.” otherwise what. threatening as hell',
+    '“it can be shown that…” then fucking show it',
+    'phone’s face down. i can turn my head 270 degrees',
+    'the timer doesn’t pause for reels. i asked',
   ],
   notebooks: [
-    'Your handwriting. My shelf.',
-    'Everything you scribbled, still here. Nothing walks off.',
-    'Notes are the warm-up. They live here regardless.',
+    'rewriting notes in 4 colours isn’t revision. it’s arts and crafts',
+    'your handwriting is basically encryption at this point',
+    'everything you’ve written, saved. even the bits you regret',
   ],
   settings: [
-    'Change what you like. I adapt.',
-    "Tweak away. I will pretend not to watch.",
-    'Make it yours. That is the whole point.',
+    'changing the theme instead of studying. respect, honestly',
+    'night mode won’t raise the grade. tested the shit out of it',
   ],
   community: [
-    'The online bit. It all comes home eventually.',
-    'Everyone in there is a little behind too. Comforting.',
-    'Borrowed brains. Use them, then close the tab.',
+    'other people’s notes. free trial of having your life together',
+    'everyone in here is also cooked. solidarity',
   ],
   'recent-empty': [
-    'Nothing opened yet. Very restful.',
-    'A blank slate. Enjoy it while it lasts.',
+    '0 papers opened. bold strategy for exam season',
+    'nothing opened yet. the procrastination is immaculate',
   ],
   'recent-some': [
-    "{recent} lately. I keep count so you do not have to.",
-    '{recent} behind you. That is the good kind of pile.',
-    '{recent} opened recently. Quietly, that adds up.',
+    '{recent} opened lately. the examiner should be nervous',
+    '{recent} recently. cambridge has been notified. probably',
   ],
   'bookmarks-empty': [
-    "Nothing saved. Later has not happened yet.",
-    'No bookmarks. A clean conscience, for now.',
+    'no bookmarks. either very confident or very unaware',
   ],
   'bookmarks-some': [
-    'Saved for later. Later is coming.',
-    "{bookmarks} waiting. 'Soon' is doing a lot of work.",
-    "A pile of 'I will get to it.' I believe you.",
+    '{bookmarks} saved for later. like the 400 reels you also saved',
+    '{bookmarks} waiting. like unread texts, but they’re exams',
   ],
   'library-some': [
-    '{papers}. Zero wifi needed.',
-    '{papers} here, all offline. Pick a fight.',
-    'Every paper works offline. Even at 1am. Especially then.',
+    '{papers}, all offline. the wifi excuse just died',
+    'picking a paper takes longer than doing one. every time',
+    'your academy charged a fortune for this shit. i’m free',
   ],
   'library-empty': [
-    'Every paper works offline.',
-    "Nothing here yet. The catalogue is a sync away.",
+    'nothing here yet. one sync and the excuses run out',
   ],
   poke: [
-    "I am awake. I am always sort of awake. Owl thing.",
-    'Yes? I was watching the clock for you.',
-    "You have a paper open and you are poking me. Bold.",
-    'Present. Reluctantly majestic, as ever.',
-    'That is the feathers. But go on.',
-    "Poke all you like. The paper is still there.",
-    "Careful. I am mostly held together by spite.",
-    "Hi. Now we are both procrastinating.",
+    'careful. i’m mostly held together by spite',
+    'hi. now we’re both procrastinating',
+    'poke me again and i’m emailing cambridge',
+    'people think owls are wise. we just stare a lot',
+    'yes? i was busy judging your posture',
+    'i’m an owl, not a fidget toy',
+    'poke me one more time. i fucking dare you',
   ],
   asleep: [
-    "Resting my eyes. Poke me when you are serious.",
-    'Five more minutes. Then a paper. Promise.',
-    'Zzz. I am a night bird, this is unusual.',
-    'Dozing. Wake me for something timed.',
+    'social battery: 2%. poke gently',
+    'resting my eyes. like you in every lecture',
+    'asleep in daylight. my body clock is fucked',
   ],
   'feel-easy': [
-    'Easy? Bank it, then pick a mean one.',
-    'Too easy is a warning. Level up.',
-    'Good. Now go find one that fights back.',
+    'don’t tell anyone. they’ll raise the threshold',
+    'screenshot this before paper 2 humbles you',
+    'easy. the examiner will be devastated',
   ],
   'feel-okay': [
-    'Okay counts. Okay, repeated, becomes a grade.',
-    'Fine is fine. Keep the streak alive.',
-    'Middling is momentum. Take it.',
+    'not great, not a crisis. we move',
+    'okay is a grade. technically',
   ],
   'feel-tough': [
-    'Tough is where the marks hide. Good.',
-    'That is the useful kind of hard. Again tomorrow.',
-    'Tough now, easy in June. That is the deal.',
+    'that one was personal. mark scheme, then revenge',
+    'snack first. mark scheme second. in that order',
+    'that paper was bullshit. mark scheme anyway',
+    'somewhere an examiner is smiling',
   ],
   'feel-lost': [
-    'Lost is data. Mark scheme, line by line.',
-    'Nobody starts found. Read the scheme, come back.',
-    'Lost means you found the edge. Useful.',
+    'examiner report: “many candidates struggled.” hi, many candidates',
+    'lost? same. the mark scheme is the walkthrough',
+    'understood fuck all. welcome to the club',
+    'understood nothing. the threshold will be low. probably',
   ],
 };
 
@@ -156,15 +172,29 @@ export const SAY_KEYS = Object.keys(HUSH_LINES) as HushSayKey[];
 const plural = (n: number, one: string, many: string) =>
   `${n.toLocaleString()} ${n === 1 ? one : many}`;
 
+/** `172,800 minutes`, `1 minute`. Days past a week read better as-is: the absurd unit is the joke. */
+const minutesLabel = (m: number) => plural(Math.max(1, Math.round(m)), 'minute', 'minutes');
+
+/** Whether every token in a line has a fact behind it right now. */
+export function canSay(line: string, facts: HushFacts): boolean {
+  if (line.includes('{streak}') && !((facts.streak ?? 0) >= 2)) return false;
+  if (line.includes('{minutes}') && !((facts.minutesToExam ?? 0) > 0)) return false;
+  if (line.includes('{behind}') && !facts.behind) return false;
+  return true;
+}
+
 /**
- * Fill the count tokens a line may carry. Called every render so the number is current, while the
- * pick that chose the line stays put — see the holder in `App`.
+ * Fill the tokens a line may carry. Called every render so the number is current, while the pick
+ * that chose the line stays put — see the holder in `App`.
  */
 export function fillTemplate(template: string, facts: HushFacts): string {
   return template
     .replace('{recent}', plural(facts.recentCount, 'paper', 'papers'))
     .replace('{papers}', plural(facts.papers ?? 0, 'paper', 'papers'))
-    .replace('{bookmarks}', plural(facts.bookmarks, 'bookmark', 'bookmarks'));
+    .replace('{bookmarks}', plural(facts.bookmarks, 'bookmark', 'bookmarks'))
+    .replace('{streak}', String(facts.streak ?? 0))
+    .replace('{minutes}', minutesLabel(facts.minutesToExam ?? 0))
+    .replace('{behind}', facts.behind ?? '');
 }
 
 /**
@@ -182,9 +212,17 @@ export function pickFrom(
   return pool[i];
 }
 
-/** Pick a line for a pool key directly. */
-export function pickLine(key: HushSayKey, opts?: { avoid?: string | null; rng?: () => number }): string {
-  return pickFrom(HUSH_LINES[key], opts);
+/**
+ * Pick a line for a pool key. With `facts`, lines whose tokens have nothing to quote are left out,
+ * so "day {streak}" never shows on day one.
+ */
+export function pickLine(
+  key: HushSayKey,
+  opts: { avoid?: string | null; rng?: () => number; facts?: HushFacts } = {},
+): string {
+  const { facts } = opts;
+  const pool = facts ? HUSH_LINES[key].filter((line) => canSay(line, facts)) : HUSH_LINES[key];
+  return pickFrom(pool.length ? pool : HUSH_LINES[key], opts);
 }
 
 /** A reader feeling id → its pool key. Keeps `WorkspaceView`'s FEELINGS free of wording. */
