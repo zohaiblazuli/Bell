@@ -1,7 +1,6 @@
 /* Shape Kit faces — Jost for UI, Azeret Mono for codes and numbers, Nanum Pen Script for the
  * handwritten notebook samples. Vendored from @fontsource (latin subset, SIL OFL 1.1) so the app
- * keeps its no-network-at-runtime rule. Hand-written, unlike fonts.css: the PowerShell fetcher
- * still owns the SF Pro / Geist faces, which remain as fallbacks in the stacks. */
+ * keeps its no-network-at-runtime rule. These are the app's only bundled faces. */
 
 @font-face {
   font-family: 'Jost';

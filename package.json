@@ -9,7 +9,6 @@
     "test": "node scripts/test.mjs",
     "preview": "vite preview",
     "tauri": "tauri",
-    "fonts": "powershell -ExecutionPolicy Bypass -NoProfile -File scripts/fetch-fonts.ps1",
     "tokens": "node scripts/tokens.mjs",
     "ui:css": "node scripts/ui-css.mjs",
     "shot": "powershell -ExecutionPolicy Bypass -NoProfile -File scripts/shot.ps1",
