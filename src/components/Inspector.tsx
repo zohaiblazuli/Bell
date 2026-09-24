@@ -24,8 +24,7 @@
  *    only while the Shapes tool is active, because a glyph would not say which shape the tool draws;
  *  - the four paper styles and every page mini are real miniature pages — a `--paper` rectangle with
  *    its own ruling — which is exactly why §10's 14 new glyphs include none for paper;
- *  - the cover mini is drawn here from §4e's parts. It should collapse onto `@ui/NotebookCover` the
- *    moment that component lands; see `CoverMini`.
+ *  - the cover mini is the notebook's exercise book (`@ui/NotebookCover`), scaled down.
  *
  * TWO DIVERGENCES FROM THE SPEC, both deliberate and both reported upstream:
  *  1. §6c labels the first action `Export PDF`. `nbExport` copies the notebook's directory to
@@ -46,6 +45,7 @@ import './Inspector.css';
 import { useEffect, useId, useRef, useState } from 'react';
 import Icon from './Icon';
 import Button from '@ui/Button';
+import { ScaledExerciseBook } from '@ui/NotebookCover';
 import Card from '@ui/Card';
 import Chip, { type ChipPalette } from '@ui/Chip';
 import Field from '@ui/Field';
@@ -568,7 +568,9 @@ function NotebookTab({
       {/* §6c `identity` — the 95 x 120 cover mini, the name, and the linked subject. */}
       <Card className="nbi-card">
         <SectionLabel label="Notebook" />
-        <CoverMini cover={notebook.cover} />
+        <span className="nbi-cover" aria-hidden="true">
+          <ScaledExerciseBook cover={notebook.cover} subject={notebook.subject} />
+        </span>
         <Field
           className="nbi-input nbi-name"
           value={notebook.name}
@@ -739,28 +741,3 @@ function NotebookTab({
   );
 }
 
-/**
- * §6c's `cover mini` — a `Notebook Cover` instance at `rescale(0.4)`, so 237 x 300 lands on 95 x 120.
- *
- * TEMPORARY, AND ONLY IN ITS OWNERSHIP: `@ui/NotebookCover` is being written in parallel, so this is
- * built from §4e's own parts — `--cover-N` book, a `--cover-shade` spine, seven `--cover-wire` coils,
- * the three-strip `--paper` page edge. Collapse this onto that component the moment it lands; nothing
- * outside this function needs to change.
- *
- * It carries no text. §4e's cover prints its name in Title/Card and its meta in Mono/Small, and at
- * 0.4 those would be 0.4 of a named ramp step — re-deriving type metrics, which the contract forbids.
- * The name is in the field directly below this anyway.
- */
-function CoverMini({ cover }: { cover: NbEntry['cover'] }) {
-  return (
-    <div className="nbi-cover" aria-hidden="true" style={{ background: `var(--cover-${cover})` }}>
-      <span className="nbi-cover-spine" />
-      {/* Seven coils, first centre y 48 and last 252 in a 300-tall book — 48px symmetric margins,
-          so at 0.4 that is 19.2 and 100.8 in 120. */}
-      {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-        <span key={i} className="nbi-cover-coil" style={{ top: `${19.2 + i * 13.6 - 1.6}px` }} />
-      ))}
-      <span className="nbi-cover-edges" />
-    </div>
-  );
-}

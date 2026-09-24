@@ -16,6 +16,7 @@
  * handwriting, so it opens the app's own palette instead of pretending to. Said in its tooltip.
  */
 import TonePill, { type Tone } from '@ui/TonePill';
+import { coverColours } from '@ui/NotebookCover';
 import WindowLights from '@/components/WindowLights';
 import './NotebookView.css';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -451,7 +452,7 @@ export default function NotebookView({
       {/* §5a topbar 1320x52 — a hairline on all four sides, not a border-bottom. */}
       <header className="nbs-top" data-tauri-drag-region>
         <IconButton icon="left" label="Back to your notebooks" onClick={leave} />
-        <span className="nbs-swatch" style={{ background: `var(--cover-${authored.cover})` }} aria-hidden="true" />
+        <span className="nbs-swatch" style={{ background: coverColours(authored.subject, authored.cover).bg }} aria-hidden="true" />
 
         <div className="nbs-title">
           <span className="nbs-title-name t-body-strong">{title}</span>

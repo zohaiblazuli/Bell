@@ -264,6 +264,8 @@ export default function NewNotebookDialog({ open, subjects, onClose, onCreate }:
           <div className="nnd-preview-tile">
             <NotebookCover
               cover={meta.cover}
+              subject={meta.subject}
+              pages={1}
               name={name}
               meta={meta.subject ? `${meta.subject.name} ${meta.subject.code}` : undefined}
               showSticker={meta.sticker !== null}
@@ -293,24 +295,29 @@ export default function NewNotebookDialog({ open, subjects, onClose, onCreate }:
 
           <div className="nnd-row">
             <SectionLabel label="Cover" />
-            <div className="nnd-covers">
-              {COVER_IDS.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  className="nnd-swatch"
-                  aria-pressed={meta.cover === id}
-                  aria-label={`${COVER_NAMES[id]} cover`}
-                  title={`${COVER_NAMES[id]} cover`}
-                  onClick={() => patch({ cover: id })}
-                >
-                  <span
-                    className="nnd-swatch-chip"
-                    style={{ background: `var(--cover-${id})` }}
-                  />
-                </button>
-              ))}
-            </div>
+            {/* An exercise book takes its subject's colour; the pick only colours a General book. */}
+            {meta.subject ? (
+              <p className="nnd-cover-note">Subject notebooks take their subject’s colour.</p>
+            ) : (
+              <div className="nnd-covers">
+                {COVER_IDS.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className="nnd-swatch"
+                    aria-pressed={meta.cover === id}
+                    aria-label={`${COVER_NAMES[id]} cover`}
+                    title={`${COVER_NAMES[id]} cover`}
+                    onClick={() => patch({ cover: id })}
+                  >
+                    <span
+                      className="nnd-swatch-chip"
+                      style={{ background: `var(--cover-${id})` }}
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="nnd-row">

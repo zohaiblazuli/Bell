@@ -369,3 +369,25 @@ export const nbStat = (id: string) => invoke<NbStat>('nb_stat', { id });
  * same one-segment validation as `state_export`: the frontend words the name, Rust owns the location.
  */
 export const nbExport = (id: string, name: string) => invoke<string>('nb_export', { id, name });
+
+/**
+ * Each notebook's place among the notebooks for the same subject, oldest first — the "No. 2" on its
+ * exercise-book cover. Notebooks with no subject are numbered among themselves.
+ */
+export function bookNumbers(entries: readonly Pick<NbMeta, 'id' | 'createdAt' | 'subject'>[]): Map<string, number> {
+  const bySubject = new Map<string, Pick<NbMeta, 'id' | 'createdAt'>[]>();
+  for (const e of entries) {
+    const key = e.subject?.code ?? '';
+    const list = bySubject.get(key) ?? [];
+    list.push(e);
+    bySubject.set(key, list);
+  }
+  const out = new Map<string, number>();
+  for (const list of bySubject.values()) {
+    list
+      .slice()
+      .sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id))
+      .forEach((e, i) => out.set(e.id, i + 1));
+  }
+  return out;
+}

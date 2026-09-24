@@ -14,9 +14,10 @@ import Slider from '@ui/Slider';
 import NotebookPage from './NotebookPage';
 import SideResizeHandle from './SideResizeHandle';
 import { useNotebook } from '../state/useNotebook';
-import { ScaledCoverArt, StickerGlyph } from '@ui/NotebookCover';
+import { ScaledExerciseBook, StickerGlyph } from '@ui/NotebookCover';
 import {
   DEFAULT_AUTHORED,
+  bookNumbers,
   nbCreate,
   pageLabel,
   type CoverId,
@@ -593,6 +594,8 @@ export default function NotebookSheet({
     return notebooks.find((n) => n.id === selectedId) ?? null;
   }, [notebooks, selectedId]);
 
+  const books = useMemo(() => bookNumbers(notebooks), [notebooks]);
+
   const filteredNotebooks = useMemo(() => {
     let list = notebooks;
     if (searchQuery.trim()) {
@@ -672,7 +675,7 @@ export default function NotebookSheet({
       aria-label={`Open notebook ${n.name}`}
     >
       <div className="rd-nb-tile-book">
-        <ScaledCoverArt cover={n.cover} />
+        <ScaledExerciseBook cover={n.cover} subject={n.subject} bookNo={books.get(n.id)} />
 
         <div className="rd-nb-tile-sticker">
           {n.sticker ? (
@@ -711,7 +714,7 @@ export default function NotebookSheet({
       aria-label={`Open notebook ${n.name}`}
     >
       <div className="rd-nb-item-cover" aria-hidden="true">
-        <ScaledCoverArt cover={n.cover} />
+        <ScaledExerciseBook cover={n.cover} subject={n.subject} bookNo={books.get(n.id)} />
       </div>
       <div className="rd-nb-item-info">
         <div className="rd-nb-item-name">{n.name}</div>
@@ -795,7 +798,10 @@ export default function NotebookSheet({
 
               <div className="rd-nb-companion-right" aria-hidden="true">
                 <div className="rd-nb-mini-book">
-                  <ScaledCoverArt cover={suggestedCover} />
+                  <ScaledExerciseBook
+                    cover={suggestedCover}
+                    subject={resource.subjectCode ? { code: resource.subjectCode, name: resource.subjectName || resource.subjectCode } : null}
+                  />
                   <div className="rd-nb-mini-sticker">
                     <Icon name="pen" />
                   </div>

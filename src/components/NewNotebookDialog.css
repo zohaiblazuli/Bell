@@ -354,3 +354,9 @@
 .nnd-sheet {
   animation: sk-stamp .26s cubic-bezier(.2, .8, .2, 1) both;
 }
+.nnd-cover-note {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--mute);
+}

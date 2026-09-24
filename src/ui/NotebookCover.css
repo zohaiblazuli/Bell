@@ -1,4 +1,4 @@
-/* Notebook Cover — a card in a 2px ink frame: the 196px composition, then the label. Hover lifts it
+/* Notebook Cover — a card in a 2px ink frame: the 196px exercise book, then the name and meta. Hover lifts it
    with a hard ink shadow. */
 .notebook-cover {
   position: relative;
@@ -32,47 +32,88 @@
   display: block;
   height: 196px;
 }
-.nbc-art {
-  position: absolute;
-  inset: 0;
-  display: block;
-  overflow: hidden;
-  box-shadow: inset 0 0 0 2px var(--line);
-}
 .nbc-scaled {
   position: absolute;
   inset: 0;
   display: block;
   overflow: hidden;
 }
-.nbc-art > i {
+
+/* The exercise book: the subject's colour, an ink spine, a printed label sheet and the page count. */
+.nbc-book {
   position: absolute;
+  inset: 0;
   display: block;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 2px var(--line);
 }
-.nbc-spine {
+.nbc-book__spine {
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
-  width: 12px;
-  background: var(--sk-black);
+  width: 14px;
+  background: var(--inkbg);
 }
-.nbc-sticker {
+.nbc-book__label {
   position: absolute;
-  left: 22px;
-  bottom: 10px;
+  left: 30px;
+  right: 16px;
+  top: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  background: var(--sheet);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+.nbc-book__mast {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: var(--sk-cream);
-  color: var(--sk-black);
-  box-shadow: inset 0 0 0 2px var(--sk-black);
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: .14em;
 }
-.nbc-sticker svg {
-  width: 26px !important;
-  height: 26px !important;
+.nbc-book__mast svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+.nbc-book__rows {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: end;
+  row-gap: 6px;
+  column-gap: 8px;
+}
+.nbc-book__key {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: .1em;
+}
+.nbc-book__val {
+  overflow: hidden;
+  padding-bottom: 2px;
+  border-bottom: 1.5px solid var(--line);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.nbc-book__val--mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+}
+.nbc-book__pp {
+  position: absolute;
+  left: 30px;
+  bottom: 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .08em;
 }
 .nbc-label {
   display: flex;

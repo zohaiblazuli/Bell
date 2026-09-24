@@ -39,13 +39,13 @@ import { useEffect, useMemo, useState } from 'react';
 import Button from '@ui/Button';
 import Card from '@ui/Card';
 import Dialog from '@ui/Dialog';
-import NotebookCover, { StickerGlyph } from '@ui/NotebookCover';
+import NotebookCover, { StickerGlyph, coverColours } from '@ui/NotebookCover';
 import Notice from '@ui/Notice';
 import SegmentedControl from '@ui/SegmentedControl';
 import Icon from '@/components/Icon';
 import Mascot from '@/components/Mascot';
 import NewNotebookDialog from '@/components/NewNotebookDialog';
-import type { NbAuthored, NbEntry } from '@/lib/notebooks';
+import { bookNumbers, type NbAuthored, type NbEntry } from '@/lib/notebooks';
 import type { Subject } from '@/lib/types';
 
 /** §4c's `view` control. Both glyphs are the segmented control's own; the labels are ours, because
@@ -231,11 +231,16 @@ export default function NotebooksView({
     );
   };
 
+  const books = useMemo(() => bookNumbers(notebooks ?? []), [notebooks]);
+
   const tileFor = (n: NbEntry, index: number) => (
     <NotebookCover
       key={n.id}
       index={index}
       cover={n.cover}
+      subject={n.subject}
+      bookNo={books.get(n.id)}
+      pages={n.pages}
       name={n.name}
       meta={metaOf(n)}
       edited={editedOf(n)}
@@ -261,7 +266,7 @@ export default function NotebooksView({
             swatch, at ClipPicker's size, so a notebook looks the same wherever it is listed. */}
         <span
           className="nb-swatch"
-          style={{ background: `var(--cover-${n.cover})` }}
+          style={{ background: coverColours(n.subject, n.cover).bg }}
           aria-hidden="true"
         />
         <span className="nb-row-name t-body-nav">{n.name}</span>
