@@ -12,9 +12,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import Button from '@ui/Button';
-import Faces from '@ui/shapekit/Faces';
+import SubjectIcon from '@ui/icons/SubjectIcon';
+import { coverColours } from '@ui/NotebookCover';
 import Mascot from '@/components/Mascot';
-import { loadPref, savePref } from '@/lib/store';
 import Icon from '@/components/Icon';
 import * as api from '@/lib/api';
 import { openPdf, renderPage } from '@/lib/pdf';
@@ -26,11 +26,10 @@ import {
   communitySortLabel,
   communityTypeLabel,
   formatResourceBytes,
-  formatTransferEta,
-  formatTransferSpeed,
   getTransferPercent,
   mfaQrImageSource,
   type CommunityCreateInput,
+  type CommunitySort,
   type CommunityResource,
   type CommunityUpdateInput,
   type TransferProgress,
@@ -42,6 +41,8 @@ import './CommunityView.css';
 interface Props {
   community: ReturnType<typeof useCommunity>;
   subjects: Subject[];
+  /** The syllabus codes the student sits (onboarding step 03) — the "My subjects" chip. */
+  mySubjects: string[];
   onOpen: (resource: CommunityResource) => void;
 }
 
@@ -158,7 +159,7 @@ function useThumbnailUrl(resource: CommunityResource, eager = true) {
   return { url, failed, ref };
 }
 
-/** Small thumbnail shown in each sidebar list item. */
+/** Small thumbnail shown in each admin table row. */
 function ListThumbnail({ resource }: { resource: CommunityResource }) {
   const { url, ref } = useThumbnailUrl(resource, false);
 
@@ -166,21 +167,6 @@ function ListThumbnail({ resource }: { resource: CommunityResource }) {
     <span ref={ref} className="cr-resource-mark" data-has-thumb={url ? '' : undefined}>
       {url ? <img src={url} alt="" /> : <Icon name="doc" />}
     </span>
-  );
-}
-
-function CommunityThumbnail({ resource }: { resource: CommunityResource }) {
-  const { url, failed } = useThumbnailUrl(resource);
-
-  return (
-    <div className="cr-preview-sheet" data-empty={!url || undefined}>
-      {url ? <img src={url} alt={`First page of ${resource.title}`} /> : (
-        <div className="cr-preview-placeholder" aria-label={failed ? 'Preview unavailable' : 'Loading preview'}>
-          <Icon name={failed ? 'warn' : 'doc'} />
-          <span>{failed ? 'Preview unavailable' : 'Preparing first page…'}</span>
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -831,27 +817,6 @@ function AdminWorkspace({
   );
 }
 
-/** Your own reaction to a resource, kept on this machine. There is no shared reaction service, so
- *  Bell shows no counts rather than invent them; the faces are how you file a resource for yourself. */
-const REACTIONS = [
-  { id: 'helpful', label: 'Helpful', kind: 'sun' as const },
-  { id: 'wow', label: 'Wow', kind: 'blob' as const },
-  { id: 'clear', label: 'Clear', kind: 'box' as const },
-  { id: 'confusing', label: 'Confusing', kind: 'tri' as const },
-];
-
-function useMyReactions(resourceId: string | null) {
-  const key = resourceId ? `react.${resourceId}` : null;
-  const [mine, setMine] = useState<string[]>(() => (key ? loadPref<string[]>(key, []) : []));
-  useEffect(() => setMine(key ? loadPref<string[]>(key, []) : []), [key]);
-  const toggle = (id: string) => {
-    if (!key) return;
-    const next = mine.includes(id) ? mine.filter((m) => m !== id) : [...mine, id];
-    setMine(next);
-    savePref(key, next);
-  };
-  return { picked: new Set(mine), toggle };
-}
 
 function transferLabel(resource: CommunityResource, transfer: TransferProgress | null | undefined): string {
   if (!transfer) return resource.localPath ? 'Open in the reader' : 'Download to this machine';
@@ -863,105 +828,97 @@ function transferLabel(resource: CommunityResource, transfer: TransferProgress |
   return pct != null ? `Downloading ${pct}%` : `Downloading (${formatResourceBytes(transfer.uploaded)})`;
 }
 
-/** The desk's right-hand column: who made it, the file, the approval note, the upvote, your reaction
- *  and the one action that matters — getting it onto this machine. */
-function DeskDetails({
-  resource,
-  transfer,
-  onVote,
-  onOpen,
-}: {
-  resource: CommunityResource;
-  transfer: TransferProgress | null | undefined;
-  onVote: () => void;
-  onOpen: () => void;
-}) {
-  const reactions = useMyReactions(resource.id);
-  const total = transfer?.total && transfer.total > 0 ? transfer.total : resource.sizeBytes;
-  const pct = transfer ? getTransferPercent(transfer.uploaded, total) : null;
+/** Most downloaded is worked out here; the other orders are the server's. */
+type ViewSort = 'downloads' | CommunitySort;
+const VIEW_SORTS: readonly ViewSort[] = ['downloads', ...COMMUNITY_SORTS];
+const viewSortLabel = (sort: ViewSort) => (sort === 'downloads' ? 'Most downloaded' : communitySortLabel(sort));
+
+/** The carousel's auto-advance, and how many of your subjects' best it cycles through. */
+const SLIDE_MS = 6000;
+const TOP_PICKS = 4;
+
+/** A subject's colours, the same pairings its exercise books wear. */
+const subjectColours = (r: CommunityResource) =>
+  coverColours({ code: r.subjectCode, name: r.subjectName }, 1);
+
+/** The resource's first page on a paper sheet: code and type, title, a rule, then the page. */
+function PosterSheet({ resource, size }: { resource: CommunityResource; size: 'hero' | 'card' }) {
+  const { url, ref } = useThumbnailUrl(resource, size === 'hero');
   return (
-    <aside className="crd-details" aria-label="Resource details">
-      <div className="crd-id">
-        <span className="crd-eyebrow">
-          {resource.subjectName} · {resource.subjectCode}
-        </span>
-        <span className="crd-title">{resource.title}</span>
-      </div>
-      <dl className="crd-facts">
-        <dt>Author</dt>
-        <dd>{resource.authorName}</dd>
-        <dt>Uploaded by</dt>
-        <dd>{resource.uploaderName}</dd>
-        {resource.contributorCredit && (
-          <>
-            <dt>Credit</dt>
-            <dd>{resource.contributorCredit}</dd>
-          </>
-        )}
-        <dt>File</dt>
-        <dd>
-          PDF · {formatResourceBytes(resource.sizeBytes)}
-          {resource.pageCount ? ` · ${resource.pageCount} pages` : ''}
-        </dd>
-        <dt>Published</dt>
-        <dd>{resource.publishedAt ? new Date(resource.publishedAt).toLocaleDateString() : 'Recently'}</dd>
-      </dl>
-      {resource.description && <p className="crd-desc">{resource.description}</p>}
-      <div className="crd-trust">
-        <i aria-hidden="true" />
-        <span>
-          <b>Validated, scanned and approved.</b> Nothing here goes public until the administrator publishes it.
-        </span>
-      </div>
-      <div className="crd-vote">
-        <button type="button" aria-pressed={resource.hasVoted} onClick={onVote} title={resource.hasVoted ? 'Remove your upvote' : 'Upvote'}>
-          <i aria-hidden="true" />
-          {resource.upvotes.toLocaleString()}
-        </button>
-        <span>Votes help others judge. They don't vouch for accuracy.</span>
-      </div>
-      <div className="crd-react">
-        <div className="crd-rule">
-          <span>REACTIONS</span>
-          <i />
-        </div>
-        <Faces label="Your reaction to this resource" options={REACTIONS} picked={reactions.picked} onPick={reactions.toggle} />
-      </div>
-      {transfer && (
-        <div className="crd-transfer" role="status" aria-live="polite">
-          <div className="crd-transfer-track">
-            <i style={pct != null ? { width: `${pct}%` } : undefined} data-indeterminate={pct == null ? 'true' : undefined} />
-          </div>
-          <span>
-            {formatResourceBytes(transfer.uploaded)}
-            {total > 0 ? ` / ${formatResourceBytes(total)}` : ''}
-            {' · '}
-            {[formatTransferSpeed(transfer.speed), formatTransferEta(transfer.secondsLeft)].filter(Boolean).join(' · ')}
-          </span>
-        </div>
-      )}
-      <button type="button" className="crd-get" disabled={Boolean(transfer)} onClick={onOpen}>
-        {!resource.localPath && <i aria-hidden="true" />}
-        {transferLabel(resource, transfer)}
-      </button>
-      <span className="crd-get-note">
-        {resource.localPath ? 'It is on this machine and opens offline.' : 'Once downloaded it opens in the reader, offline.'}
+    <div ref={ref} className={size === 'hero' ? 'cxp-sheet cxp-sheet--hero' : 'cxp-sheet cxp-sheet--card'}>
+      <span className="cxp-sheet__code">
+        {resource.subjectCode} · {communityTypeLabel(resource.resourceType)}
       </span>
-    </aside>
+      <span className="cxp-sheet__title">{resource.title}</span>
+      <i className="cxp-sheet__rule" />
+      <div className="cxp-sheet__page" data-has-thumb={url ? '' : undefined}>
+        {url ? <img src={url} alt={`First page of ${resource.title}`} /> : <span>first-page preview</span>}
+      </div>
+    </div>
   );
 }
 
-export default function CommunityView({ community, subjects, onOpen }: Props) {
+function motionOff(): boolean {
+  if (typeof window === 'undefined') return true;
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return true;
+  return document.querySelector('.app[data-motion="off"]') !== null;
+}
+
+export default function CommunityView({ community, subjects, mySubjects, onOpen }: Props) {
   const [adminMode, setAdminMode] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const adminButtonRef = useRef<HTMLButtonElement>(null);
   const admin = useCommunityAdmin(adminMode || loginOpen, community.refresh);
-  // The desk always shows something: the chosen resource, or the first in the list.
-  const selected = community.selected ?? community.result.items[0] ?? null;
-  const filteredSubjects = community.filters.qualification
-    ? subjects.filter((subject) => subject.qualification === community.filters.qualification)
-    : subjects;
-  const transfer = selected ? community.progress[selected.id] : null;
+  /* Poster (Bell App v2): subject chips over a carousel of the most downloaded resources in your
+     subjects, then every resource in the chosen scope as a card, most downloaded first. Pressing a
+     card puts it in the carousel. */
+  const [scope, setScope] = useState<'mine' | 'all'>(mySubjects.length ? 'mine' : 'all');
+  const [viewSort, setViewSort] = useState<ViewSort>('downloads');
+  const [slide, setSlide] = useState(0);
+  const [picked, setPicked] = useState<string | null>(null);
+  const hold = useRef(false);
+  const scroller = useRef<HTMLDivElement>(null);
+
+  const mine = useMemo(() => new Set(mySubjects), [mySubjects]);
+  const subjectName = (code: string) => subjects.find((s) => s.code === code)?.name ?? code;
+  const byDownloads = (a: CommunityResource, b: CommunityResource) => b.downloads - a.downloads;
+  const items = useMemo(() => {
+    const all = community.result.items;
+    const scoped = community.filters.subjectCode || scope === 'all' ? all : all.filter((r) => mine.has(r.subjectCode));
+    return viewSort === 'downloads' ? scoped.slice().sort(byDownloads) : scoped;
+  }, [community.result.items, community.filters.subjectCode, scope, mine, viewSort]);
+  const top = useMemo(
+    () => community.result.items.filter((r) => mine.size === 0 || mine.has(r.subjectCode)).slice().sort(byDownloads).slice(0, TOP_PICKS),
+    [community.result.items, mine],
+  );
+  const pickedResource = picked ? community.result.items.find((r) => r.id === picked) ?? null : null;
+  const slides = pickedResource && !top.includes(pickedResource) ? [...top, pickedResource] : top;
+  const n = slides.length;
+  const index = n ? ((slide % n) + n) % n : 0;
+
+  // The carousel turns itself every six seconds, unless it is being hovered or motion is off.
+  useEffect(() => {
+    if (n < 2 || motionOff()) return;
+    const timer = window.setInterval(() => {
+      if (!hold.current) setSlide((i) => i + 1);
+    }, SLIDE_MS);
+    return () => window.clearInterval(timer);
+  }, [n]);
+
+  const feature = (r: CommunityResource) => {
+    const k = top.indexOf(r);
+    if (k >= 0) {
+      setPicked(null);
+      setSlide(k);
+    } else {
+      setPicked(r.id);
+      setSlide(top.length);
+    }
+    scroller.current?.scrollTo({ top: 0, behavior: motionOff() ? 'auto' : 'smooth' });
+  };
+  const chipScope = community.filters.subjectCode ?? scope;
+  const scopeLabel =
+    chipScope === 'all' ? 'ALL SUBJECTS' : chipScope === 'mine' ? 'YOUR SUBJECTS' : subjectName(chipScope).toUpperCase();
 
   // Refresh public catalog whenever exiting admin mode
   const prevAdminMode = useRef(adminMode);
@@ -1009,13 +966,15 @@ export default function CommunityView({ community, subjects, onOpen }: Props) {
   }
 
   const openResource = (r: CommunityResource) => void community.open(r).then((ready) => ready && onOpen(ready));
+  const chips: [string, string][] = [
+    ['mine', 'My subjects'],
+    ['all', 'All subjects'],
+    ...mySubjects.map((code): [string, string] => [code, subjectName(code)]),
+  ];
 
   return (
-    <div className="view cr-view crd">
-      {/* Bell App v2's Community desk: filters across the top, then the resource rail, a large
-          first-page preview, and the details column. The preview is the biggest thing on screen —
-          the resource earns trust, not the chrome around it (DESIGN.md, Community Resources). */}
-      <div className="crd-bar">
+    <div className="view cr-view cxp">
+      <div className="cxp-bar">
         <label className="crd-search">
           <i aria-hidden="true" />
           <input
@@ -1030,68 +989,57 @@ export default function CommunityView({ community, subjects, onOpen }: Props) {
             </button>
           )}
         </label>
-        <div className="crd-quals" role="group" aria-label="Qualification">
-          {COMMUNITY_QUALIFICATIONS.map((qualification) => (
-            <button
-              key={qualification}
-              type="button"
-              aria-pressed={community.filters.qualification === qualification}
-              onClick={() =>
-                community.patchFilters({
-                  qualification: community.filters.qualification === qualification ? null : qualification,
-                  subjectCode: null,
-                })
-              }
-            >
-              {communityQualificationLabel(qualification)}
-            </button>
-          ))}
+        <div className="cxp-chips" role="group" aria-label="Subjects">
+          {chips.map(([key, label]) => {
+            const on = chipScope === key;
+            const dot = key.length === 4 ? coverColours({ code: key, name: label }, 1).bg : null;
+            return (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={on}
+                onClick={() => {
+                  setPicked(null);
+                  setSlide(0);
+                  if (key === 'mine' || key === 'all') {
+                    setScope(key);
+                    community.patchFilters({ subjectCode: null });
+                  } else {
+                    community.patchFilters({ subjectCode: key });
+                  }
+                }}
+              >
+                {dot && <i style={{ background: dot }} aria-hidden="true" />}
+                {label}
+              </button>
+            );
+          })}
         </div>
-        <select
-          className="crd-select"
-          aria-label="Subject"
-          value={community.filters.subjectCode ?? ''}
-          onChange={(event) => community.patchFilters({ subjectCode: event.target.value || null })}
-        >
-          <option value="">All subjects</option>
-          {filteredSubjects.map((subject) => (
-            <option key={`${subject.qualification}-${subject.code}`} value={subject.code}>
-              {subject.name} · {subject.code}
-            </option>
-          ))}
-        </select>
-        <select
-          className="crd-select"
-          aria-label="Type"
-          value={community.filters.resourceType ?? ''}
-          onChange={(event) =>
-            community.patchFilters({ resourceType: (event.target.value || null) as typeof community.filters.resourceType })
-          }
-        >
-          <option value="">All types</option>
-          {COMMUNITY_RESOURCE_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {communityTypeLabel(type)}
-            </option>
-          ))}
-        </select>
         <span className="crd-gap" />
         <span className="crd-sort-label">Sort</span>
         <select
           className="crd-select"
           aria-label="Sort"
-          value={community.filters.sort}
-          onChange={(event) => community.patchFilters({ sort: event.target.value as typeof community.filters.sort })}
+          value={viewSort}
+          onChange={(event) => {
+            const next = event.target.value as ViewSort;
+            setViewSort(next);
+            community.patchFilters({ sort: next === 'downloads' ? 'popular' : next });
+          }}
         >
-          {COMMUNITY_SORTS.map((sort) => (
+          {VIEW_SORTS.map((sort) => (
             <option key={sort} value={sort}>
-              {communitySortLabel(sort)}
+              {viewSortLabel(sort)}
             </option>
           ))}
         </select>
-        <span className="crd-online" data-online={community.error ? undefined : 'true'}>
+        <span
+          className="crd-online cxp-online"
+          data-online={community.error ? undefined : 'true'}
+          title={community.error ? 'Offline' : 'Online'}
+        >
           <i aria-hidden="true" />
-          {community.error ? 'Offline' : 'Online'}
+          <span className="cxp-sr">{community.error ? 'Offline' : 'Online'}</span>
         </span>
         <Button ref={adminButtonRef} label="Admin" onClick={enterAdmin} />
       </div>
@@ -1103,67 +1051,152 @@ export default function CommunityView({ community, subjects, onOpen }: Props) {
           <p>{community.error}</p>
           <Button label="Try again" icon="sync" onClick={() => void community.refresh()} />
         </div>
-      ) : community.result.items.length === 0 && !community.loading ? (
+      ) : items.length === 0 && !community.loading ? (
         <div className="crd-state">
           <Mascot size={108} mood="empty" />
           <h2>No resources match</h2>
-          <p>Clear a filter or try a broader search.</p>
+          <p>Try all subjects, or a broader search.</p>
           <Button
-            label="Clear filters"
-            onClick={() => community.patchFilters({ query: '', qualification: null, subjectCode: null, resourceType: null })}
+            label="Show everything"
+            onClick={() => {
+              setScope('all');
+              community.patchFilters({ query: '', subjectCode: null });
+            }}
           />
         </div>
       ) : (
-        <div className="crd-desk">
-          <nav className="crd-rail" aria-label="Resources">
-            <div className="crd-rail-head">
-              {community.loading ? 'LOOKING…' : `${community.result.total.toLocaleString()} RESOURCE${community.result.total === 1 ? '' : 'S'} · ADMIN-APPROVED`}
-            </div>
-            {community.result.items.map((resource) => (
-              <button
-                key={resource.id}
-                type="button"
-                className="crd-item"
-                aria-current={selected?.id === resource.id ? 'true' : undefined}
-                onClick={() => community.setSelectedId(resource.id)}
-                onDoubleClick={() => openResource(resource)}
-              >
-                <ListThumbnail resource={resource} />
-                <span className="crd-item-text">
-                  <b>{resource.title}</b>
-                  <span>
-                    {resource.subjectName} · {communityTypeLabel(resource.resourceType)}
+        <div className="cxp-scroll" ref={scroller}>
+          <div className="cxp-page">
+            {n > 0 && (
+              <>
+                <section
+                  className="cxp-hero"
+                  aria-roledescription="carousel"
+                  aria-label="Top picks for your subjects"
+                  onMouseEnter={() => (hold.current = true)}
+                  onMouseLeave={() => (hold.current = false)}
+                  onFocus={() => (hold.current = true)}
+                  onBlur={() => (hold.current = false)}
+                >
+                  <div className="cxp-track" style={{ transform: `translateX(${-index * 100}%)` }}>
+                    {slides.map((r, k) => {
+                      const { bg, fg } = subjectColours(r);
+                      const transfer = community.progress[r.id];
+                      const kicker =
+                        k < top.length
+                          ? `#${k + 1} ${mine.size ? 'FOR YOUR SUBJECTS' : 'MOST DOWNLOADED'} · ${r.subjectName.toUpperCase()}`
+                          : `YOU PICKED · ${r.subjectName.toUpperCase()}`;
+                      return (
+                        <div
+                          key={r.id}
+                          className="cxp-slide"
+                          style={{ background: bg, color: fg }}
+                          aria-hidden={k !== index}
+                          role="group"
+                          aria-roledescription="slide"
+                          aria-label={`${k + 1} of ${n}: ${r.title}`}
+                        >
+                          <div className="cxp-slide__text">
+                            <div className="cxp-kicker">
+                              <SubjectIcon code={r.subjectCode} size={26} />
+                              <span>{kicker}</span>
+                            </div>
+                            <h2 className="cxp-slide__title">{r.title}</h2>
+                            <span className="cxp-slide__meta">
+                              {r.authorName} · {communityTypeLabel(r.resourceType)}
+                              {r.pageCount ? ` · ${r.pageCount} pages` : ''} · {formatResourceBytes(r.sizeBytes)}
+                            </span>
+                            <div className="cxp-count">
+                              <b>{r.downloads.toLocaleString('en-GB')}</b>
+                              <span>downloads</span>
+                            </div>
+                            <button
+                              type="button"
+                              className="cxp-get"
+                              tabIndex={k === index ? 0 : -1}
+                              disabled={Boolean(transfer)}
+                              onClick={() => openResource(r)}
+                            >
+                              {!r.localPath && !transfer && <i aria-hidden="true" />}
+                              {transferLabel(r, transfer)}
+                            </button>
+                          </div>
+                          <div className="cxp-slide__sheet">
+                            <PosterSheet resource={r} size="hero" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+                <div className="cxp-nav">
+                  <span className="cxp-label">YOUR SUBJECTS · TOP PICKS</span>
+                  <div className="cxp-dots">
+                    {slides.map((r, k) => (
+                      <button
+                        key={r.id}
+                        type="button"
+                        title={r.title}
+                        aria-label={`Show ${r.title}`}
+                        aria-current={k === index ? 'true' : undefined}
+                        onClick={() => setSlide(k)}
+                      />
+                    ))}
+                  </div>
+                  <span className="crd-gap" />
+                  <span className="cxp-counter">
+                    {String(index + 1).padStart(2, '0')} / {String(n).padStart(2, '0')}
                   </span>
-                </span>
-                <span className="crd-item-votes">▲ {resource.upvotes.toLocaleString()}</span>
-              </button>
-            ))}
-          </nav>
-
-          <div className="crd-preview">
-            {selected && (
-              <div className="crd-sheet" key={selected.id}>
-                <span className="crd-sheet-code">
-                  {selected.subjectCode} · {communityTypeLabel(selected.resourceType).toUpperCase()}
-                </span>
-                <span className="crd-sheet-title">{selected.title}</span>
-                <span className="crd-sheet-author">{selected.authorName}</span>
-                <i className="crd-sheet-rule" />
-                <div className="crd-sheet-page">
-                  <CommunityThumbnail resource={selected} />
+                  <div className="cxp-arrows">
+                    <button type="button" aria-label="Previous" onClick={() => setSlide(index - 1)}>
+                      <i className="cxp-arrow cxp-arrow--prev" />
+                    </button>
+                    <button type="button" aria-label="Next" onClick={() => setSlide(index + 1)}>
+                      <i className="cxp-arrow cxp-arrow--next" />
+                    </button>
+                  </div>
                 </div>
-              </div>
+              </>
             )}
-          </div>
 
-          {selected && (
-            <DeskDetails
-              resource={selected}
-              transfer={transfer}
-              onVote={() => void community.vote(selected)}
-              onOpen={() => openResource(selected)}
-            />
-          )}
+            <div className="cxp-rule">
+              <span className="cxp-label">
+                {community.loading ? 'LOOKING…' : `${items.length.toLocaleString()} RESOURCE${items.length === 1 ? '' : 'S'} · ${scopeLabel}`}
+              </span>
+              <i />
+            </div>
+            <div className="cxp-grid">
+              {items.map((r, k) => {
+                const { bg, fg } = subjectColours(r);
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    className="cxp-card"
+                    style={{ animationDelay: `${Math.min(k, 12) * 50}ms` }}
+                    onClick={() => feature(r)}
+                    onDoubleClick={() => openResource(r)}
+                    title={`Feature ${r.title}`}
+                  >
+                    <span className="cxp-card__face" style={{ background: bg, color: fg }}>
+                      <SubjectIcon code={r.subjectCode} size={26} className="cxp-card__glyph" />
+                      <PosterSheet resource={r} size="card" />
+                    </span>
+                    <span className="cxp-card__text">
+                      <b>{r.title}</b>
+                      <span className="cxp-card__sub">
+                        {r.subjectName} · {communityTypeLabel(r.resourceType)}
+                      </span>
+                      <span className="cxp-card__count">
+                        <b>{r.downloads.toLocaleString('en-GB')}</b>
+                        <span>downloads</span>
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 
