@@ -134,7 +134,21 @@ function useCountdown(target: number | null): number | null {
 }
 
 export default function DashboardView({ now, name, seasons, subjects, marks, onOpen, onBrowse, onSubject, sittingTotals }: Props) {
-  const nowMs = now.getTime();
+  // A minute tick, on the minute, so a Home left open crosses 12:00 or midnight on time — the
+  // greeting and the eyebrow follow the clock without waiting for something else to re-render.
+  const [tickMs, setTickMs] = useState(() => Date.now());
+  useEffect(() => {
+    let id = 0;
+    const arm = () => {
+      id = window.setTimeout(() => {
+        setTickMs(Date.now());
+        arm();
+      }, 60_000 - (Date.now() % 60_000));
+    };
+    arm();
+    return () => window.clearTimeout(id);
+  }, []);
+  const nowMs = Math.max(now.getTime(), tickMs);
   const clock = useMemo(() => new Date(nowMs), [nowMs]);
 
   const focus = useMemo(() => loadFocus(), []);
