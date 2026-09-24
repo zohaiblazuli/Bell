@@ -4,6 +4,7 @@ import SubjectIcon from '@ui/icons/SubjectIcon';
 import Heatmap, { heatStats } from '@ui/shapekit/Heatmap';
 import Flame from '@ui/shapekit/Flame';
 import { sessionLabel } from '@/lib/difficulty';
+import { pickGreeting, slotOf } from '@/lib/greetings';
 import { daysUntil, nextWindow, windowForCode, windowsBetween, type Season } from '@/lib/sessions';
 import {
   loadFocus,
@@ -19,7 +20,8 @@ import type { PaperRow, Subject } from '@/lib/types';
 /**
  * Home — the Bell App v2 dashboard. One question answered first: what do I do now?
  *
- *   greeting    date eyebrow, "Good evening, Zohaib", and one sentence of advice
+ *   greeting    date eyebrow, a greeting from `lib/greetings` ("Good evening, Zohaib"), and one
+ *               sentence of advice
  *   hero        PICK UP WHERE YOU LEFT OFF (paper thumbnail, page strip, Resume) beside the black
  *               NEXT SITTING panel whose number counts down on arrival and whose red corner rings
  *   activity    the since-day-one heatmap and a 2 × 2 stat rail (streak with its flame, longest run,
@@ -57,6 +59,9 @@ const parseIso = (date: string) => {
   const [y, m, d] = date.split('-').map(Number);
   return new Date(y, m - 1, d, 12);
 };
+// The greeting shown last, so coming back to Home draws a different one where the pool allows.
+let lastGreeting: string | null = null;
+
 const plural = (n: number, word: string) => `${n} ${n === 1 ? word : `${word}s`}`;
 
 function hm(minutes: number): string {
@@ -261,9 +266,15 @@ export default function DashboardView({ now, name, seasons, subjects, marks, onO
   const cells = coverage.length * sessions.length;
 
   /* ---- words ------------------------------------------------------------ */
-  const hour = clock.getHours();
-  const partOfDay = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
+  const partOfDay = slotOf(clock.getHours());
   const who = (name ?? onboarding.name).trim();
+  // Drawn once per slot and weekday, not per render — `now` ticks, the greeting should not.
+  const weekday = clock.getDay();
+  const greeting = useMemo(() => {
+    const line = pickGreeting(clock, who, { avoid: lastGreeting });
+    lastGreeting = line;
+    return line;
+  }, [partOfDay, weekday, who]); // `clock` left out on purpose: the slot and weekday stand for it
   const eyebrow = `${WEEKDAYS[clock.getDay()]} ${clock.getDate()} ${MONTHS[clock.getMonth()]} · ${partOfDay}`.toUpperCase();
   const behind = standing[0];
   const advice = resume
@@ -292,10 +303,7 @@ export default function DashboardView({ now, name, seasons, subjects, marks, onO
       <div className="home">
         <header className="home__greet">
           <span className="home__eyebrow">{eyebrow}</span>
-          <h1 className="home__title">
-            Good {partOfDay}
-            {who ? `, ${who}` : ''}
-          </h1>
+          <h1 className="home__title">{greeting}</h1>
           <p className="home__advice">{advice}</p>
         </header>
 

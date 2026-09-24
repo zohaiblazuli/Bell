@@ -68,3 +68,12 @@ A dash (—) means no variant of that kind has been seen.
 - ["Here's every single Claude greeting", @dwlz](https://x.com/dwlz/status/1965495158025114097): nameless and incognito variants
 - [Dan Gingiss on LinkedIn](https://www.linkedin.com/posts/dangingiss_customerexperience-userexperience-genai-activity-7356332833872728065-PUyx): "Dan Returns!" after a few days away
 - [Thoughts Brewing: Temporary chats in Claude](https://thoughtsbrewing.com/blog/ai-quick-tips-298-temporary-chats-in-claude): incognito greeting, "Afternoon, {name}"
+
+## In Bell
+
+Bell's home page greeting uses this table. The code is in `src/lib/greetings.ts` and the tests are in `tests/greetings.test.ts`.
+
+- The name comes from onboarding and is used exactly as typed.
+- Hours are start-inclusive and end-exclusive.
+- A new greeting is drawn when the slot, the weekday or the name changes. It avoids the greeting shown last time.
+- The incognito greetings are left out because Bell has no incognito mode.
