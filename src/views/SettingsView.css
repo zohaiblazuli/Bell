@@ -274,7 +274,8 @@
   font-size: 13.5px;
   font-weight: 600;
 }
-.set-about-links button {
+.set-about-links button,
+.set-link {
   padding: 0;
   background: transparent;
   color: var(--ink);
@@ -283,7 +284,12 @@
   text-underline-offset: 3px;
   cursor: pointer;
 }
-.set-about-links button:hover {
+.set-link {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.set-about-links button:hover,
+.set-link:hover {
   color: var(--red);
 }
 .set-about-licence {

@@ -145,6 +145,24 @@
 
 @keyframes sk-pal-in { from { opacity: 0; transform: translateY(-18px) scale(.98); } to { opacity: 1; transform: none; } }
 
+/* updater */
+@keyframes sk-corner-in {
+  0% { opacity: 0; transform: translateY(46px) rotate(3deg); }
+  60% { opacity: 1; transform: translateY(-6px) rotate(-.8deg); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes sk-pop-big { from { transform: scale(0); } to { transform: scale(1); } }
+@keyframes sk-arrow-fall {
+  0% { transform: translateY(-16px); opacity: 0; }
+  25% { opacity: 1; }
+  65% { transform: translateY(2px); opacity: 1; }
+  80%, 100% { transform: translateY(2px); opacity: 0; }
+}
+@keyframes sk-tray-catch { 0%, 60% { transform: scaleX(1); } 72% { transform: scaleX(1.25) scaleY(1.6); } 100% { transform: scaleX(1); } }
+@keyframes sk-stripe { from { background-position: 0 0; } to { background-position: 28px 0; } }
+@keyframes sk-ear-wig-l { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-18deg); } 60% { transform: rotate(8deg); } }
+@keyframes sk-ear-wig-r { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(18deg); } 60% { transform: rotate(-8deg); } }
+
 /* star gate */
 @keyframes sk-twinkle {
   0%, 100% { transform: scale(.6) rotate(0); opacity: .4; }

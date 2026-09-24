@@ -41,5 +41,4 @@ import './Stat.css';
 import './SubjectRow.css';
 import './Switch.css';
 import './TonePill.css';
-import './UpdateNotice.css';
 import './WindowLights.css';

@@ -194,7 +194,7 @@ export function screenCommands(
       label: 'Check for updates',
       hint: 'Look now instead of waiting for the daily check',
       /* `sync` is the closest glyph the set has: it holds no download and no restart icon, which is
-         why `ui/UpdateNotice.tsx` had to author both by hand. */
+         why the update corner draws its own glyphs. */
       icon: 'sync',
       keywords: 'update version upgrade release notes',
       run: check,

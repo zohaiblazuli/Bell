@@ -10,7 +10,7 @@ import Mascot from './components/Mascot';
 import * as api from './lib/api';
 import Splash, { type SplashPhase } from './components/Splash';
 import { startupWatchdogMs } from './lib/startup';
-import { UpdateCorner, UpdateDialog } from './components/UpdateFlow';
+import { UpdateCorner, UpdateDialog, UpdateRestarting } from './components/UpdateFlow';
 import LibraryView from './views/LibraryView';
 import DashboardView from './views/DashboardView';
 import WorkspaceView from './views/WorkspaceView';
@@ -144,6 +144,12 @@ export default function App() {
   );
   const study = useStudyState();
   const up = useUpdates(settings.updateAuto, lib.setError);
+  /* × / Later on the update corner hides it for the phase it was in; any change of phase (a finished
+     download, a fresh manual check) clears that and brings the panel back. */
+  const [cornerHiddenAt, setCornerHiddenAt] = useState<string | null>(null);
+  useEffect(() => {
+    setCornerHiddenAt((h) => (h === up.state.phase ? h : null));
+  }, [up.state.phase]);
   const notebooks = useNotebooks();
 
   /**
@@ -635,11 +641,15 @@ export default function App() {
           </div>
         )}
 
-        <UpdateCorner
-          state={up.state}
-          onDownload={() => void up.download()}
-          onInstall={() => void up.install()}
-        />
+        {cornerHiddenAt !== up.state.phase && (
+          <UpdateCorner
+            state={up.state}
+            onDownload={() => void up.download()}
+            onInstall={() => void up.install()}
+            onHide={() => setCornerHiddenAt(up.state.phase)}
+          />
+        )}
+        <UpdateRestarting state={up.state} />
 
         <Dialog
           open={resetOpen}

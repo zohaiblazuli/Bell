@@ -199,15 +199,13 @@ function updateLine(state: UpdateState | undefined): string | null {
     case 'idle':
       return null;
     case 'checking':
-      return 'Asking the update server…';
+      return 'Checking…';
     case 'current':
-      return `Up to date — v${state.version} is the newest build.`;
+      return "You're on the latest version.";
     case 'available':
-      return `v${state.version} is available. Open it from the sidebar to download.`;
     case 'downloading':
-      return `Downloading v${state.version}…`;
     case 'ready':
-      return `v${state.version} is downloaded and installs on the next restart.`;
+      return `Version ${state.version} is waiting. See the corner.`;
     case 'installing':
       return `Restarting into v${state.version}…`;
     case 'error':
@@ -665,28 +663,24 @@ export default function SettingsView({
                   />
                 </CardRow>
 
-                {/* One of the file's three label-less rows (TRAP 13): a Body/Meta string sits in the
-                    label slot and the action sits opposite it. The helper is the answer to the button
-                    beside it once it has been pressed, and the version line until then — an app that
-                    has not looked must not claim to be up to date. */}
+                {/* Bell App v2: the version is the row's name and the answer to Check now is its line.
+                    An app that has not looked must not claim to be up to date, so until a check has
+                    run the line is the build. */}
                 <CardRow
-                  helper={
-                    updateStatus ? (
-                      <span className="set-now">{updateStatus}</span>
-                    ) : buildLine ? (
-                      `Bell ${version} · ${buildLine}`
-                    ) : (
-                      `Bell ${version}`
-                    )
-                  }
+                  label={`Bell ${version}`}
+                  helper={updateStatus ? <span className="set-now">{updateStatus}</span> : buildLine || 'Not checked yet this session.'}
                 >
-                  <Button
-                    icon="sync"
-                    className={checkingUpdates ? 'set-spin' : undefined}
-                    disabled={checkingUpdates}
-                    onClick={onCheckUpdates}
-                    label={checkingUpdates ? 'Checking…' : 'Check now'}
-                  />
+                  <Button disabled={checkingUpdates} onClick={onCheckUpdates} label={checkingUpdates ? 'Checking…' : 'Check now'} />
+                </CardRow>
+
+                <CardRow label="Release notes" helper={`What changed in ${version}.`}>
+                  <button
+                    type="button"
+                    className="set-link"
+                    onClick={() => void openUrl(`${REPO_URL}/releases/tag/v${version}`)}
+                  >
+                    Read on GitHub
+                  </button>
                 </CardRow>
               </Card>
             </section>
