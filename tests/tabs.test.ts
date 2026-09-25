@@ -299,3 +299,46 @@ describe('loadSavedTabs — restore the set, but always open on Home', () => {
     assert.equal(s.activeId, DEFAULT_LIBRARY_TAB.id);
   });
 });
+
+/**
+ * + opens a real tab (Zohaib, 2026-09-25): a new shelf tab on Home, appended and focused, which the
+ * sidebar then navigates — while the pinned first tab stays where it is.
+ */
+describe('NEW_SHELF and OPEN_SHELF — browser-style page tabs', () => {
+  const home = { tabs: [DEFAULT_LIBRARY_TAB], activeId: DEFAULT_LIBRARY_TAB.id };
+
+  test('+ appends a closable Home tab and focuses it', () => {
+    const s = tabReducer(home, { type: 'NEW_SHELF', id: 'shelf:n1' });
+    assert.equal(s.tabs.length, 2);
+    assert.equal(s.activeId, 'shelf:n1');
+    assert.equal(s.tabs[1].shelfView, 'dashboard');
+    assert.equal(s.tabs[1].closable, true);
+  });
+
+  test('the same id twice adds one tab (StrictMode re-runs the reducer)', () => {
+    const once = tabReducer(home, { type: 'NEW_SHELF', id: 'shelf:n1' });
+    assert.equal(tabReducer(once, { type: 'NEW_SHELF', id: 'shelf:n1' }).tabs.length, 2);
+  });
+
+  test('the sidebar navigates the active shelf tab, not the pinned one', () => {
+    const s1 = tabReducer(home, { type: 'NEW_SHELF', id: 'shelf:n1' });
+    const s2 = tabReducer(s1, { type: 'OPEN_SHELF', view: 'settings' });
+    assert.equal(s2.tabs.find((t) => t.id === 'shelf:n1')?.shelfView, 'settings');
+    assert.equal(s2.tabs[0].shelfView, 'dashboard', 'the pinned tab is untouched');
+    assert.equal(s2.activeId, 'shelf:n1');
+  });
+
+  test('from a document tab, the sidebar uses the nearest shelf tab to its left', () => {
+    let s = tabReducer(home, { type: 'NEW_SHELF', id: 'shelf:n1' });
+    s = tabReducer(s, { type: 'OPEN_PAPER', paper: samplePaper });
+    s = tabReducer(s, { type: 'OPEN_SHELF', view: 'notebooks' });
+    assert.equal(s.activeId, 'shelf:n1');
+    assert.equal(s.tabs.find((t) => t.id === 'shelf:n1')?.shelfView, 'notebooks');
+  });
+
+  test('closing a + tab is allowed; the pinned tab still cannot close', () => {
+    const s = tabReducer(home, { type: 'NEW_SHELF', id: 'shelf:n1' });
+    assert.equal(tabReducer(s, { type: 'CLOSE_TAB', id: 'shelf:n1' }).tabs.length, 1);
+    assert.equal(tabReducer(s, { type: 'CLOSE_TAB', id: DEFAULT_LIBRARY_TAB.id }).tabs.length, 2);
+  });
+});

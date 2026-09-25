@@ -219,7 +219,7 @@
   animation: splash-hush-up .8s cubic-bezier(.2, .8, .2, 1) 1.02s backwards;
 }
 .app[data-startup='handoff'] .sk-hush__bubble {
-  transform-origin: 14px 130%;
+  transform-origin: 32px calc(100% + 12px);
   animation: splash-bubble .5s cubic-bezier(.2, .8, .2, 1) 1.58s backwards;
 }
 .sk-hush__dots {

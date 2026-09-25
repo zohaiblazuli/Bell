@@ -33,8 +33,8 @@ button.bell-btn--primary {
   box-shadow: none;
 }
 button.bell-btn--primary:not(:disabled, [aria-disabled='true']):hover {
-  background: var(--red);
-  color: var(--sk-cream);
+  background: var(--live);
+  color: var(--onlive);
 }
 button.bell-btn:not(:disabled, [aria-disabled='true']):active {
   transform: translate(1px, 1px);

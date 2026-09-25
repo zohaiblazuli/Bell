@@ -15,7 +15,7 @@
  * are Recent's open timestamps and the focus log.
  */
 import './LibraryView.css';
-import { useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Notice from '@ui/Notice';
 import PaperCard from '@ui/PaperCard';
 import SeasonIcon from '@ui/icons/SeasonIcon';
@@ -58,6 +58,17 @@ const BUCKETS = [
 ] as const;
 
 const DAY_MS = 86_400_000;
+
+/**
+ * How many cards or rows go on screen at a time. A student's subjects can hold well over a thousand
+ * papers, and mounting every card at once — each dealing itself in — is what stalled the page and
+ * held hundreds of megabytes of DOM. The next chunk mounts as the sentinel under the list nears the
+ * bottom of the scroller, so the page only ever carries what has been scrolled to.
+ */
+const CHUNK = 48;
+
+/** Only the first screenful is dealt onto the table; a card mounted by scrolling simply appears. */
+const DEALT = 15;
 
 /** Local midnight, so a bucket boundary is a calendar day rather than a rolling 24 hours. */
 const startOfDay = (at: number) => {
@@ -182,6 +193,60 @@ interface Group {
   meta: string;
   rows: PaperRow[];
 }
+
+/**
+ * One card in the grid, memoised on primitives. `PaperCard` is memoised too, but it takes closures
+ * and an icon element, which are new on every render — so without this layer a single download
+ * tick re-rendered every card on the page. The three callbacks here are stable (see `LibraryView`).
+ */
+interface LibraryCardProps {
+  paper: PaperRow;
+  index: number;
+  deal: boolean;
+  bookmarked: boolean;
+  done: boolean;
+  revision: boolean;
+  downloading: boolean;
+  onMark: (name: SetName, key: string, paper: PaperRow) => void;
+  onOpen: (paper: PaperRow) => void;
+  onDownload: (paper: PaperRow) => void;
+}
+
+const LibraryCard = memo(function LibraryCard({
+  paper,
+  index,
+  deal,
+  bookmarked,
+  done,
+  revision,
+  downloading,
+  onMark,
+  onOpen,
+  onDownload,
+}: LibraryCardProps) {
+  const key = paperKey(paper.subjectCode, paper.scode, paper.component);
+  return (
+    <PaperCard
+      subject={paper.subjectName}
+      subjectCode={paper.subjectCode}
+      variant={paper.component}
+      scode={paper.scode}
+      session={sessionLabel(paper.scode)}
+      documents={documentsOf(paper)}
+      band={bandFor(paper.difficulty)}
+      steps={bandSteps(paper.difficulty)}
+      icon={<SubjectIcon code={paper.subjectCode} size={26} />}
+      index={index}
+      deal={deal}
+      marks={{ bookmarked, done, revision }}
+      onMark={(m) => onMark(m === 'bookmarked' ? 'bookmarks' : m, key, paper)}
+      onOpen={() => onOpen(paper)}
+      downloaded={Boolean(paper.qpPath)}
+      downloading={downloading}
+      onDownload={() => onDownload(paper)}
+    />
+  );
+});
 
 export interface Props {
   /** Which composition to draw; derived from `markFilter` when absent. */
@@ -374,31 +439,79 @@ export default function LibraryView({
    */
   const showChips = filterable && (papers.length > 0 || narrowed);
 
+  /**
+   * How many rows are mounted. It starts over whenever the question changes — a filter, a subject, a
+   * list — but NOT when `papers` is merely re-queried: a download re-runs the query, and collapsing
+   * the page under someone scrolled halfway down it would be worse than the lag this fixes.
+   * Reset during render rather than in an effect, so the first frame of a new filter is already small.
+   */
+  const scope = `${mode}|${markFilter}|${level}|${season}|${paperNumber}|${subjectId}|${asCards}`;
+  const [budget, setBudget] = useState({ scope, n: CHUNK });
+  let visible = budget.n;
+  if (budget.scope !== scope) {
+    visible = CHUNK;
+    setBudget({ scope, n: CHUNK });
+  }
+
+  /** `groups`, cut down to the budget. Headers keep the full count in `meta`, so the numbers stay true. */
+  const mounted = useMemo(() => {
+    const out: (Group & { offset: number })[] = [];
+    let offset = 0;
+    for (const group of groups) {
+      if (offset >= visible) break;
+      const rows = group.rows.length <= visible - offset ? group.rows : group.rows.slice(0, visible - offset);
+      out.push({ ...group, rows, offset });
+      offset += rows.length;
+    }
+    return out;
+  }, [groups, visible]);
+  const more = visible < total;
+
+  const scroller = useRef<HTMLDivElement>(null);
+  const sentinel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!more || !el) return;
+    // Rebuilt after every chunk: a fresh observer reports at once, so a tall window keeps filling
+    // until the sentinel is genuinely out of reach.
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) setBudget((b) => ({ ...b, n: b.n + CHUNK }));
+      },
+      { root: scroller.current, rootMargin: '0px 0px 1200px 0px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [more, visible]);
+
+  /**
+   * `App`'s handlers are rebuilt on most of its renders, so the cards get stable wrappers that read
+   * the latest ones through a ref. That is what lets `LibraryCard`'s memo hold.
+   */
+  const latest = useRef({ onMark, onOpen, onDownload });
+  latest.current = { onMark, onOpen, onDownload };
+  const markCard = useCallback(
+    (name: SetName, key: string, paper: PaperRow) => latest.current.onMark(name, key, paper),
+    [],
+  );
+  const openCard = useCallback((paper: PaperRow) => latest.current.onOpen(paper), []);
+  const downloadCard = useCallback((paper: PaperRow) => latest.current.onDownload(paper), []);
+
   const cardFor = (paper: PaperRow, index: number) => {
     const key = paperKey(paper.subjectCode, paper.scode, paper.component);
     return (
-      <PaperCard
+      <LibraryCard
         key={`${key}/${paper.level}`}
-        subject={paper.subjectName}
-        subjectCode={paper.subjectCode}
-        variant={paper.component}
-        scode={paper.scode}
-        session={sessionLabel(paper.scode)}
-        documents={documentsOf(paper)}
-        band={bandFor(paper.difficulty)}
-        steps={bandSteps(paper.difficulty)}
-        icon={<SubjectIcon code={paper.subjectCode} size={26} />}
+        paper={paper}
         index={index}
-        marks={{
-          bookmarked: marks.bookmarks.has(key),
-          done: marks.done.has(key),
-          revision: marks.revision.has(key),
-        }}
-        onMark={(m) => onMark(m === 'bookmarked' ? 'bookmarks' : m, key, paper)}
-        onOpen={() => onOpen(paper)}
-        downloaded={Boolean(paper.qpPath)}
+        deal={index < DEALT}
+        bookmarked={marks.bookmarks.has(key)}
+        done={marks.done.has(key)}
+        revision={marks.revision.has(key)}
         downloading={downloading.has(paper.id)}
-        onDownload={() => onDownload(paper)}
+        onMark={markCard}
+        onOpen={openCard}
+        onDownload={downloadCard}
       />
     );
   };
@@ -455,7 +568,7 @@ export default function LibraryView({
   };
 
   return (
-    <div className="view">
+    <div className="view" ref={scroller}>
       <div className="lv">
         {error && <Notice className="lv-error">{error}</Notice>}
 
@@ -584,7 +697,7 @@ export default function LibraryView({
           </div>
         )}
 
-        {groups.map((group) => (
+        {mounted.map((group) => (
           <section className="lv-group" key={group.id} aria-label={group.label}>
             <div className="lv-group-head">
               <span className="lv-group-label">{group.label}</span>
@@ -594,10 +707,12 @@ export default function LibraryView({
             {mode === 'recent' && !asCards ? (
               <div className="lv-list">{group.rows.map(rowFor)}</div>
             ) : (
-              <div className="lv-grid">{group.rows.map(cardFor)}</div>
+              <div className="lv-grid">{group.rows.map((paper, i) => cardFor(paper, group.offset + i))}</div>
             )}
           </section>
         ))}
+
+        {more && <div className="lv-more" ref={sentinel} aria-hidden="true" />}
       </div>
     </div>
   );

@@ -46,8 +46,11 @@ const WAKING = ['pointerdown', 'pointermove', 'keydown', 'wheel'] as const;
 export interface Mascot {
   mood: HushPose;
   studying: boolean;
-  /** Fire the wave. Bound to a press on the mascot slot — see Sidebar for why it is not a button. */
-  poke: () => void;
+  /**
+   * Fire the wave. Bound to a press on the mascot slot — see Sidebar for why it is not a button.
+   * `ms` holds it for as long as the line he says with it stays up (see `pokeMs`).
+   */
+  poke: (ms?: number) => void;
 }
 
 export function useMascot(tone: Tone, error: string | null, working = false, studying = false): Mascot {
@@ -56,16 +59,16 @@ export function useMascot(tone: Tone, error: string | null, working = false, stu
   const timer = useRef<number | undefined>(undefined);
 
   /** A new pulse cancels the one in flight rather than queueing behind it. */
-  const fire = useCallback((mood: HushPose) => {
+  const fire = useCallback((mood: HushPose, ms?: number) => {
     window.clearTimeout(timer.current);
     setPulse(mood);
     setAsleep(false);
-    timer.current = window.setTimeout(() => setPulse(null), PULSE_MS[mood] ?? 1000);
+    timer.current = window.setTimeout(() => setPulse(null), ms ?? PULSE_MS[mood] ?? 1000);
   }, []);
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
-  const poke = useCallback(() => fire('hello'), [fire]);
+  const poke = useCallback((ms?: number) => fire('hello', ms), [fire]);
 
   // Active work holds the work row. Its successful falling edge earns one friendly acknowledgment.
   const wasWorking = useRef(false);

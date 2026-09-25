@@ -141,7 +141,7 @@
 }
 .home__thumb-line[data-state='past'] i { background: var(--mute4); }
 .home__thumb-line[data-state='here'] b { font-weight: 600; }
-.home__thumb-line[data-state='here'] i { background: var(--red); }
+.home__thumb-line[data-state='here'] i { background: var(--live); }
 
 .home__resume-main {
   display: flex;
@@ -185,7 +185,7 @@
   animation: sk-grow-x .4s cubic-bezier(.2, .8, .2, 1) both;
 }
 .home__steps [data-state='past'] i { background: var(--inkbg); }
-.home__steps [data-state='here'] i { background: var(--red); }
+.home__steps [data-state='here'] i { background: var(--live); }
 .home__steps span {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -216,7 +216,8 @@
   transition: background-color .16s, color .16s, transform .16s;
 }
 .home__go:hover {
-  background: var(--red);
+  background: var(--live);
+  color: var(--onlive);
 }
 .home__go:active {
   transform: translate(1px, 1px);
@@ -238,8 +239,8 @@
   cursor: pointer;
 }
 .home__link:hover {
-  color: var(--red);
-  border-color: var(--red);
+  color: var(--live);
+  border-color: var(--live);
 }
 
 /* the NEXT SITTING panel */
@@ -254,6 +255,24 @@
 }
 .home__sitting > * {
   position: relative;
+}
+/* Night: a solid orange slab this size shouted over the whole of Home. The panel goes dark and
+   framed like the hero beside it (it paints over the hero's frame, so it draws its own), and the
+   orange is spent on the countdown and the rule under it. The bell corner and the sun keep theirs. */
+.app[data-tone='night'] .home__sitting {
+  background: var(--sheet);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+.app[data-tone='night'] .home__sitting .home__label,
+.app[data-tone='night'] .home__sitting-foot span {
+  color: var(--mute);
+}
+.app[data-tone='night'] .home__count {
+  color: var(--red);
+}
+.app[data-tone='night'] .home__sitting-foot {
+  border-top-color: var(--red);
 }
 .home__sun {
   position: absolute !important;
@@ -278,7 +297,7 @@
   width: 48px;
   height: 48px;
   border-radius: 0 0 0 48px;
-  background: var(--red);
+  background: var(--live);
   transform-origin: 100% 0;
   animation: sk-swing .7s cubic-bezier(.2, .8, .2, 1) .35s both, sk-bell 3.2s ease-in-out 1.4s infinite;
 }

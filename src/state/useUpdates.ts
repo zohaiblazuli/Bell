@@ -51,6 +51,9 @@ export function useUpdates(auto: boolean, onError: (message: string) => void): U
       const found = await updates.checkForUpdate();
       if (found.status === 'available') {
         setState({ phase: 'available', version: found.version, notes: found.notes });
+        // The launch check also tells Windows, so the news reaches someone who opened Bell and
+        // looked straight at a paper. A check somebody pressed for is answered in the app instead.
+        if (!manual) void updates.notifyUpdateAvailable(found.version);
         // Asked for, so answered in the dialog. An AUTOMATIC check deliberately leaves only the
         // sidebar pill: a modal appearing over someone's paper unbidden is what the flow's whole
         // pill-then-dialog split exists to avoid.

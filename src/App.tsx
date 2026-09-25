@@ -34,7 +34,8 @@ import { useWorkspace } from './state/useWorkspace';
 import { UPDATES_CONFIGURED } from './lib/updates';
 import { nextWindow, windowsBetween } from './lib/sessions';
 import { loadFocus, loadRecent, loadRows, todayFocusMinutes, type MarkFilter, type SeasonChoice } from './lib/store';
-import { routeSayKey, pickLine, fillTemplate, canSay, type HushFacts, type HushSayKey } from './lib/hushLines';
+import { routeSayKey, fillTemplate, canSay, pokeMs, type HushFacts, type HushSayKey } from './lib/hushLines';
+import { sayLine } from './lib/hushSay';
 import { countedDays, rankSubjects, sittingFor, streaksOf } from './lib/homeFacts';
 import type { PaperRow } from './lib/types';
 import type { CommunityResource } from './lib/community';
@@ -73,9 +74,6 @@ const TITLES: Record<View, string> = {
  * which is as far ahead as anyone plans a syllabus.
  */
 const PLAN_HORIZON_DAYS = 730;
-
-/** How long a poke line lingers in Hush's bubble — the length of the wave (useMascot's `hello` pulse). */
-const HUSH_POKE_MS = 2400;
 
 export default function App() {
   const prefs = usePrefs();
@@ -236,8 +234,10 @@ export default function App() {
     preparing ||
     lib.busy ||
     lib.bulk != null ||
-    Object.keys(lib.downloading).length > 0 ||
-    up.state.phase === 'checking' ||
+    // Question papers only. A mark scheme is fetched behind a paper on Rust's own schedule, and the
+    // launch update check is not work anyone asked for: holding the download pose on either one left
+    // Hush hugging a page for no reason the student could see.
+    downloadingIds.size > 0 ||
     up.state.phase === 'downloading' ||
     up.state.phase === 'installing';
   const mascot = useMascot(
@@ -282,24 +282,29 @@ export default function App() {
   const routeKey = routeSayKey(currentView, hushFacts, hushNow.getHours());
   const routeHeld = useRef<{ key: HushSayKey; line: string } | null>(null);
   if (!routeHeld.current || routeHeld.current.key !== routeKey || !canSay(routeHeld.current.line, hushFacts)) {
-    routeHeld.current = { key: routeKey, line: pickLine(routeKey, { avoid: routeHeld.current?.line, facts: hushFacts }) };
+    routeHeld.current = { key: routeKey, line: sayLine(routeKey, hushFacts) };
   }
   const routeLine = fillTemplate(routeHeld.current.line, hushFacts);
 
   const [pokeLine, setPokeLine] = useState<string | null>(null);
   const pokeTimer = useRef<number | undefined>(undefined);
   const pokeHush = useCallback(() => {
-    mascot.poke();
-    setPokeLine((prev) => pickLine('poke', { avoid: prev }));
+    // Drawn outside a state updater: an updater runs twice under StrictMode and would deal two.
+    const line = sayLine('poke');
+    // The line stays up long enough to read, and he waves for exactly as long, so the owl and the
+    // words leave together.
+    const ms = pokeMs(line);
+    mascot.poke(ms);
+    setPokeLine(line);
     window.clearTimeout(pokeTimer.current);
-    pokeTimer.current = window.setTimeout(() => setPokeLine(null), HUSH_POKE_MS);
+    pokeTimer.current = window.setTimeout(() => setPokeLine(null), ms);
   }, [mascot]);
   useEffect(() => () => window.clearTimeout(pokeTimer.current), []);
 
   const asleep = mascot.mood === 'asleep';
   const [sleepLine, setSleepLine] = useState<string | null>(null);
   useEffect(() => {
-    setSleepLine(asleep ? pickLine('asleep') : null);
+    setSleepLine(asleep ? sayLine('asleep') : null);
   }, [asleep]);
 
   const hushSpoken = pokeLine ?? sleepLine ?? (feelLine && inReader ? feelLine : routeLine);
@@ -364,13 +369,26 @@ export default function App() {
     [notebooks, tabsMgr],
   );
 
-  const handleNewTab = useCallback(() => {
-    if (tabsMgr.activeTab.kind === 'shelf' && tabsMgr.activeTab.shelfView === 'library') {
-      setPalette(true);
-    } else {
-      tabsMgr.openShelf('library');
+  /** + and Ctrl+T: a new tab on Home, the way a browser opens its new tab page. */
+  const { openNewTab } = tabsMgr;
+  const handleNewTab = useCallback(() => openNewTab(), [openNewTab]);
+
+  /**
+   * The marked-list filter is app-wide, but more than one shelf tab can now be open — Bookmarks in one,
+   * Past Papers in the next. Whichever becomes active brings the filter into line with its own page.
+   * `done` and `revision` are left alone: they are reached from inside Past Papers, not from a tab.
+   */
+  const activeShelfView = tabsMgr.activeTab.kind === 'shelf' ? tabsMgr.activeTab.shelfView : undefined;
+  const { markFilter, setMarkFilter } = study;
+  useEffect(() => {
+    if (!activeShelfView) return;
+    const wanted = activeShelfView === 'bookmarks' ? 'bookmarks' : activeShelfView === 'recent' ? 'recent' : null;
+    if (wanted) {
+      if (markFilter !== wanted) setMarkFilter(wanted);
+    } else if (markFilter === 'bookmarks' || markFilter === 'recent') {
+      setMarkFilter(null);
     }
-  }, [tabsMgr]);
+  }, [activeShelfView, tabsMgr.activeId, markFilter, setMarkFilter]);
 
   /**
    * Wipe and start over.
@@ -533,7 +551,9 @@ export default function App() {
     const chosen = new Set(onboarding.subjects);
     if (chosen.size === 0 || study.markFilter !== null) return rows;
     return rows.filter((p) => chosen.has(p.subjectCode));
-  }, [study, lib.papers, onboarding.subjects]);
+    // `study` itself is a fresh object every render; naming the two parts read here keeps this memo —
+    // and the Library's grouping downstream of it — from re-running on every App render.
+  }, [study.rows, study.markFilter, lib.papers, onboarding.subjects]);
 
   /**
    * The sittings onboarding's step 04 offers. Dates come from `lib/sessions.ts`; `firstPaper` stays
@@ -971,7 +991,7 @@ export default function App() {
             )}
 
             {isSelected && (
-              <div className="notebook-mascot" aria-hidden="true" onPointerDown={mascot.poke}>
+              <div className="notebook-mascot" aria-hidden="true" onPointerDown={() => mascot.poke()}>
                 <Mascot size={96} mood={mascot.mood} />
               </div>
             )}

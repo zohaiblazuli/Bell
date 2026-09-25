@@ -205,18 +205,20 @@
   gap: 10px;
 }
 .sk-hush {
+  /* The bubble sits ABOVE him, across the whole foot. Beside an 86px owl in a 228px sidebar it had
+     about 70px of text, narrower than "procrastination" — so words broke out of the balloon. */
   display: flex;
-  align-items: flex-end;
-  gap: 10px;
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  gap: 12px;
   cursor: pointer;
 }
 /* The speech bubble is the one rounded box in the kit: a comic balloon, not a frame, with an ink tail
    pointing down at Hush. Its rest state is the finished bubble with any dots gone, so motion off
    shows the words straight away. */
 .sk-hush__say {
-  flex: 1;
+  align-self: stretch;
   min-width: 0;
-  margin: 0 0 18px 6px;
 }
 .sk-hush__bubble {
   position: relative;
@@ -227,26 +229,30 @@
   font-size: 13px;
   font-weight: 500;
   line-height: 1.3;
-  text-wrap: balance;
+  text-wrap: pretty;
+  /* A last resort for a token filled wider than a line (a subject name, say): break it, never spill. */
+  overflow-wrap: break-word;
 }
+/* The tail: an ink wedge under the bubble's lower-left, pointing down at his head, with a card-coloured
+   wedge inside it that erases the bubble's own border where the two meet. */
 .sk-hush__bubble::before,
 .sk-hush__bubble::after {
   content: '';
   position: absolute;
-  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  top: 100%;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
 }
 .sk-hush__bubble::before {
-  left: -10px;
-  bottom: 10px;
-  width: 12px;
-  height: 14px;
+  left: 30px;
+  width: 14px;
+  height: 12px;
   background: var(--line);
 }
 .sk-hush__bubble::after {
-  left: -5.5px;
-  bottom: 12px;
-  width: 8px;
-  height: 9.3px;
+  left: 32px;
+  margin-top: -2px;
+  width: 11.3px;
+  height: 9.6px;
   background: var(--card);
 }
 .sk-hush__rest {
@@ -255,7 +261,7 @@
 
 /* A later line pops out of Hush, three dots first, then the words. */
 .sk-hush__bubble--pop {
-  transform-origin: -8px 90%;
+  transform-origin: 32px calc(100% + 12px);
   animation: sk-bub-pop .5s cubic-bezier(.2, .8, .2, 1) both;
 }
 .sk-hush__think {

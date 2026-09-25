@@ -44,16 +44,16 @@ const GROUPS = [
   {
     title: 'Ground — a picked cool periwinkle-grey in Day, never flat grey. Night is a BRIGHT\n     stack knocked down by translucent scrims, not a dark base: the Night sidebar composites to\n     #46526d (lum 81) in the file’s own render of `Library — Night`, and Day’s to #efeafa (lum\n     236). If a rebuild looks near-black, an alpha was flattened — see scripts/tone-verify.py.',
     tokens: {
-      '--ground': { day: '#efe9dc', night: '#262624' },
-      '--ground-2': { day: '#e2d9c6', night: '#403e3a' },
-      '--ground-veil': { day: '#efe9dc00', night: '#26262400' },
+      '--ground': { day: '#efe9dc', night: '#1f1e1c' },
+      '--ground-2': { day: '#e2d9c6', night: '#2e2d2a' },
+      '--ground-veil': { day: '#efe9dc00', night: '#1f1e1c00' },
     },
   },
   {
     title: 'Ambient — the two oversized blooms behind every screen. Opaque in Figma; their\n     translucency comes from a 160px blur compositing over what is behind them.',
     tokens: {
-      '--ambient-a': { day: '#efe9dc00', night: '#26262400' },
-      '--ambient-b': { day: '#efe9dc00', night: '#26262400' },
+      '--ambient-a': { day: '#efe9dc00', night: '#1f1e1c00' },
+      '--ambient-b': { day: '#efe9dc00', night: '#1f1e1c00' },
     },
   },
   {
@@ -111,31 +111,31 @@ const GROUPS = [
   {
     title: 'Glass — chrome only, never content: sidebar, top bar, palette, sheets, popovers.',
     tokens: {
-      '--glass': { day: '#f8f3e8', night: '#30302e' },
-      '--glass-strong': { day: '#f8f3e8', night: '#30302e' },
-      '--glass-brd': { day: '#1a1a1a', night: '#5a5751' },
+      '--glass': { day: '#f8f3e8', night: '#2b2a27' },
+      '--glass-strong': { day: '#f8f3e8', night: '#2b2a27' },
+      '--glass-brd': { day: '#1a1a1a', night: '#c9c0ae' },
       '--glass-hi': { day: '#ffffff00', night: '#ffffff00' },
     },
   },
   {
     title: 'Hairlines — used as BOTH a fill (1px rule rects) and a stroke (borders). One token;\n     CSS does not care which property consumes it.',
     tokens: {
-      '--hair': { day: '#d8d0bf', night: '#4c4a45' },
+      '--hair': { day: '#d8d0bf', night: '#45423d' },
       '--hair-2': { day: '#1a1a1a2e', night: '#ece5d62e' },
     },
   },
   {
     title: 'Card — content surfaces. Calm and mostly opaque, so they never compete with the paper.',
     tokens: {
-      '--card': { day: '#f8f3e8', night: '#30302e' },
-      '--card-brd': { day: '#1a1a1a', night: '#5a5751' },
+      '--card': { day: '#f8f3e8', night: '#2b2a27' },
+      '--card-brd': { day: '#1a1a1a', night: '#c9c0ae' },
     },
   },
   {
     title: 'Accent — one blue, spent on live elements: focus ring, active nav, timer ring,\n     progress, selection. --accent-soft is the only sanctioned wash.',
     tokens: {
-      '--accent': { day: '#2a5caa', night: '#5a8ad8' },
-      '--accent-soft': { day: '#dce4f1', night: '#2a3548' },
+      '--accent': { day: '#2a5caa', night: '#6b98e0' },
+      '--accent-soft': { day: '#dce4f1', night: '#26344f' },
     },
   },
   {
@@ -200,11 +200,11 @@ const GROUPS = [
   {
     title: 'Difficulty — a separate warm heat axis. Never mix it with the brand blue. Mode-paired:\n     a dark burnt ramp in Day, a bright one in Night.',
     tokens: {
-      '--d1': { day: '#2a5caa', night: '#5a8ad8' },
-      '--d2': { day: '#2a5caa', night: '#5a8ad8' },
+      '--d1': { day: '#2a5caa', night: '#6b98e0' },
+      '--d2': { day: '#2a5caa', night: '#6b98e0' },
       '--d3': { day: '#c98f0e', night: '#e9b84c' },
-      '--d4': { day: '#d9432f', night: '#ea5b44' },
-      '--d5': { day: '#d9432f', night: '#ea5b44' },
+      '--d4': { day: '#d9432f', night: '#ef6a56' },
+      '--d5': { day: '#d9432f', night: '#ef6a56' },
     },
   },
   {
@@ -230,8 +230,8 @@ const GROUPS = [
   {
     title: 'Danger — began as an APP ADDITION, because the design system had no success/danger/warning\n     token and error styling was borrowing --d5 by hand, which mixes the difficulty axis into\n     something that is not difficulty. Figma has since adopted it: `Color/state/danger` and\n     `Color/state/danger-soft` now exist (danger/day #B3261E, danger/night #FF6B6B; the soft wash is\n     the same hue at 12% Day / 16% Night), so the values below are harvested, not seeded — they\n     replace the #a5103a / #ff4d6a pair we guessed off --d5. Still never --d5 for state.',
     tokens: {
-      '--danger': { day: '#d9432f', night: '#ea5b44' },
-      '--danger-soft': { day: '#f5d9d3', night: '#472e29' },
+      '--danger': { day: '#d9432f', night: '#ef6a56' },
+      '--danger-soft': { day: '#f5d9d3', night: '#4c2923' },
     },
   },
   {
@@ -256,35 +256,41 @@ const GROUPS = [
     },
   },
   {
-    title: 'Shape Kit — the Bauhaus layer from the Bell App v2 design (Claude Design handoff). Flat\n     primaries on cream, 2px ink rules as the only borders, no radius, no blur. Day values are the\n     prototype\'s THD set and Night its THN set (warm charcoal #262624, Claude-desktop-like).\n     --ground is the prototype\'s cream `--paper`; the app keeps --paper for the exam PDF sheet.',
+    title: 'Shape Kit — the Bauhaus layer from the Bell App v2 design (Claude Design handoff). Flat\n     primaries on cream, 2px ink rules as the only borders, no radius, no blur. Day values are the\n     prototype\'s THD set. Night MIRRORS Day rather than dimming it: Day is black rules and black\n     blocks on cream, so Night is cream rules (--line) and orange blocks (--inkbg, dark --onink)\n     on warm charcoal, with the live accent (--live) cream where Day has it red — the two swap\n     (Zohaib, 2026-09-25). The selected row, Solve and the done tag still pop the way they do in Day.\n     Surfaces step up as they rise (ground, card, sheet, hover), a visible step apart, and every text\n     ink clears AA on --card. The first Night was a flat grey set a few percent apart, which turned\n     every frame and every ink block into grey on grey.\n     --ground is the prototype\'s cream `--paper`; the app keeps --paper for the exam PDF sheet.',
     tokens: {
-      '--line': { day: '#1a1a1a', night: '#5a5751' },
-      '--inkbg': { day: '#1a1a1a', night: '#3f3e3a' },
-      '--onink': { day: '#efe9dc', night: '#ece5d6' },
+      '--line': { day: '#1a1a1a', night: '#c9c0ae' },
+      '--inkbg': { day: '#1a1a1a', night: '#ef6a56' },
+      '--onink': { day: '#efe9dc', night: '#1f1e1c' },
+      // The live accent and the text that sits on it: red in Day (today, the current page, the open
+      // tab, the running timer, the hover on an ink block). Night swaps it with the block colour —
+      // ink blocks are orange there, so the live accent goes cream (Zohaib, 2026-09-25). Errors,
+      // danger, season and paper-number colours stay on --red in both tones.
+      '--live': { day: '#d9432f', night: '#ece5d6' },
+      '--onlive': { day: '#efe9dc', night: '#1f1e1c' },
       '--ink-rgb': { day: '26, 26, 26', night: '236, 229, 214' },
-      '--sheet': { day: '#fffefb', night: '#343431' },
-      '--hov': { day: '#fffcf4', night: '#3a3936' },
-      '--pale': { day: '#ddd5c4', night: '#46443f' },
-      '--pale2': { day: '#e2d9c6', night: '#403e3a' },
-      '--rule': { day: '#d8d0bf', night: '#4c4a45' },
-      '--hatch': { day: '#f1ece2', night: '#2c2b29' },
+      '--sheet': { day: '#fffefb', night: '#2f2e2b' },
+      '--hov': { day: '#fffcf4', night: '#363431' },
+      '--pale': { day: '#ddd5c4', night: '#45423d' },
+      '--pale2': { day: '#e2d9c6', night: '#3a3834' },
+      '--rule': { day: '#d8d0bf', night: '#45423d' },
+      '--hatch': { day: '#f1ece2', night: '#272624' },
       '--mute': { day: '#5e584d', night: '#b5ad9d' },
       '--mute2': { day: '#6b655a', night: '#a59d8e' },
-      '--mute3': { day: '#8a8478', night: '#958d7e' },
+      '--mute3': { day: '#8a8478', night: '#9d9585' },
       '--mute4': { day: '#8f877a', night: '#7f786b' },
-      '--dim': { day: '#bdb6a8', night: '#6a665e' },
-      '--dim2': { day: '#cfc5b0', night: '#5c5952' },
-      '--blue': { day: '#2a5caa', night: '#5a8ad8' },
-      '--navy': { day: '#1f4686', night: '#8fb0e8' },
-      '--red': { day: '#d9432f', night: '#ea5b44' },
+      '--dim': { day: '#bdb6a8', night: '#6d6960' },
+      '--dim2': { day: '#cfc5b0', night: '#57544e' },
+      '--blue': { day: '#2a5caa', night: '#6b98e0' },
+      '--navy': { day: '#1f4686', night: '#9dbaec' },
+      '--red': { day: '#d9432f', night: '#ef6a56' },
       '--maroon': { day: '#a12b1b', night: '#f29581' },
       '--gold': { day: '#c98f0e', night: '#e9b84c' },
-      '--green': { day: '#3e8a5a', night: '#62b482' },
-      '--t-blue': { day: '#dce4f1', night: '#2a3548' },
-      '--t-blue2': { day: '#c9d3e4', night: '#323e54' },
-      '--t-gold': { day: '#f8e7bc', night: '#433a26' },
-      '--t-red': { day: '#f5d9d3', night: '#472e29' },
-      '--t-green': { day: '#d8ebdd', night: '#28392d' },
+      '--green': { day: '#3e8a5a', night: '#6cbf8c' },
+      '--t-blue': { day: '#dce4f1', night: '#26344f' },
+      '--t-blue2': { day: '#c9d3e4', night: '#2f3f5c' },
+      '--t-gold': { day: '#f8e7bc', night: '#463a1d' },
+      '--t-red': { day: '#f5d9d3', night: '#4c2923' },
+      '--t-green': { day: '#d8ebdd', night: '#223d2b' },
       '--heat-1': { day: '#7f9bcb', night: '#253a5e' },
       '--heat-2': { day: '#4d72b8', night: '#34599a' },
       '--heat-3': { day: '#2a4f94', night: '#5a8ad8' },

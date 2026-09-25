@@ -20,8 +20,8 @@
   box-shadow: inset 2px 0 0 var(--line);
 }
 .tonepill__btn[aria-pressed='true'] {
-  background: var(--ink);
-  color: var(--ground);
+  background: var(--inkbg);
+  color: var(--onink);
   cursor: default;
 }
 .tonepill__btn--day[aria-pressed='true'] {

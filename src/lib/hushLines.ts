@@ -12,8 +12,9 @@ import type { View } from '@/components/Sidebar';
  * mess — never at a person, never at race, never at self-harm, never at parents hurting anyone.
  * Twelve words at most, because the bubble types at a fixed size (Sidebar).
  *
- * Every screen and moment draws from a POOL and `pickFrom` never repeats the line it just showed,
- * so he reads as alive rather than as one canned string per route.
+ * Every screen and moment draws from a POOL. `drawFrom` deals a pool like a shuffled deck — every
+ * line once before any line twice — and `lib/hushSay.ts` keeps each deck on disk, so a restart
+ * carries on where he left off instead of starting a fresh roll that may land on yesterday's line.
  */
 
 /** The facts a line may quote. The last three are optional: a line that needs one it lacks is skipped. */
@@ -198,6 +199,68 @@ export function fillTemplate(template: string, facts: HushFacts): string {
 }
 
 /**
+ * A pool's deck: the lines still to deal this round, in dealing order, and the last one dealt (so a
+ * new round cannot open on the line that closed the previous one). Lines are stored as text rather
+ * than indices, so editing a pool later simply drops the stale entries.
+ */
+export interface HushBag {
+  left: string[];
+  last: string | null;
+}
+
+/** Fisher–Yates over a copy, with the injectable rng. */
+function shuffled(pool: readonly string[], rng: () => number): string[] {
+  const out = [...pool];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.min(i, Math.floor(rng() * (i + 1)));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+/**
+ * Deal the next line from a pool. Every line comes up once before any line comes up again, and no
+ * line follows itself — across a reshuffle included. `can` skips lines that cannot be said right now
+ * (a fact they quote is missing) WITHOUT spending them: they stay in the deck for when they can.
+ * Pure: the caller keeps the returned bag.
+ */
+export function drawFrom(
+  pool: readonly string[],
+  bag: HushBag | null | undefined,
+  opts: { can?: (line: string) => boolean; rng?: () => number } = {},
+): { line: string; bag: HushBag } {
+  const rng = opts.rng ?? Math.random;
+  const can = opts.can ?? (() => true);
+  const last = bag?.last ?? null;
+  const usable = (line: string) => can(line) && !(line === last && pool.length > 1);
+
+  let left = (bag?.left ?? []).filter((line) => pool.includes(line));
+  let at = left.findIndex(usable);
+  if (at < 0) {
+    // Round over (or nothing left that can be said): shuffle a fresh deck. Lines the old one still
+    // held are dropped with it — they were unsayable all round, and the new deck has them anyway.
+    left = shuffled(pool, rng);
+    at = left.findIndex(usable);
+  }
+  if (at < 0) {
+    // Nothing in the pool can be said at all; fall back rather than go quiet.
+    const line = pool.find(can) ?? pool[0];
+    return { line, bag: { left, last: line } };
+  }
+  const line = left[at];
+  return { line, bag: { left: left.filter((_, i) => i !== at), last: line } };
+}
+
+/**
+ * How long a poked line stays up. The bubble spends about a second on its dots and entrance, and a
+ * reader needs roughly 60ms a character after that — so a short quip gets four seconds and the
+ * longest line seven, rather than every line getting the same two and a half.
+ */
+export function pokeMs(line: string): number {
+  return Math.min(7000, Math.max(4000, 2500 + line.length * 60));
+}
+
+/**
  * One line from a pool, never the `avoid` line when the pool has an alternative — that is what keeps
  * Hush from repeating himself twice running. `rng` is injectable so the choice is testable.
  */
@@ -231,13 +294,26 @@ export function feelSayKey(id: string): HushSayKey {
 }
 
 /**
+ * Home's pool for an hour, on the headline greeting's clock (`slotOf` in `lib/greetings.ts`: morning
+ * 06–12, afternoon 12–17, evening 17–21, night 21–06) so the owl and the greeting above him never
+ * disagree about the time of day. Night shares the evening pool, which is already written for the
+ * small hours. The boundaries are repeated rather than imported because greetings imports this file;
+ * a test holds the two to each other.
+ */
+function homeSayKey(hour: number): HushSayKey {
+  if (hour >= 6 && hour < 12) return 'dashboard-morning';
+  if (hour >= 12 && hour < 17) return 'dashboard-afternoon';
+  return 'dashboard-evening';
+}
+
+/**
  * Which pool a screen resolves to. The route decides it; the dashboard splits by the hour, and
  * recent/bookmarks/library split on whether they hold anything.
  */
 export function routeSayKey(view: View, facts: HushFacts, hour: number): HushSayKey {
   switch (view) {
     case 'dashboard':
-      return hour < 12 ? 'dashboard-morning' : hour < 18 ? 'dashboard-afternoon' : 'dashboard-evening';
+      return homeSayKey(hour);
     case 'reader':
     case 'community-reader':
     case 'workspace':

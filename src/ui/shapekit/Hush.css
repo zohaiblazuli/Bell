@@ -112,7 +112,9 @@
   height: 6px;
   background: var(--sk-black);
   transform-origin: 0 50%;
-  animation: sk-fill 2.4s ease-in-out both;
+  /* Loops: the pose is held for as long as the work lasts, and a bar that filled once and stopped
+     read as a frozen owl rather than a busy one. */
+  animation: sk-fill 2.4s ease-in-out infinite;
 }
 .hush__star {
   background: var(--sk-yellow);
@@ -156,6 +158,7 @@
 .hush--empty .hush__ear--r { transform: rotate(38deg); }
 .hush--proud .hush__body { animation: sk-puff 1.6s ease-in-out infinite; }
 .hush--hello .hush__wing--r { animation: sk-wave-wing .8s ease-in-out infinite; }
+.hush--download .hush__body { animation: sk-carry 1.2s ease-in-out infinite; }
 .hush--download .hush__wing--l { transform: rotate(-30deg); }
 .hush--download .hush__wing--r { transform: rotate(30deg); }
 .hush--done .hush__body { animation: sk-jump 1.2s cubic-bezier(.3, 0, .3, 1) infinite; }

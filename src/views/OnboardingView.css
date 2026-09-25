@@ -371,7 +371,7 @@
   box-shadow: inset 0 0 0 2px var(--line);
 }
 .onb-tile[aria-pressed='true'] .onb-tile__box {
-  background: var(--ink);
+  background: var(--inkbg);
 }
 .onb-tile__code {
   font-family: var(--font-mono);
@@ -535,7 +535,8 @@
   transition: background-color .16s;
 }
 .onb-next:hover:not(:disabled) {
-  background: var(--red);
+  background: var(--live);
+  color: var(--onlive);
 }
 .onb-next:disabled {
   opacity: .45;

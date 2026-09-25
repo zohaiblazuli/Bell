@@ -14,7 +14,7 @@ import type { CSSProperties } from 'react';
  *   empty    drooping sigh, ears down, lids half shut  (empty states)
  *   proud    puffed chest, sparkling stars             (About, onboarding finished)
  *   hello    one wing waving                           (onboarding)
- *   download hugs a page while a bar fills             (download toast)
+ *   download carries a page, bobbing, while a bar fills (download toast, active work)
  *   done     hops with wings up while shapes burst     (paper done)
  *   asleep   lids shut, Zs rising                      (idle for a minute / offline)
  *   alarm    time's up: hop, ears flapping             (errors, destructive dialogs)
@@ -55,7 +55,8 @@ const LID: Record<HushPose, number> = {
 };
 
 export default function Hush({ pose = 'idle', size = 86, shadow = true, className, style }: Props) {
-  const blinking = pose === 'idle' || pose === 'watch' || pose === 'hello' || pose === 'alarm';
+  const blinking =
+    pose === 'idle' || pose === 'watch' || pose === 'hello' || pose === 'alarm' || pose === 'download';
   const looking = pose === 'idle' || pose === 'watch';
   const pupil =
     pose === 'empty' ? 'translateY(8px)' : pose === 'download' ? 'translateY(6px)' : pose === 'hello' ? 'translateX(2px)' : undefined;

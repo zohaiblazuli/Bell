@@ -136,8 +136,8 @@
   transition: background-color .16s, color .16s, transform .16s;
 }
 .stargate__repo:hover {
-  background: var(--red);
-  color: var(--sk-cream);
+  background: var(--live);
+  color: var(--onlive);
 }
 .stargate__repo:active {
   transform: translate(1px, 1px);

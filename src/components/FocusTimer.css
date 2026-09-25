@@ -46,7 +46,8 @@
   background: var(--inkbg);
 }
 .timer-run:hover {
-  background: var(--red);
+  background: var(--live);
+  color: var(--onlive);
 }
 .timer-bar {
   display: block;

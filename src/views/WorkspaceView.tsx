@@ -58,7 +58,8 @@ import {
   type Tool,
 } from '../lib/annotations';
 import { sessionLabel } from '../lib/difficulty';
-import { pickLine, feelSayKey } from '../lib/hushLines';
+import { feelSayKey } from '../lib/hushLines';
+import { sayLine } from '../lib/hushSay';
 import type { DocKind } from '../lib/types';
 import { openPdf, renderPage } from '../lib/pdf';
 import { loadInk, loadPref, paperKey, saveInk, savePref, saveReaderPos } from '../lib/store';
@@ -332,20 +333,17 @@ export default function WorkspaceView({
   const [msResizing, setMsResizing] = useState(false);
   /** How this paper felt, kept per paper so reopening it remembers. */
   const [feel, setFeel] = useState<string | null>(() => loadPref<string | null>(`feel.${id}`, null));
-  /** The last feelings line Hush gave, so tapping again does not repeat it verbatim. */
-  const lastFeelLine = useRef<string | null>(null);
   const pickFeel = (next: string) => {
     const value = feel === next ? null : next;
     setFeel(value);
     savePref(`feel.${id}`, value);
     if (!value) {
-      lastFeelLine.current = null;
       onFeel?.(null);
       return;
     }
-    const line = pickLine(feelSayKey(value), { avoid: lastFeelLine.current });
-    lastFeelLine.current = line;
-    onFeel?.(line);
+    // Dealt from the feeling's deck, so tapping the same face again never gets the same reply twice
+    // running — and every reply comes round before any repeats.
+    onFeel?.(sayLine(feelSayKey(value)));
   };
   /** Set while this reader is fetching its own question paper. */
   const [fetching, setFetching] = useState(false);

@@ -250,6 +250,10 @@
   align-self: center;
   background: var(--line);
 }
+/* The scroll sentinel that mounts the next chunk of cards (LibraryView's CHUNK). */
+.lv-more {
+  height: 1px;
+}
 .lv-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));

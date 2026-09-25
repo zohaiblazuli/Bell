@@ -19,6 +19,7 @@
  */
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
+import { isPermissionGranted, requestPermission, sendNotification } from '@tauri-apps/plugin-notification';
 
 /** What a check found. `not-configured` cannot arise now the feed exists, but the caller still handles it. */
 export type UpdateCheck =
@@ -35,6 +36,9 @@ export interface DownloadProgress {
 /** True now that a signing key and a release feed exist. Settings reads it to explain itself. */
 export const UPDATES_CONFIGURED = true;
 
+/** How long the feed gets to answer before the check gives up. */
+const CHECK_TIMEOUT_MS = 15_000;
+
 /**
  * The pending update, held between `checkForUpdate` and `downloadUpdate`/`installUpdate`. The plugin
  * carries the downloaded bytes on this object, so the same instance must see all three steps.
@@ -43,7 +47,8 @@ let pending: Awaited<ReturnType<typeof check>> = null;
 
 /** Ask the feed whether a newer, correctly-signed build exists. */
 export async function checkForUpdate(): Promise<UpdateCheck> {
-  const update = await check();
+  // Bounded, so an offline launch fails the check instead of leaving it `checking` indefinitely.
+  const update = await check({ timeout: CHECK_TIMEOUT_MS });
   pending = update;
   if (!update) return { status: 'current' };
   return { status: 'available', version: update.version, notes: update.body ?? null };
@@ -80,4 +85,25 @@ export async function installUpdate(): Promise<void> {
   if (!pending) throw new Error('No update is staged — download first.');
   await pending.install();
   await relaunch();
+}
+
+/**
+ * Tell Windows an update is waiting — one toast in the Action Center, for the launch check only.
+ *
+ * Best effort by design: a toast that cannot be shown (permission refused, notifications off, a dev
+ * build with no installed app identity to post as) must never turn a successful check into an error,
+ * so every failure is swallowed here. The in-app pill still carries the news either way.
+ */
+export async function notifyUpdateAvailable(version: string): Promise<void> {
+  try {
+    let granted = await isPermissionGranted();
+    if (!granted) granted = (await requestPermission()) === 'granted';
+    if (!granted) return;
+    sendNotification({
+      title: `Bell ${version} is available`,
+      body: 'Open Bell to update — it takes a minute.',
+    });
+  } catch {
+    // See above: no toast is an acceptable outcome.
+  }
 }

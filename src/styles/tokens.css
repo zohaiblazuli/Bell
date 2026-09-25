@@ -205,11 +205,19 @@
 
   /* Shape Kit — the Bauhaus layer from the Bell App v2 design (Claude Design handoff). Flat
      primaries on cream, 2px ink rules as the only borders, no radius, no blur. Day values are the
-     prototype's THD set and Night its THN set (warm charcoal #262624, Claude-desktop-like).
+     prototype's THD set. Night MIRRORS Day rather than dimming it: Day is black rules and black
+     blocks on cream, so Night is cream rules (--line) and orange blocks (--inkbg, dark --onink)
+     on warm charcoal, with the live accent (--live) cream where Day has it red — the two swap
+     (Zohaib, 2026-09-25). The selected row, Solve and the done tag still pop the way they do in Day.
+     Surfaces step up as they rise (ground, card, sheet, hover), a visible step apart, and every text
+     ink clears AA on --card. The first Night was a flat grey set a few percent apart, which turned
+     every frame and every ink block into grey on grey.
      --ground is the prototype's cream `--paper`; the app keeps --paper for the exam PDF sheet. */
   --line: #1a1a1a;
   --inkbg: #1a1a1a;
   --onink: #efe9dc;
+  --live: #d9432f;
+  --onlive: #efe9dc;
   --ink-rgb: 26, 26, 26;
   --sheet: #fffefb;
   --hov: #fffcf4;
@@ -255,64 +263,66 @@
 
 /* Night. Only the tokens that actually change tone appear here. */
 .app[data-tone='night'] {
-  --ground: #262624;
-  --ground-2: #403e3a;
-  --ground-veil: rgba(38, 38, 36, 0);
-  --ambient-a: rgba(38, 38, 36, 0);
-  --ambient-b: rgba(38, 38, 36, 0);
+  --ground: #1f1e1c;
+  --ground-2: #2e2d2a;
+  --ground-veil: rgba(31, 30, 28, 0);
+  --ambient-a: rgba(31, 30, 28, 0);
+  --ambient-b: rgba(31, 30, 28, 0);
   --scrim: rgba(0, 0, 0, .549);
   --ink: #ece5d6;
   --ink-2: #b5ad9d;
   --ink-3: #ece5d6;
-  --glass: #30302e;
-  --glass-strong: #30302e;
-  --glass-brd: #5a5751;
+  --glass: #2b2a27;
+  --glass-strong: #2b2a27;
+  --glass-brd: #c9c0ae;
   --glass-hi: rgba(255, 255, 255, 0);
-  --hair: #4c4a45;
+  --hair: #45423d;
   --hair-2: rgba(236, 229, 214, .18);
-  --card: #30302e;
-  --card-brd: #5a5751;
-  --accent: #5a8ad8;
-  --accent-soft: #2a3548;
-  --d1: #5a8ad8;
-  --d2: #5a8ad8;
+  --card: #2b2a27;
+  --card-brd: #c9c0ae;
+  --accent: #6b98e0;
+  --accent-soft: #26344f;
+  --d1: #6b98e0;
+  --d2: #6b98e0;
   --d3: #e9b84c;
-  --d4: #ea5b44;
-  --d5: #ea5b44;
+  --d4: #ef6a56;
+  --d5: #ef6a56;
   --activity-0: #253a5e;
   --activity-1: #253a5e;
   --activity-2: #34599a;
   --activity-3: #5a8ad8;
   --activity-4: #a9c4f0;
-  --danger: #ea5b44;
-  --danger-soft: #472e29;
-  --line: #5a5751;
-  --inkbg: #3f3e3a;
-  --onink: #ece5d6;
+  --danger: #ef6a56;
+  --danger-soft: #4c2923;
+  --line: #c9c0ae;
+  --inkbg: #ef6a56;
+  --onink: #1f1e1c;
+  --live: #ece5d6;
+  --onlive: #1f1e1c;
   --ink-rgb: 236, 229, 214;
-  --sheet: #343431;
-  --hov: #3a3936;
-  --pale: #46443f;
-  --pale2: #403e3a;
-  --rule: #4c4a45;
-  --hatch: #2c2b29;
+  --sheet: #2f2e2b;
+  --hov: #363431;
+  --pale: #45423d;
+  --pale2: #3a3834;
+  --rule: #45423d;
+  --hatch: #272624;
   --mute: #b5ad9d;
   --mute2: #a59d8e;
-  --mute3: #958d7e;
+  --mute3: #9d9585;
   --mute4: #7f786b;
-  --dim: #6a665e;
-  --dim2: #5c5952;
-  --blue: #5a8ad8;
-  --navy: #8fb0e8;
-  --red: #ea5b44;
+  --dim: #6d6960;
+  --dim2: #57544e;
+  --blue: #6b98e0;
+  --navy: #9dbaec;
+  --red: #ef6a56;
   --maroon: #f29581;
   --gold: #e9b84c;
-  --green: #62b482;
-  --t-blue: #2a3548;
-  --t-blue2: #323e54;
-  --t-gold: #433a26;
-  --t-red: #472e29;
-  --t-green: #28392d;
+  --green: #6cbf8c;
+  --t-blue: #26344f;
+  --t-blue2: #2f3f5c;
+  --t-gold: #463a1d;
+  --t-red: #4c2923;
+  --t-green: #223d2b;
   --heat-1: #253a5e;
   --heat-2: #34599a;
   --heat-3: #5a8ad8;

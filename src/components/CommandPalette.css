@@ -72,7 +72,7 @@
   color: var(--ink);
   font: inherit;
   font-size: 16px;
-  caret-color: var(--red);
+  caret-color: var(--live);
 }
 .cmdk__input::placeholder {
   color: var(--mute);

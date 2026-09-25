@@ -1,25 +1,54 @@
 import { useRef, useState } from 'react';
-import PaperShape from '@ui/shapekit/PaperShape';
+import NavGlyph, { type NavGlyphName } from '@ui/shapekit/NavGlyph';
+import SubjectIcon from '@ui/icons/SubjectIcon';
 import type { TabItem } from '../state/useTabs';
+import type { View } from './Sidebar';
 import './TabBar.css';
+
+/** A shelf tab wears its page's sidebar glyph, so the row reads the same as the nav it mirrors. */
+const SHELF_GLYPH: Partial<Record<View, NavGlyphName>> = {
+  dashboard: 'home',
+  library: 'papers',
+  notebooks: 'notebooks',
+  workspace: 'workspace',
+  bookmarks: 'bookmarks',
+  recent: 'recent',
+  settings: 'settings',
+  community: 'community',
+};
+
+/**
+ * The icon of whatever the tab has open: the page's own glyph for a shelf, the subject's mark for a
+ * paper (the card it was opened from carries the same one), and the nav glyph of the place a
+ * notebook, community resource or workspace document lives.
+ */
+function TabIcon({ tab }: { tab: TabItem }) {
+  if (tab.kind === 'paper' && tab.paper) return <SubjectIcon code={tab.paper.subjectCode} size={18} />;
+  if (tab.kind === 'book') {
+    return tab.community?.subjectCode ? <SubjectIcon code={tab.community.subjectCode} size={18} /> : <NavGlyph name="community" />;
+  }
+  if (tab.kind === 'notebook') return <NavGlyph name="notebooks" />;
+  if (tab.kind === 'workspace-doc') return <NavGlyph name="workspace" />;
+  return <NavGlyph name={SHELF_GLYPH[tab.shelfView ?? 'library'] ?? 'papers'} />;
+}
 
 interface TabBarProps {
   tabs: TabItem[];
   activeId: string;
   onSelectTab: (id: string) => void;
   onCloseTab: (id: string) => void;
-  /** The + at the end of the row: opens the command palette to pick another paper. */
+  /** The + at the end of the row: a new tab on Home, like a browser's new tab page. */
   onNewTab: () => void;
   onReorderTabs?: (fromIndex: number, toIndex: number) => void;
 }
 
 /**
  * The document tab row (Bell App v2 · reader tabs): a 40px pale strip that is now ALWAYS on screen,
- * above every shelf and every open document (Zohaib, 2026-09-24). The current shelf leads the row as a
- * pinned, non-closable tab — Home on launch, and whatever the sidebar last selected otherwise — so the
- * row reads like a browser's: [ Home ] [ open papers/notebooks… ] [ + ]. Each paper tab carries its
- * paper-number shape; the open one sits on the page colour with a red bar along its top and ink rules
- * either side, like a folder tab. The sidebar still switches shelves (it re-targets the pinned tab).
+ * above every shelf and every open document (Zohaib, 2026-09-24). It reads like a browser's:
+ * [ Home ] [ open papers/notebooks/pages… ] [ + ]. The first shelf tab is pinned and cannot close;
+ * + opens another shelf tab on Home, and the sidebar navigates whichever shelf tab you are on. Every
+ * tab wears the icon of what it has open (`TabIcon`). The open one sits on the page colour with a red
+ * bar along its top and ink rules either side, like a folder tab.
  */
 export default function TabBar({ tabs, activeId, onSelectTab, onCloseTab, onNewTab, onReorderTabs }: TabBarProps) {
   const stripRef = useRef<HTMLDivElement>(null);
@@ -77,11 +106,9 @@ export default function TabBar({ tabs, activeId, onSelectTab, onCloseTab, onNewT
             onDragEnd={() => setDraggedIndex(null)}
             title={tip}
           >
-            {paper ? (
-              <PaperShape n={paper.paperNumber} size={10} />
-            ) : (
-              <span className={`doctab__mark doctab__mark--${tab.kind}`} aria-hidden="true" />
-            )}
+            <span className="doctab__icon" aria-hidden="true">
+              <TabIcon tab={tab} />
+            </span>
             <span className="doctab__title">{title}</span>
             {sub && <span className="doctab__sub">{sub}</span>}
             {tab.hasTimer && <span className="doctab__timer" title="Focus timer active" />}

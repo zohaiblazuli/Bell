@@ -54,7 +54,7 @@
 }
 .doctab[aria-selected='true'] {
   background: var(--ground);
-  box-shadow: inset 0 3px 0 var(--red), inset 2px 0 0 var(--line), inset -2px 0 0 var(--line);
+  box-shadow: inset 0 3px 0 var(--live), inset 2px 0 0 var(--line), inset -2px 0 0 var(--line);
 }
 
 /* The shelf leads the row as a pinned tab (Home/Library/Settings…): a 2px rule sets it off from the
@@ -85,7 +85,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--red);
+  background: var(--live);
   animation: sk-puff 1.2s ease-in-out infinite;
 }
 .doctab__close {
@@ -106,29 +106,19 @@
   color: var(--onink);
 }
 
-/* Non-paper tabs: a notebook is a small blue cover, a community or workspace document a ruled page. */
-.doctab__mark {
+/* What the tab has open (TabBar's `TabIcon`): a nav glyph or a subject mark, in the tab's ink.
+   `--nav-glyph-bg` is what Settings' slider knobs punch through with, so it follows the tab's fill. */
+.doctab__icon {
   flex: none;
-  display: block;
-  width: 10px;
-  height: 10px;
-  background: var(--ink);
+  display: flex;
+  align-items: center;
+  --nav-glyph-bg: var(--pale2);
 }
-.doctab__mark--notebook {
-  width: 8px;
-  height: 11px;
-  background: var(--blue);
+.doctab:hover .doctab__icon {
+  --nav-glyph-bg: var(--card);
 }
-.doctab__mark--book,
-.doctab__mark--workspace-doc {
-  background: transparent;
-  box-shadow: inset 0 0 0 2px var(--line);
-}
-/* The pinned shelf tab: the old back-button's ruled glyph, kept as the shelf's mark. */
-.doctab__mark--shelf {
-  width: 12px;
-  height: 12px;
-  background: repeating-linear-gradient(90deg, currentColor 0 3px, transparent 3px 5.5px);
+.doctab[aria-selected='true'] .doctab__icon {
+  --nav-glyph-bg: var(--ground);
 }
 
 .doctabs__new:focus-visible,

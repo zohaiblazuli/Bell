@@ -39,6 +39,7 @@ export type TabAction =
   | { type: 'OPEN_NOTEBOOK'; id: string; name?: string; page?: number; background?: boolean }
   | { type: 'OPEN_WORKSPACE_DOCUMENT'; document: WorkspaceDocument; notebook?: boolean; background?: boolean }
   | { type: 'OPEN_SHELF'; view: View }
+  | { type: 'NEW_SHELF'; id: string; view?: View }
   | { type: 'CLOSE_TAB'; id: string }
   | { type: 'CLOSE_OTHER_TABS'; keepId: string }
   | { type: 'CLOSE_TABS_TO_RIGHT'; id: string }
@@ -233,7 +234,18 @@ export function tabReducer(state: TabsState, action: TabAction): TabsState {
     }
 
     case 'OPEN_SHELF': {
-      const shelfIndex = state.tabs.findIndex((t) => t.kind === 'shelf');
+      // The sidebar navigates the tab you are on, as a browser's address bar does. From a document
+      // tab it lands on the nearest shelf tab to its left (the one it was most likely opened from),
+      // and failing that the first shelf in the row.
+      const activeIndex = state.tabs.findIndex((t) => t.id === state.activeId);
+      let shelfIndex = -1;
+      for (let i = activeIndex; i >= 0; i--) {
+        if (state.tabs[i].kind === 'shelf') {
+          shelfIndex = i;
+          break;
+        }
+      }
+      if (shelfIndex < 0) shelfIndex = state.tabs.findIndex((t) => t.kind === 'shelf');
       if (shelfIndex >= 0) {
         const updatedTabs = [...state.tabs];
         updatedTabs[shelfIndex] = {
@@ -259,6 +271,22 @@ export function tabReducer(state: TabsState, action: TabAction): TabsState {
         tabs: [newShelfTab, ...state.tabs],
         activeId: newShelfTab.id,
       };
+    }
+
+    case 'NEW_SHELF': {
+      // The + at the end of the row: a fresh tab on Home, opened at the end and focused, like a
+      // browser's new tab page. Unlike the pinned first tab it can be closed.
+      if (state.tabs.some((t) => t.id === action.id)) return state;
+      const view = action.view ?? 'dashboard';
+      const newTab: TabItem = {
+        id: action.id,
+        kind: 'shelf',
+        title: shelfTitle(view),
+        icon: shelfIcon(view),
+        closable: true,
+        shelfView: view,
+      };
+      return { tabs: [...state.tabs, newTab], activeId: newTab.id };
     }
 
     case 'CLOSE_TAB': {
@@ -354,15 +382,15 @@ export function loadSavedTabs(): TabsState {
       });
       const hasLibrary = restored.some((t) => t.id === DEFAULT_LIBRARY_TAB.id);
       const withShelf = hasLibrary ? restored : [DEFAULT_LIBRARY_TAB, ...restored];
-      // Always open on Home (Zohaib, 2026-09-24): the saved set is restored, but the single shelf tab
+      // Always open on Home (Zohaib, 2026-09-24): the saved set is restored, but the pinned shelf tab
       // is reset to the dashboard and made active — the last document you had open is a click away in
-      // the row, not what greets you on launch.
+      // the row, not what greets you on launch. Tabs opened with + keep the page they were left on.
       const tabs = withShelf.map((t) =>
-        t.kind === 'shelf'
+        t.id === DEFAULT_LIBRARY_TAB.id
           ? { ...t, shelfView: 'dashboard' as View, title: shelfTitle('dashboard'), icon: shelfIcon('dashboard') }
           : t,
       );
-      const home = tabs.find((t) => t.kind === 'shelf') ?? tabs[0];
+      const home = tabs.find((t) => t.id === DEFAULT_LIBRARY_TAB.id) ?? tabs[0];
       return { tabs, activeId: home.id };
     }
   } catch {
@@ -416,6 +444,11 @@ export function useTabs() {
     dispatch({ type: 'OPEN_SHELF', view });
   }, []);
 
+  /** A new tab on Home. The id is made here, not in the reducer, so a StrictMode re-run adds one tab. */
+  const openNewTab = useCallback((view?: View) => {
+    dispatch({ type: 'NEW_SHELF', id: `shelf:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, view });
+  }, []);
+
   const closeTab = useCallback((id: string) => {
     dispatch({ type: 'CLOSE_TAB', id });
   }, []);
@@ -456,6 +489,7 @@ export function useTabs() {
     openNotebook,
     openWorkspaceDocument,
     openShelf,
+    openNewTab,
     closeTab,
     closeOtherTabs,
     closeTabsToRight,

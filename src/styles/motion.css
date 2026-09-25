@@ -106,6 +106,8 @@
 }
 @keyframes sk-wave-wing { 0%, 100% { transform: rotate(-115deg); } 50% { transform: rotate(-155deg); } }
 @keyframes sk-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+/* Hush carrying his page: a small bounce with a sway, so the held download pose reads as walking. */
+@keyframes sk-carry { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-6px) rotate(2deg); } }
 @keyframes sk-wing-up-l { 0%, 100% { transform: rotate(0); } 45% { transform: rotate(125deg); } }
 @keyframes sk-wing-up-r { 0%, 100% { transform: rotate(0); } 45% { transform: rotate(-125deg); } }
 @keyframes sk-jump {

@@ -89,7 +89,7 @@ export default function FocusTimer({ paper }: Props) {
     <div className="timer" data-running={running ? 'true' : undefined}>
       <span
         className="timer-ring"
-        style={{ background: `conic-gradient(var(--red) 0 ${pct.toFixed(2)}%, var(--pale) 0)` }}
+        style={{ background: `conic-gradient(var(--live) 0 ${pct.toFixed(2)}%, var(--pale) 0)` }}
         aria-hidden="true"
       >
         <i />

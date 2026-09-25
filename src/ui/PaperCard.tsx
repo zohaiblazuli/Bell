@@ -31,6 +31,8 @@ export interface PaperCardProps {
   icon?: ReactNode;
   /** Position in its grid, for the dealt-in stagger. */
   index?: number;
+  /** Deal the card onto the table as it mounts. A long grid deals only its first screenful. */
+  deal?: boolean;
   className?: string;
 }
 
@@ -62,6 +64,7 @@ function PaperCard({
   onDownload,
   icon,
   index = 0,
+  deal = true,
   className,
 }: PaperCardProps) {
   const paper = variant ? variant.replace(/^\//, '') : '';
@@ -73,6 +76,7 @@ function PaperCard({
       className={className ? `paper-card ${className}` : 'paper-card'}
       style={{ '--deal': `${delay}ms`, '--tumble': `${delay + 220}ms` } as CSSProperties}
       data-downloaded={downloaded ? 'true' : undefined}
+      data-deal={deal ? undefined : 'off'}
     >
       <button type="button" className="pc-open" onClick={downloaded ? onOpen : onDownload ?? onOpen} aria-label={`${downloaded ? 'Open' : 'Download'} ${subject} ${subjectCode}/${paper}, ${session}`} />
 

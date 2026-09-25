@@ -13,6 +13,11 @@
   animation-delay: var(--deal, 0ms);
   transition: transform .16s, box-shadow .16s, background-color .16s;
 }
+/* Mounted by scrolling rather than dealt: the base style is already the finished frame. */
+.paper-card[data-deal='off'],
+.paper-card[data-deal='off'] .pc-icon {
+  animation: none;
+}
 .paper-card:hover {
   background: var(--hov);
   box-shadow: inset 0 0 0 2px var(--line), 6px 6px 0 var(--line);
@@ -202,7 +207,8 @@
   color: var(--onink);
 }
 .pc-solve:hover {
-  background: var(--red);
+  background: var(--live);
+  color: var(--onlive);
 }
 .pc-solve > i {
   width: 0;

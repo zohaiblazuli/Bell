@@ -461,7 +461,7 @@ section.rd[data-nb='open'] .rd-barwrap {
   width: 30px;
 }
 .rd-glyphbtn:hover:not(:disabled) {
-  color: var(--red);
+  color: var(--live);
 }
 .rd-glyphbtn:disabled,
 .rd-tool:disabled {

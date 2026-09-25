@@ -368,6 +368,12 @@ pub async fn download_paper(
             // would be noise. The badge's own press retries it.
             if let Err(error) = fetch_and_store(&companion, paper_id, "ms").await {
                 eprintln!("[downloads] mark scheme for paper {paper_id}: {error}");
+                // Quiet, but not silent to the UI: its progress may already be on screen, and
+                // without this nothing would ever take it down.
+                let _ = companion.emit(
+                    "download:failed",
+                    serde_json::json!({ "paperId": paper_id, "kind": "ms" }),
+                );
             }
         });
     }

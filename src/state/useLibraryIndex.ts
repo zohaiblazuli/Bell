@@ -134,23 +134,52 @@ export function useLibraryIndex(paused: boolean): LibraryIndex {
     return () => void un.then((f) => f());
   }, []);
 
+  const clearProgress = useCallback((paperId: number, kind: DocKind) => {
+    setDownloading((prev) => {
+      const next = { ...prev };
+      delete next[downloadKey(paperId, kind)];
+      return next;
+    });
+  }, []);
+
+  /**
+   * Keys `download` is awaiting right now. Progress events travel on a different channel from the
+   * command's reply, so the last one can land AFTER the promise resolved and `clearProgress` ran —
+   * and re-adding the key then left a card saying "Fetching…" (and Hush holding his page) for the
+   * rest of the session. A question-paper tick for a key nobody is awaiting is that straggler.
+   */
+  const inFlight = useRef(new Set<string>());
+
   useEffect(() => {
     const un = listen<DownloadProgress>('download:progress', (e) => {
       const payload = e.payload;
-      setDownloading((prev) => ({ ...prev, [downloadKey(payload.paperId, payload.kind)]: payload }));
+      const key = downloadKey(payload.paperId, payload.kind);
+      // A mark scheme is the exception: Rust fetches it on its own after the paper lands, so no
+      // promise here awaits it, and `download:done` / `download:failed` below are what clear it.
+      if (payload.kind !== 'ms' && !inFlight.current.has(key)) return;
+      setDownloading((prev) => ({ ...prev, [key]: payload }));
     });
     return () => void un.then((f) => f());
   }, []);
 
   // A question paper's mark scheme is fetched by a task Rust spawns after the paper
   // itself lands, so it finishes outside any promise the UI is awaiting. This is what
-  // makes it show up: the row it belongs to is re-queried when it arrives.
+  // makes it show up: the row it belongs to is re-queried when it arrives. Either way it
+  // ends, its progress entry goes — nothing else would ever remove it.
   useEffect(() => {
-    const un = listen<DownloadResult>('download:done', (e) => {
-      if (e.payload.kind === 'ms') bump();
+    const unDone = listen<DownloadResult>('download:done', (e) => {
+      if (e.payload.kind !== 'ms') return;
+      clearProgress(e.payload.paperId, 'ms');
+      bump();
     });
-    return () => void un.then((f) => f());
-  }, [bump]);
+    const unFailed = listen<{ paperId: number; kind: DocKind }>('download:failed', (e) => {
+      if (e.payload.kind === 'ms') clearProgress(e.payload.paperId, 'ms');
+    });
+    return () => {
+      void unDone.then((f) => f());
+      void unFailed.then((f) => f());
+    };
+  }, [bump, clearProgress]);
 
   const refresh = useCallback(async () => {
     setStats(await api.libraryStats());
@@ -229,14 +258,6 @@ export function useLibraryIndex(paused: boolean): LibraryIndex {
     };
   }, [subjectId, level, downloadedOnly, paused, revision]);
 
-  const clearProgress = useCallback((paperId: number, kind: DocKind) => {
-    setDownloading((prev) => {
-      const next = { ...prev };
-      delete next[downloadKey(paperId, kind)];
-      return next;
-    });
-  }, []);
-
   /**
    * Fetch one document. A question paper also brings its mark scheme: Rust spawns that
    * fetch after the paper lands, so this resolves on the paper alone and the mark scheme
@@ -245,6 +266,7 @@ export function useLibraryIndex(paused: boolean): LibraryIndex {
   const download = useCallback(
     async (paperId: number, kind: DocKind, quiet = false): Promise<string | null> => {
       const key = downloadKey(paperId, kind);
+      inFlight.current.add(key);
       if (!quiet) setError(null);
       // Seed the map before the first progress event so a spinner appears at once.
       setDownloading((prev) => ({
@@ -265,6 +287,7 @@ export function useLibraryIndex(paused: boolean): LibraryIndex {
         if (!quiet) setError(String(e));
         return null;
       } finally {
+        inFlight.current.delete(key);
         clearProgress(paperId, kind);
       }
     },

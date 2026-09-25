@@ -57,7 +57,7 @@
   cursor: pointer;
 }
 .uflow-corner__x:hover {
-  color: var(--red);
+  color: var(--live);
 }
 .uflow-corner__copy {
   margin: 0;

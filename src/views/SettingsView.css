@@ -290,7 +290,7 @@
 }
 .set-about-links button:hover,
 .set-link:hover {
-  color: var(--red);
+  color: var(--live);
 }
 .set-about-licence {
   font-weight: 400;

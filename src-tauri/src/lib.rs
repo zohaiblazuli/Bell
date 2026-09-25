@@ -32,6 +32,9 @@ pub fn run_with_context(context: tauri::Context<tauri::Wry>) {
         // and downloads.rs. The updater reads its pubkey + endpoints from `plugins.updater`.
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        // The Windows toast that says an update is waiting (lib/updates.ts). Local only: it posts to
+        // the Action Center and fetches nothing.
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
         .on_page_load(|_webview, _payload| {
             #[cfg(debug_assertions)]
