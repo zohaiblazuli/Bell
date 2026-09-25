@@ -45,6 +45,11 @@ jobs:
             }
           } catch {}
           echo "skip=false" >> $env:GITHUB_OUTPUT
+          # `gh release view` exits 1 when the release does not exist yet — the normal case for a new
+          # tag — and a native exit code is not an exception, so the catch above never sees it. The
+          # runner ends every pwsh step with `exit $LASTEXITCODE`, which failed this step on every
+          # first build of a tag (v0.3.1). Not finding a release is an answer, not an error.
+          exit 0
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
